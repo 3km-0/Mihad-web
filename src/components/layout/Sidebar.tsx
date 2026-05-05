@@ -7,7 +7,6 @@ import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   House,
-  Clock3,
   FolderOpen,
   ChartPie,
   Search,
@@ -17,6 +16,7 @@ import {
   ChevronRight,
   Crown,
   Building2,
+  Wrench,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,7 +64,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
 
   const navItems = [
     { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
-    { href: '/updates', label: t('updates'), icon: Clock3 },
+    { href: '/renovation', label: t('renovation'), icon: Wrench },
     { href: '/ask', label: t('search'), icon: Search },
     ...(showPortfolioTab
       ? [{ href: '/portfolio', label: t('portfolio'), icon: ChartPie }]
@@ -89,6 +89,9 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
     }
     if (href === '/portfolio') {
       return pathname === '/portfolio' || pathname.startsWith('/portfolio/');
+    }
+    if (href === '/renovation') {
+      return pathname === '/renovation' || pathname.startsWith('/renovation/');
     }
     return pathname.startsWith(href);
   };
