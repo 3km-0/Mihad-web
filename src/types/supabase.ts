@@ -339,6 +339,274 @@ export type Database = {
           },
         ]
       }
+      acquisition_contact_channels: {
+        Row: {
+          address: string
+          approved_for_inbound: boolean
+          approved_for_outbound: boolean
+          approved_for_private_submission: boolean
+          channel: string
+          consent_status: string
+          consented_at: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          last_inbound_at: string | null
+          last_outbound_at: string | null
+          metadata_json: Json
+          normalized_address: string
+          opted_out_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          approved_for_inbound?: boolean
+          approved_for_outbound?: boolean
+          approved_for_private_submission?: boolean
+          channel: string
+          consent_status?: string
+          consented_at?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          metadata_json?: Json
+          normalized_address: string
+          opted_out_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          approved_for_inbound?: boolean
+          approved_for_outbound?: boolean
+          approved_for_private_submission?: boolean
+          channel?: string
+          consent_status?: string
+          consented_at?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          metadata_json?: Json
+          normalized_address?: string
+          opted_out_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_contact_channels_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_contacts: {
+        Row: {
+          contact_kind: string
+          created_at: string
+          display_name: string
+          id: string
+          legal_name: string | null
+          license_authority: string | null
+          license_kind: string | null
+          license_number: string | null
+          license_verified_at: string | null
+          metadata_json: Json
+          organization_id: string | null
+          owner_user_id: string | null
+          preferred_language: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_kind?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          legal_name?: string | null
+          license_authority?: string | null
+          license_kind?: string | null
+          license_number?: string | null
+          license_verified_at?: string | null
+          metadata_json?: Json
+          organization_id?: string | null
+          owner_user_id?: string | null
+          preferred_language?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_kind?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          legal_name?: string | null
+          license_authority?: string | null
+          license_kind?: string | null
+          license_number?: string | null
+          license_verified_at?: string | null
+          metadata_json?: Json
+          organization_id?: string | null
+          owner_user_id?: string | null
+          preferred_language?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_contacts_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_deal_desk_notes: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          mandate_id: string | null
+          metadata_json: Json
+          note_kind: string
+          opportunity_id: string | null
+          report_id: string
+          updated_at: string
+          viewer_ref: string | null
+          workspace_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          mandate_id?: string | null
+          metadata_json?: Json
+          note_kind?: string
+          opportunity_id?: string | null
+          report_id: string
+          updated_at?: string
+          viewer_ref?: string | null
+          workspace_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          mandate_id?: string | null
+          metadata_json?: Json
+          note_kind?: string
+          opportunity_id?: string | null
+          report_id?: string
+          updated_at?: string
+          viewer_ref?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_deal_desk_notes_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_deal_desk_notes_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_deal_desk_notes_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_deal_desk_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_deal_desk_notes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_deal_desk_reports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          experience_id: string | null
+          id: string
+          live_url: string | null
+          mandate_id: string | null
+          payload_json: Json
+          redeem_url: string | null
+          report_period: string
+          status: string
+          surface_key: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          experience_id?: string | null
+          id?: string
+          live_url?: string | null
+          mandate_id?: string | null
+          payload_json?: Json
+          redeem_url?: string | null
+          report_period?: string
+          status?: string
+          surface_key: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          experience_id?: string | null
+          id?: string
+          live_url?: string | null
+          mandate_id?: string | null
+          payload_json?: Json
+          redeem_url?: string | null
+          report_period?: string
+          status?: string
+          surface_key?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_deal_desk_reports_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_deal_desk_reports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       acquisition_diligence_items: {
         Row: {
           candidate_id: string | null
@@ -890,6 +1158,9 @@ export type Database = {
           originating_conversation_id: string | null
           phone_number: string
           property_id: string | null
+          renovation_capex_json: Json
+          renovation_capex_updated_at: string | null
+          renovation_rate_card_id: string | null
           result_source: string | null
           screening_readiness: string | null
           source_channel: string
@@ -917,6 +1188,9 @@ export type Database = {
           originating_conversation_id?: string | null
           phone_number: string
           property_id?: string | null
+          renovation_capex_json?: Json
+          renovation_capex_updated_at?: string | null
+          renovation_rate_card_id?: string | null
           result_source?: string | null
           screening_readiness?: string | null
           source_channel?: string
@@ -944,6 +1218,9 @@ export type Database = {
           originating_conversation_id?: string | null
           phone_number?: string
           property_id?: string | null
+          renovation_capex_json?: Json
+          renovation_capex_updated_at?: string | null
+          renovation_rate_card_id?: string | null
           result_source?: string | null
           screening_readiness?: string | null
           source_channel?: string
@@ -985,10 +1262,71 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "acquisition_opportunities_renovation_rate_card_id_fkey"
+            columns: ["renovation_rate_card_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_rate_cards"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "acquisition_opportunities_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_opportunity_participants: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          metadata_json: Json
+          opportunity_id: string
+          role: string
+          source_channel: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          metadata_json?: Json
+          opportunity_id: string
+          role: string
+          source_channel?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          metadata_json?: Json
+          opportunity_id?: string
+          role?: string
+          source_channel?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_opportunity_participants_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acquisition_opportunity_participants_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
             referencedColumns: ["id"]
           },
         ]
@@ -1257,6 +1595,318 @@ export type Database = {
           },
           {
             foreignKeyName: "actions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_conversations: {
+        Row: {
+          buyer_entity_id: string | null
+          channel: string
+          contact_id: string | null
+          created_at: string
+          external_thread_id: string
+          id: string
+          last_message_at: string | null
+          linked_profile_id: string | null
+          mandate_id: string | null
+          mode: string
+          opportunity_id: string | null
+          state_json: Json
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          buyer_entity_id?: string | null
+          channel: string
+          contact_id?: string | null
+          created_at?: string
+          external_thread_id: string
+          id?: string
+          last_message_at?: string | null
+          linked_profile_id?: string | null
+          mandate_id?: string | null
+          mode?: string
+          opportunity_id?: string | null
+          state_json?: Json
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          buyer_entity_id?: string | null
+          channel?: string
+          contact_id?: string | null
+          created_at?: string
+          external_thread_id?: string
+          id?: string
+          last_message_at?: string | null
+          linked_profile_id?: string | null
+          mandate_id?: string | null
+          mode?: string
+          opportunity_id?: string | null
+          state_json?: Json
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_buyer_entity_id_fkey"
+            columns: ["buyer_entity_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_linked_profile_id_fkey"
+            columns: ["linked_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_events: {
+        Row: {
+          channel: string
+          contact_id: string | null
+          conversation_id: string | null
+          created_at: string
+          direction: string
+          event_type: string
+          id: string
+          opportunity_id: string | null
+          provider_message_id: string | null
+          safe_payload_json: Json
+          workspace_id: string | null
+        }
+        Insert: {
+          channel: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          direction: string
+          event_type: string
+          id?: string
+          opportunity_id?: string | null
+          provider_message_id?: string | null
+          safe_payload_json?: Json
+          workspace_id?: string | null
+        }
+        Update: {
+          channel?: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          direction?: string
+          event_type?: string
+          id?: string
+          opportunity_id?: string | null
+          provider_message_id?: string | null
+          safe_payload_json?: Json
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_events_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_events_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_outbox_messages: {
+        Row: {
+          approval_id: string | null
+          body: string | null
+          channel: string
+          contact_channel_id: string | null
+          contact_id: string | null
+          created_at: string
+          failure_reason: string | null
+          id: string
+          message_intent: string
+          metadata_json: Json
+          opportunity_id: string | null
+          provider_message_id: string | null
+          status: string
+          template_key: string | null
+          template_payload_json: Json
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          approval_id?: string | null
+          body?: string | null
+          channel: string
+          contact_channel_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          message_intent: string
+          metadata_json?: Json
+          opportunity_id?: string | null
+          provider_message_id?: string | null
+          status?: string
+          template_key?: string | null
+          template_payload_json?: Json
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          approval_id?: string | null
+          body?: string | null
+          channel?: string
+          contact_channel_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          message_intent?: string
+          metadata_json?: Json
+          opportunity_id?: string | null
+          provider_message_id?: string | null
+          status?: string
+          template_key?: string | null
+          template_payload_json?: Json
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_outbox_messages_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "external_action_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_outbox_messages_contact_channel_id_fkey"
+            columns: ["contact_channel_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_contact_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_outbox_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_outbox_messages_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_outbox_messages_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_workspace_broadcasts: {
+        Row: {
+          broadcast_key: string
+          created_at: string
+          id: string
+          mandate_id: string | null
+          metadata_json: Json
+          outbox_count: number
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          broadcast_key?: string
+          created_at?: string
+          id?: string
+          mandate_id?: string | null
+          metadata_json?: Json
+          outbox_count?: number
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          broadcast_key?: string
+          created_at?: string
+          id?: string
+          mandate_id?: string | null
+          metadata_json?: Json
+          outbox_count?: number
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_workspace_broadcasts_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_workspace_broadcasts_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -2467,6 +3117,120 @@ export type Database = {
           },
         ]
       }
+      buyer_entities: {
+        Row: {
+          created_at: string
+          default_kyc_state: string
+          display_name: string
+          entity_type: string
+          id: string
+          legal_name: string | null
+          metadata_json: Json
+          organization_id: string | null
+          owner_user_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_kyc_state?: string
+          display_name?: string
+          entity_type?: string
+          id?: string
+          legal_name?: string | null
+          metadata_json?: Json
+          organization_id?: string | null
+          owner_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_kyc_state?: string
+          display_name?: string
+          entity_type?: string
+          id?: string
+          legal_name?: string | null
+          metadata_json?: Json
+          organization_id?: string | null
+          owner_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_entities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buyer_entity_documents: {
+        Row: {
+          buyer_entity_id: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+          document_role: string
+          expires_at: string | null
+          id: string
+          sensitivity_level: string
+          status: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          buyer_entity_id: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          document_role?: string
+          expires_at?: string | null
+          id?: string
+          sensitivity_level?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          buyer_entity_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          document_role?: string
+          expires_at?: string | null
+          id?: string
+          sensitivity_level?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_entity_documents_buyer_entity_id_fkey"
+            columns: ["buyer_entity_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_entity_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_entity_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buyer_readiness_evidence: {
         Row: {
           attestation_json: Json
@@ -2543,6 +3307,7 @@ export type Database = {
       buyer_readiness_profiles: {
         Row: {
           brokerage_status: string
+          buyer_entity_id: string | null
           buyer_type: string
           buyer_user_id: string | null
           created_at: string
@@ -2563,6 +3328,7 @@ export type Database = {
         }
         Insert: {
           brokerage_status?: string
+          buyer_entity_id?: string | null
           buyer_type?: string
           buyer_user_id?: string | null
           created_at?: string
@@ -2583,6 +3349,7 @@ export type Database = {
         }
         Update: {
           brokerage_status?: string
+          buyer_entity_id?: string | null
           buyer_type?: string
           buyer_user_id?: string | null
           created_at?: string
@@ -2602,6 +3369,13 @@ export type Database = {
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "buyer_readiness_profiles_buyer_entity_id_fkey"
+            columns: ["buyer_entity_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_entities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "buyer_readiness_profiles_mandate_id_fkey"
             columns: ["mandate_id"]
@@ -3697,8 +4471,12 @@ export type Database = {
         Row: {
           allowed_action: string
           buyer_profile_id: string | null
+          consent_acknowledged_at: string | null
+          consent_acknowledged_by: string | null
+          consent_disclaimer: string | null
           created_at: string
           document_id: string
+          document_scope_json: Json
           expires_at: string | null
           granted_by: string | null
           granted_to_identifier: string | null
@@ -3706,6 +4484,8 @@ export type Database = {
           id: string
           opportunity_id: string | null
           purpose: string
+          recipient_contact_json: Json
+          recipient_display_name: string | null
           revoked_at: string | null
           share_mode: string
           token_hash: string | null
@@ -3715,8 +4495,12 @@ export type Database = {
         Insert: {
           allowed_action?: string
           buyer_profile_id?: string | null
+          consent_acknowledged_at?: string | null
+          consent_acknowledged_by?: string | null
+          consent_disclaimer?: string | null
           created_at?: string
           document_id: string
+          document_scope_json?: Json
           expires_at?: string | null
           granted_by?: string | null
           granted_to_identifier?: string | null
@@ -3724,6 +4508,8 @@ export type Database = {
           id?: string
           opportunity_id?: string | null
           purpose: string
+          recipient_contact_json?: Json
+          recipient_display_name?: string | null
           revoked_at?: string | null
           share_mode?: string
           token_hash?: string | null
@@ -3733,8 +4519,12 @@ export type Database = {
         Update: {
           allowed_action?: string
           buyer_profile_id?: string | null
+          consent_acknowledged_at?: string | null
+          consent_acknowledged_by?: string | null
+          consent_disclaimer?: string | null
           created_at?: string
           document_id?: string
+          document_scope_json?: Json
           expires_at?: string | null
           granted_by?: string | null
           granted_to_identifier?: string | null
@@ -3742,6 +4532,8 @@ export type Database = {
           id?: string
           opportunity_id?: string | null
           purpose?: string
+          recipient_contact_json?: Json
+          recipient_display_name?: string | null
           revoked_at?: string | null
           share_mode?: string
           token_hash?: string | null
@@ -4342,6 +5134,84 @@ export type Database = {
             columns: ["source_action_id"]
             isOneToOne: false
             referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equity_companies: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          currency: string | null
+          display_name: string
+          exchange: string | null
+          id: string
+          industry: string | null
+          isin: string | null
+          legal_name: string
+          lei: string | null
+          metadata_json: Json
+          org_id: string | null
+          owner_id: string
+          sector: string | null
+          source_authority_json: Json
+          status: string
+          ticker: string | null
+          updated_at: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          currency?: string | null
+          display_name: string
+          exchange?: string | null
+          id?: string
+          industry?: string | null
+          isin?: string | null
+          legal_name: string
+          lei?: string | null
+          metadata_json?: Json
+          org_id?: string | null
+          owner_id: string
+          sector?: string | null
+          source_authority_json?: Json
+          status?: string
+          ticker?: string | null
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          currency?: string | null
+          display_name?: string
+          exchange?: string | null
+          id?: string
+          industry?: string | null
+          isin?: string | null
+          legal_name?: string
+          lei?: string | null
+          metadata_json?: Json
+          org_id?: string | null
+          owner_id?: string
+          sector?: string | null
+          source_authority_json?: Json
+          status?: string
+          ticker?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equity_companies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equity_companies_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5354,53 +6224,68 @@ export type Database = {
       }
       external_action_approvals: {
         Row: {
+          acquisition_action_id: string | null
           action_type: string
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          blocker_reason: string | null
           buyer_profile_id: string | null
           created_at: string
           draft_payload_json: Json
           executed_at: string | null
           executed_by: string | null
           execution_result_json: Json
+          external_provider_result_json: Json
           id: string
           opportunity_id: string | null
           requested_by: string | null
+          resolved_stage: string | null
+          result_status: string
           updated_at: string
           workspace_id: string | null
         }
         Insert: {
+          acquisition_action_id?: string | null
           action_type: string
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          blocker_reason?: string | null
           buyer_profile_id?: string | null
           created_at?: string
           draft_payload_json?: Json
           executed_at?: string | null
           executed_by?: string | null
           execution_result_json?: Json
+          external_provider_result_json?: Json
           id?: string
           opportunity_id?: string | null
           requested_by?: string | null
+          resolved_stage?: string | null
+          result_status?: string
           updated_at?: string
           workspace_id?: string | null
         }
         Update: {
+          acquisition_action_id?: string | null
           action_type?: string
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          blocker_reason?: string | null
           buyer_profile_id?: string | null
           created_at?: string
           draft_payload_json?: Json
           executed_at?: string | null
           executed_by?: string | null
           execution_result_json?: Json
+          external_provider_result_json?: Json
           id?: string
           opportunity_id?: string | null
           requested_by?: string | null
+          resolved_stage?: string | null
+          result_status?: string
           updated_at?: string
           workspace_id?: string | null
         }
@@ -9029,6 +9914,868 @@ export type Database = {
           },
         ]
       }
+      renovation_assemblies: {
+        Row: {
+          assumptions: string | null
+          code: string
+          created_at: string
+          default_finish_level_id: string | null
+          description: string | null
+          exclusions: string | null
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          property_type: string | null
+          risk_notes: string | null
+          space_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          assumptions?: string | null
+          code: string
+          created_at?: string
+          default_finish_level_id?: string | null
+          description?: string | null
+          exclusions?: string | null
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          property_type?: string | null
+          risk_notes?: string | null
+          space_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assumptions?: string | null
+          code?: string
+          created_at?: string
+          default_finish_level_id?: string | null
+          description?: string | null
+          exclusions?: string | null
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          property_type?: string | null
+          risk_notes?: string | null
+          space_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_assemblies_default_finish_level_id_fkey"
+            columns: ["default_finish_level_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_finish_levels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_assembly_items: {
+        Row: {
+          assembly_id: string
+          cost_item_id: string
+          created_at: string
+          default_quantity: number | null
+          id: string
+          max_quantity: number | null
+          metadata_json: Json
+          min_quantity: number | null
+          notes: string | null
+          optional: boolean
+          quantity_formula: string | null
+          quantity_unit_id: string | null
+          updated_at: string
+          waste_factor_percent: number
+        }
+        Insert: {
+          assembly_id: string
+          cost_item_id: string
+          created_at?: string
+          default_quantity?: number | null
+          id?: string
+          max_quantity?: number | null
+          metadata_json?: Json
+          min_quantity?: number | null
+          notes?: string | null
+          optional?: boolean
+          quantity_formula?: string | null
+          quantity_unit_id?: string | null
+          updated_at?: string
+          waste_factor_percent?: number
+        }
+        Update: {
+          assembly_id?: string
+          cost_item_id?: string
+          created_at?: string
+          default_quantity?: number | null
+          id?: string
+          max_quantity?: number | null
+          metadata_json?: Json
+          min_quantity?: number | null
+          notes?: string | null
+          optional?: boolean
+          quantity_formula?: string | null
+          quantity_unit_id?: string | null
+          updated_at?: string
+          waste_factor_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_assembly_items_assembly_id_fkey"
+            columns: ["assembly_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_assemblies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_assembly_items_cost_item_id_fkey"
+            columns: ["cost_item_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cost_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_assembly_items_quantity_unit_id_fkey"
+            columns: ["quantity_unit_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_cities: {
+        Row: {
+          code: string
+          country_code: string
+          created_at: string
+          currency: string
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country_code?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country_code?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      renovation_cost_categories: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          parent_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          parent_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_cost_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cost_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_cost_items: {
+        Row: {
+          category_id: string | null
+          code: string
+          created_at: string
+          default_unit_id: string | null
+          description: string | null
+          excluded_work: string | null
+          id: string
+          included_work: string | null
+          is_active: boolean
+          is_high_risk: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          quantity_hint: string | null
+          requires_site_visit: boolean
+          trade_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          code: string
+          created_at?: string
+          default_unit_id?: string | null
+          description?: string | null
+          excluded_work?: string | null
+          id?: string
+          included_work?: string | null
+          is_active?: boolean
+          is_high_risk?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          quantity_hint?: string | null
+          requires_site_visit?: boolean
+          trade_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          code?: string
+          created_at?: string
+          default_unit_id?: string | null
+          description?: string | null
+          excluded_work?: string | null
+          id?: string
+          included_work?: string | null
+          is_active?: boolean
+          is_high_risk?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          quantity_hint?: string | null
+          requires_site_visit?: boolean
+          trade_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_cost_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_cost_items_default_unit_id_fkey"
+            columns: ["default_unit_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_cost_items_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_estimate_events: {
+        Row: {
+          acquisition_opportunity_id: string
+          acquisition_scenario_id: string | null
+          base_total: number | null
+          confidence_score: number | null
+          created_at: string
+          created_by: string | null
+          estimator_version: string | null
+          event_type: string
+          high_total: number | null
+          id: string
+          input_json: Json
+          low_total: number | null
+          org_id: string | null
+          output_json: Json
+          rate_card_id: string | null
+        }
+        Insert: {
+          acquisition_opportunity_id: string
+          acquisition_scenario_id?: string | null
+          base_total?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          estimator_version?: string | null
+          event_type: string
+          high_total?: number | null
+          id?: string
+          input_json?: Json
+          low_total?: number | null
+          org_id?: string | null
+          output_json?: Json
+          rate_card_id?: string | null
+        }
+        Update: {
+          acquisition_opportunity_id?: string
+          acquisition_scenario_id?: string | null
+          base_total?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          estimator_version?: string | null
+          event_type?: string
+          high_total?: number | null
+          id?: string
+          input_json?: Json
+          low_total?: number | null
+          org_id?: string | null
+          output_json?: Json
+          rate_card_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_estimate_events_acquisition_opportunity_id_fkey"
+            columns: ["acquisition_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_estimate_events_acquisition_scenario_id_fkey"
+            columns: ["acquisition_scenario_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_scenarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_estimate_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_estimate_events_rate_card_id_fkey"
+            columns: ["rate_card_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_rate_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_finish_levels: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      renovation_price_imports: {
+        Row: {
+          city_id: string | null
+          content_type: string | null
+          created_at: string
+          error_json: Json
+          file_name: string | null
+          headers_json: Json
+          id: string
+          import_manifest_json: Json
+          imported_at: string | null
+          imported_by: string | null
+          organization_id: string | null
+          row_count: number | null
+          sha256: string | null
+          source_kind: string
+          source_label: string
+          status: string
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          city_id?: string | null
+          content_type?: string | null
+          created_at?: string
+          error_json?: Json
+          file_name?: string | null
+          headers_json?: Json
+          id?: string
+          import_manifest_json?: Json
+          imported_at?: string | null
+          imported_by?: string | null
+          organization_id?: string | null
+          row_count?: number | null
+          sha256?: string | null
+          source_kind?: string
+          source_label: string
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          city_id?: string | null
+          content_type?: string | null
+          created_at?: string
+          error_json?: Json
+          file_name?: string | null
+          headers_json?: Json
+          id?: string
+          import_manifest_json?: Json
+          imported_at?: string | null
+          imported_by?: string | null
+          organization_id?: string | null
+          row_count?: number | null
+          sha256?: string | null
+          source_kind?: string
+          source_label?: string
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_price_imports_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_price_imports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_price_imports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_pricing_multipliers: {
+        Row: {
+          applies_to_category_id: string | null
+          applies_to_cost_item_id: string | null
+          city_id: string | null
+          condition_key: string | null
+          confidence_score: number | null
+          created_at: string
+          description: string | null
+          factor_base: number
+          factor_high: number
+          factor_low: number
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          multiplier_type: string
+          name: string
+          organization_id: string | null
+          property_type: string | null
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          applies_to_category_id?: string | null
+          applies_to_cost_item_id?: string | null
+          city_id?: string | null
+          condition_key?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          description?: string | null
+          factor_base?: number
+          factor_high?: number
+          factor_low?: number
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          multiplier_type: string
+          name: string
+          organization_id?: string | null
+          property_type?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          applies_to_category_id?: string | null
+          applies_to_cost_item_id?: string | null
+          city_id?: string | null
+          condition_key?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          description?: string | null
+          factor_base?: number
+          factor_high?: number
+          factor_low?: number
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          multiplier_type?: string
+          name?: string
+          organization_id?: string | null
+          property_type?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_pricing_multipliers_applies_to_category_id_fkey"
+            columns: ["applies_to_category_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_pricing_multipliers_applies_to_cost_item_id_fkey"
+            columns: ["applies_to_cost_item_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cost_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_pricing_multipliers_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_pricing_multipliers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_pricing_multipliers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_rate_card_items: {
+        Row: {
+          assumptions: string | null
+          base_rate: number
+          confidence_score: number | null
+          cost_item_id: string
+          created_at: string
+          exclusions: string | null
+          finish_level_id: string | null
+          high_rate: number
+          id: string
+          last_verified_at: string | null
+          low_rate: number
+          metadata_json: Json
+          rate_card_id: string
+          sample_size: number
+          source_count: number
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          assumptions?: string | null
+          base_rate: number
+          confidence_score?: number | null
+          cost_item_id: string
+          created_at?: string
+          exclusions?: string | null
+          finish_level_id?: string | null
+          high_rate: number
+          id?: string
+          last_verified_at?: string | null
+          low_rate: number
+          metadata_json?: Json
+          rate_card_id: string
+          sample_size?: number
+          source_count?: number
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          assumptions?: string | null
+          base_rate?: number
+          confidence_score?: number | null
+          cost_item_id?: string
+          created_at?: string
+          exclusions?: string | null
+          finish_level_id?: string | null
+          high_rate?: number
+          id?: string
+          last_verified_at?: string | null
+          low_rate?: number
+          metadata_json?: Json
+          rate_card_id?: string
+          sample_size?: number
+          source_count?: number
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_rate_card_items_cost_item_id_fkey"
+            columns: ["cost_item_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cost_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_rate_card_items_finish_level_id_fkey"
+            columns: ["finish_level_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_finish_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_rate_card_items_rate_card_id_fkey"
+            columns: ["rate_card_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_rate_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_rate_card_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_rate_cards: {
+        Row: {
+          city_id: string
+          contractor_tier: string | null
+          created_at: string
+          currency: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          metadata_json: Json
+          name: string
+          notes: string | null
+          organization_id: string | null
+          price_import_id: string | null
+          source_type: string
+          status: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          city_id: string
+          contractor_tier?: string | null
+          created_at?: string
+          currency?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          metadata_json?: Json
+          name: string
+          notes?: string | null
+          organization_id?: string | null
+          price_import_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          city_id?: string
+          contractor_tier?: string | null
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          metadata_json?: Json
+          name?: string
+          notes?: string | null
+          organization_id?: string | null
+          price_import_id?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renovation_rate_cards_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_rate_cards_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_rate_cards_price_import_id_fkey"
+            columns: ["price_import_id"]
+            isOneToOne: false
+            referencedRelation: "renovation_price_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renovation_rate_cards_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renovation_trades: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      renovation_units: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          metadata_json: Json
+          name_ar: string | null
+          name_en: string
+          unit_kind: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en: string
+          unit_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metadata_json?: Json
+          name_ar?: string | null
+          name_en?: string
+          unit_kind?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       review_overrides: {
         Row: {
           analysis_space_id: string
@@ -11544,6 +13291,51 @@ export type Database = {
           },
         ]
       }
+      workspace_equity_companies: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          relationship_kind: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          relationship_kind?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          relationship_kind?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_equity_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "equity_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_equity_companies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_experience_automation_policies: {
         Row: {
           auto_analyze_by_type: boolean
@@ -11625,47 +13417,89 @@ export type Database = {
       }
       workspace_folders: {
         Row: {
+          analysis_policy: string
+          buyer_entity_id: string | null
+          buyer_readiness_profile_id: string | null
           color: string | null
           created_at: string
           deleted_at: string | null
+          folder_kind: string | null
           icon: string | null
           id: string
+          metadata_json: Json
           name: string
           parent_id: string | null
+          related_opportunity_id: string | null
+          sensitivity_level: string
           sort_index: number | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          analysis_policy?: string
+          buyer_entity_id?: string | null
+          buyer_readiness_profile_id?: string | null
           color?: string | null
           created_at?: string
           deleted_at?: string | null
+          folder_kind?: string | null
           icon?: string | null
           id?: string
+          metadata_json?: Json
           name: string
           parent_id?: string | null
+          related_opportunity_id?: string | null
+          sensitivity_level?: string
           sort_index?: number | null
           updated_at?: string
           workspace_id: string
         }
         Update: {
+          analysis_policy?: string
+          buyer_entity_id?: string | null
+          buyer_readiness_profile_id?: string | null
           color?: string | null
           created_at?: string
           deleted_at?: string | null
+          folder_kind?: string | null
           icon?: string | null
           id?: string
+          metadata_json?: Json
           name?: string
           parent_id?: string | null
+          related_opportunity_id?: string | null
+          sensitivity_level?: string
           sort_index?: number | null
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "workspace_folders_buyer_entity_id_fkey"
+            columns: ["buyer_entity_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_folders_buyer_readiness_profile_id_fkey"
+            columns: ["buyer_readiness_profile_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_readiness_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workspace_folders_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "workspace_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_folders_related_opportunity_id_fkey"
+            columns: ["related_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
             referencedColumns: ["id"]
           },
           {
@@ -11836,11 +13670,13 @@ export type Database = {
           parent_folder_id: string | null
           preparation_metadata: Json
           preparation_status: string | null
+          primary_company_id: string | null
           primary_plugin_family: string | null
           primary_property_id: string | null
           sort_index: number | null
           status: string
           updated_at: string
+          workspace_domain: string | null
           workspace_type: string
         }
         Insert: {
@@ -11859,11 +13695,13 @@ export type Database = {
           parent_folder_id?: string | null
           preparation_metadata?: Json
           preparation_status?: string | null
+          primary_company_id?: string | null
           primary_plugin_family?: string | null
           primary_property_id?: string | null
           sort_index?: number | null
           status?: string
           updated_at?: string
+          workspace_domain?: string | null
           workspace_type?: string
         }
         Update: {
@@ -11882,11 +13720,13 @@ export type Database = {
           parent_folder_id?: string | null
           preparation_metadata?: Json
           preparation_status?: string | null
+          primary_company_id?: string | null
           primary_plugin_family?: string | null
           primary_property_id?: string | null
           sort_index?: number | null
           status?: string
           updated_at?: string
+          workspace_domain?: string | null
           workspace_type?: string
         }
         Relationships: [
@@ -11916,6 +13756,13 @@ export type Database = {
             columns: ["parent_folder_id"]
             isOneToOne: false
             referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspaces_primary_company_id_fkey"
+            columns: ["primary_company_id"]
+            isOneToOne: false
+            referencedRelation: "equity_companies"
             referencedColumns: ["id"]
           },
           {
@@ -12065,6 +13912,14 @@ export type Database = {
         }
         Returns: string
       }
+      can_access_buyer_entity: {
+        Args: { p_buyer_entity_id: string }
+        Returns: boolean
+      }
+      can_access_equity_company: {
+        Args: { p_company_id: string }
+        Returns: boolean
+      }
       can_access_property: { Args: { p_property_id: string }; Returns: boolean }
       can_access_workspace: {
         Args: { p_workspace_id: string }
@@ -12072,6 +13927,14 @@ export type Database = {
       }
       can_manage_workspace_members: {
         Args: { p_workspace_id: string }
+        Returns: boolean
+      }
+      can_write_buyer_entity: {
+        Args: { p_buyer_entity_id: string }
+        Returns: boolean
+      }
+      can_write_equity_company: {
+        Args: { p_company_id: string }
         Returns: boolean
       }
       can_write_property: { Args: { p_property_id: string }; Returns: boolean }
@@ -12522,6 +14385,24 @@ export type Database = {
         Returns: Json
       }
       reset_daily_explanations: { Args: never; Returns: undefined }
+      save_renovation_capex_estimate: {
+        Args: {
+          p_acquisition_opportunity_id: string
+          p_acquisition_scenario_id?: string
+          p_base_total?: number
+          p_confidence_score?: number
+          p_created_by?: string
+          p_estimator_version?: string
+          p_event_type?: string
+          p_high_total?: number
+          p_input_json?: Json
+          p_low_total?: number
+          p_org_id?: string
+          p_output_json?: Json
+          p_rate_card_id?: string
+        }
+        Returns: Json
+      }
       search_document_chunks:
         | {
             Args: {
