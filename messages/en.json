@@ -866,6 +866,7 @@
     "updated": "Updated",
     "edit": "Edit",
     "archive": "Archive",
+    "descriptionFallback": "Workspace",
     "confirmDelete": "Are you sure you want to delete \"{name}\"?"
   },
   "workspaceProjectsPage": {

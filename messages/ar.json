@@ -867,6 +867,7 @@
     "updated": "محدّث",
     "edit": "تعديل",
     "archive": "أرشفة",
+    "descriptionFallback": "مساحة عمل",
     "confirmDelete": "هل أنت متأكد من حذف \"{name}\"؟"
   },
   "workspaceProjectsPage": {

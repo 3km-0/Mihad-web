@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, FolderOpen, Plus } from 'lucide-react';
+import { ArrowLeft, Clock3, FolderOpen, Lock, Plus } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { Button, EmptyState, ZohalActionMenu, Spinner } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -156,7 +156,7 @@ export default function FolderDetailPage() {
             {childFolders.length > 0 && (
               <section className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-soft">Folders</div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                   {childFolders.map((child) => (
                     <Link
                       key={child.id}
@@ -181,38 +181,24 @@ export default function FolderDetailPage() {
                         void handleDropOnFolder(child.id);
                       }}
                       className={cn(
-                        'group flex flex-col items-center gap-2 rounded-xl p-3 transition-all duration-200',
-                        'hover:bg-surface-alt focus:outline-none focus:ring-2 focus:ring-accent/50',
-                        activeDropFolderId === child.id && 'ring-2 ring-accent/40 scale-[1.03]'
+                        'group flex min-h-[128px] flex-col justify-between rounded-[12px] border border-border bg-surface p-4 text-left transition-colors duration-150',
+                        'hover:border-[color:var(--border-strong)] hover:bg-surface-alt focus:outline-none focus:ring-2 focus:ring-accent/30',
+                        activeDropFolderId === child.id && 'border-accent/45 bg-surface-alt ring-2 ring-accent/20'
                       )}
                     >
-                      <svg
-                        viewBox="0 0 120 90"
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-[80px] h-[60px] sm:w-[96px] sm:h-[72px] transition-transform duration-200 group-hover:scale-[1.08]"
-                        style={{ filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.35))' }}
-                        aria-hidden="true"
-                      >
-                        <defs>
-                          <linearGradient id={`fg-${child.id}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#e8c46a" />
-                            <stop offset="100%" stopColor="#b8922a" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M 7 0 L 42 0 Q 47 0 50 5 L 55 13 L 113 13 Q 120 13 120 20 L 120 83 Q 120 90 113 90 L 7 90 Q 0 90 0 83 L 0 7 Q 0 0 7 0 Z"
-                          fill={`url(#fg-${child.id})`}
-                        />
-                        <path
-                          d="M 7 0 L 42 0 Q 47 0 50 5 L 55 13 L 0 13 L 0 7 Q 0 0 7 0 Z"
-                          fill="rgba(255,255,255,0.18)"
-                        />
-                        <rect x="5" y="18" width="110" height="20" rx="3" fill="rgba(255,255,255,0.1)" />
-                        <rect x="0" y="74" width="120" height="16" rx="9" fill="rgba(0,0,0,0.12)" />
-                      </svg>
-                      <span className="w-full text-center text-[12px] font-semibold text-text leading-tight line-clamp-2 px-1">
-                        {child.name}
-                      </span>
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] bg-warning/10 text-warning">
+                          <FolderOpen className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="line-clamp-2 text-sm font-semibold leading-snug text-text">{child.name}</div>
+                          <div className="mt-1 text-xs text-text-muted">Folder</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-soft">
+                        <FolderOpen className="h-3 w-3" />
+                        Open collection
+                      </div>
                     </Link>
                   ))}
                 </div>
@@ -234,6 +220,7 @@ export default function FolderDetailPage() {
                     const accentColor = workspace.color ? String(workspace.color) : 'var(--accent)';
                     const initial = workspace.name.charAt(0).toUpperCase();
                     const cm = (pct: number) => `color-mix(in srgb, ${accentColor} ${pct}%, transparent)`;
+                    const isReadOnly = !['owner', 'editor', undefined, null, ''].includes((workspace as Workspace & { access_role?: string | null }).access_role);
                     return (
                       <Link
                         key={workspace.id}
@@ -244,32 +231,36 @@ export default function FolderDetailPage() {
                           setDraggedItem({ kind: 'workspace', id: workspace.id });
                         }}
                         onDragEnd={() => setDraggedItem(null)}
-                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(0,0,0,0.15)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        className="flex min-h-[148px] flex-col rounded-[12px] border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-[color:var(--border-strong)] hover:bg-surface-alt focus:outline-none focus:ring-2 focus:ring-accent/30"
                       >
-                        <div
-                          className="pointer-events-none absolute inset-0"
-                          style={{ background: `radial-gradient(ellipse at 80% 0%, ${cm(14)} 0%, transparent 60%)` }}
-                          aria-hidden="true"
-                        />
-                        <div className="relative z-10 flex flex-col p-5">
+                        <div className="flex items-start gap-3">
                           <div
-                            className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold"
-                            style={{
-                              background: cm(18),
-                              color: accentColor,
-                              border: `1.5px solid ${cm(40)}`,
-                            }}
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] text-sm font-bold"
+                            style={{ background: cm(11), color: accentColor, border: `1px solid ${cm(28)}` }}
                           >
                             {initial}
                           </div>
-                          <span
-                            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.16em]"
-                            style={{ color: accentColor }}
-                          >
-                            {workspace.workspace_type}
-                          </span>
-                          <div className="line-clamp-2 text-[14px] font-semibold leading-snug text-text">
-                            {workspace.name}
+                          <div className="min-w-0 flex-1">
+                            <div className="line-clamp-2 text-sm font-semibold leading-snug text-text">{workspace.name}</div>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-muted">
+                              {workspace.description || 'Workspace'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+                          <div className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-text-soft">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: accentColor }} />
+                            <span className="truncate">{workspace.workspace_type}</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2 text-[11px] text-text-muted">
+                            {isReadOnly ? <Lock className="h-3 w-3" /> : null}
+                            <Clock3 className="h-3 w-3" />
+                            <span>
+                              {new Date(workspace.updated_at).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
                           </div>
                         </div>
                       </Link>
