@@ -253,6 +253,44 @@ test("mandate creation writes acquisition_mandates", async () => {
   assert.equal(supabase.db.acquisition_mandates.length, 1);
 });
 
+test("workspace search-run route helper creates a mandate when needed and queues sourcing", async () => {
+  const previousLocation = process.env.GCP_TASKS_LOCATION;
+  delete process.env.GCP_TASKS_LOCATION;
+  try {
+    const supabase = createMockSupabase({
+      workspaces: [{
+        id: "ws_1",
+        owner_id: "user_1",
+        org_id: null,
+        name: "North Riyadh mandate",
+        analysis_brief: "Villa in North Riyadh; SAR 3M-5M",
+      }],
+    });
+
+    const result = await __test.createWorkspaceSearchRun({
+      supabase,
+      req: { headers: { host: "example.test" } },
+      requestId: "req_1",
+      workspaceId: "ws_1",
+      userId: "user_1",
+      body: {
+        instruction: "Prioritize villas with renovation upside.",
+        sources: ["aqar", "bayut"],
+      },
+    });
+
+    assert.equal(supabase.db.acquisition_mandates.length, 1);
+    assert.equal(supabase.db.acquisition_search_runs.length, 1);
+    assert.equal(result.search_run.workspace_id, "ws_1");
+    assert.deepEqual(result.search_run.sources_json, ["aqar", "bayut"]);
+    assert.equal(result.search_run.query_description, "Prioritize villas with renovation upside.");
+    assert.equal(result.queue.enqueued, false);
+  } finally {
+    if (previousLocation === undefined) delete process.env.GCP_TASKS_LOCATION;
+    else process.env.GCP_TASKS_LOCATION = previousLocation;
+  }
+});
+
 test("listing intake creates and screens a candidate without search run", async () => {
   const supabase = createMockSupabase();
   const result = await __test.createListingCandidate(supabase, {

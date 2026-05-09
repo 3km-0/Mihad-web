@@ -1305,6 +1305,43 @@ async function createSearchRun(supabase, mandateId, body) {
   return data;
 }
 
+async function createWorkspaceSearchRun({ supabase, req, requestId, workspaceId, userId, body = {} }) {
+  await assertWorkspaceWriteAccess(supabase, workspaceId, userId);
+  const { data: workspace, error: workspaceError } = await supabase
+    .from("workspaces")
+    .select("id, name, description, analysis_brief, org_id, owner_id")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (workspaceError) throw workspaceError;
+  if (!workspace) {
+    const error = new Error("workspace_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  let mandate = await loadLatestMandateForWorkspace(supabase, workspaceId);
+  if (!mandate) {
+    const brief = normalizeText(body.mandate || workspace.analysis_brief || workspace.description || workspace.name);
+    mandate = await createMandate(supabase, {
+      workspace_id: workspaceId,
+      organization_id: workspace.org_id,
+      user_id: userId,
+      title: brief || "Acquisition mandate",
+      buy_box_json: brief ? { summary: brief } : {},
+      confidence_json: { source: "workspace_search_run" },
+    });
+  }
+  const instruction = normalizeText(body.instruction || body.sourcing_instruction || body.query_description);
+  const searchRun = await createSearchRun(supabase, mandate.id, {
+    ...body,
+    user_id: userId,
+    sources: body.sources,
+    limits: body.limits,
+    query_description: instruction || normalizeText(mandate.title),
+  });
+  const queue = await scheduleSearchRunTask({ req, requestId, searchRunId: searchRun.id });
+  return { search_run: searchRun, queue };
+}
+
 async function createListingCandidate(supabase, body) {
   const submittedAt = new Date().toISOString();
   const candidate = await upsertCandidateDraft(supabase, {
@@ -2696,6 +2733,7 @@ function matchRoute(method, pathname) {
   if (parts[0] !== "api" || parts[1] !== "acquisition" || parts[2] !== "v1") return null;
   if (method === "POST" && parts[3] === "mandates" && parts.length === 4) return { name: "createMandate" };
   if (method === "POST" && parts[3] === "mandates" && parts[5] === "search-runs") return { name: "createSearchRun", mandateId: parts[4] };
+  if (method === "POST" && parts[3] === "workspaces" && parts[5] === "search-runs" && parts.length === 6) return { name: "createWorkspaceSearchRun", workspaceId: parts[4] };
   if (method === "GET" && parts[3] === "search-runs" && parts.length === 5) return { name: "getSearchRun", searchRunId: parts[4] };
   if (method === "GET" && parts[3] === "search-runs" && parts[5] === "candidates") return { name: "listSearchCandidates", searchRunId: parts[4] };
   if (method === "POST" && parts[3] === "intake" && parts[4] === "listing") return { name: "intakeListing" };
@@ -2820,6 +2858,35 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
       const body = await readJsonBody(req);
       const result = await addDealDeskReportNote(supabase, route.reportId, body);
       return sendJson(res, 201, buildEnvelope(requestId, result));
+    }
+    if (route.name === "createWorkspaceSearchRun") {
+      const body = await readJsonBody(req);
+      const allowInternal = isInternalCaller(req.headers);
+      let userId = normalizeUuid(body.user_id);
+      if (!allowInternal) {
+        const token = bearerToken(req.headers);
+        if (!token) {
+          const error = new Error("not_authenticated");
+          error.statusCode = 401;
+          throw error;
+        }
+        const verified = await verifySupabaseJwt(token);
+        if (!verified.payload?.sub) {
+          const error = new Error("invalid_user_token");
+          error.statusCode = 401;
+          throw error;
+        }
+        userId = normalizeUuid(verified.payload.sub);
+      }
+      const result = await createWorkspaceSearchRun({
+        supabase,
+        req,
+        requestId,
+        workspaceId: normalizeUuid(route.workspaceId),
+        userId,
+        body,
+      });
+      return sendJson(res, 202, buildEnvelope(requestId, result));
     }
     requireInternalCaller(req.headers);
     const body = req.method === "GET" ? {} : await readJsonBody(req);
@@ -2967,6 +3034,7 @@ export const __test = {
   createMandate,
   createReadinessProfile,
   createSearchRun,
+  createWorkspaceSearchRun,
   deriveReadinessState,
   executeExternalAction,
   normalizeSearchLimits,

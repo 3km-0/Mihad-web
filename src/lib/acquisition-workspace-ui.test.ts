@@ -35,11 +35,13 @@ describe('acquisition-workspace-ui', () => {
 
   it('maps stages to the acquisition progress tracker', () => {
     expect(progressStepIndexForStage('submitted')).toBe(1);
-    expect(progressStepIndexForStage('workspace_created')).toBe(2);
-    expect(progressStepIndexForStage('visit_requested')).toBe(3);
-    expect(progressStepIndexForStage('formal_diligence')).toBe(4);
-    expect(progressStepIndexForStage('offer_submitted')).toBe(5);
-    expect(progressStepIndexForStage('closed')).toBe(6);
+    expect(progressStepIndexForStage('candidate_sourcing')).toBe(2);
+    expect(progressStepIndexForStage('screening')).toBe(3);
+    expect(progressStepIndexForStage('workspace_created')).toBe(4);
+    expect(progressStepIndexForStage('visit_requested')).toBe(5);
+    expect(progressStepIndexForStage('formal_diligence')).toBe(5);
+    expect(progressStepIndexForStage('offer_submitted')).toBe(6);
+    expect(progressStepIndexForStage('closed')).toBe(7);
   });
 
   it('seeds assumptions from listing facts with usable defaults', () => {
@@ -54,7 +56,8 @@ describe('acquisition-workspace-ui', () => {
   });
 
   it('resolves exactly one primary concrete action for the current stage', () => {
-    expect(resolvePrimaryAcquisitionAction({ opportunity: null }).action_id).toBe('add_listing_evidence');
+    expect(resolvePrimaryAcquisitionAction({ opportunity: null }).action_id).toBe('run_sourcing');
+    expect(resolvePrimaryAcquisitionAction({ opportunity: null, opportunityCount: 2 }).action_id).toBe('select_candidate');
 
     const readiness = resolvePrimaryAcquisitionAction({
       opportunity: { id: 'opp_1', stage: 'pursue', missing_info_json: [] },

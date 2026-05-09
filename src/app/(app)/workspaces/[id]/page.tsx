@@ -23,7 +23,6 @@ import {
   PanelRightOpen,
   Pencil,
   Plus,
-  Radar,
   Search,
   Send,
   ShieldCheck,
@@ -229,6 +228,16 @@ type ExternalActionApprovalRow = {
   created_at?: string | null;
 };
 
+type AcquisitionSearchRunRow = {
+  id: string;
+  status?: string | null;
+  query_description?: string | null;
+  candidate_count?: number | null;
+  error_summary?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 type AcquisitionClaimRow = {
   id: string;
   fact_key?: string | null;
@@ -381,6 +390,11 @@ type ManualListingResponse = {
 
 type PromoteCandidateResponse = {
   opportunity?: OpportunityRow | null;
+};
+
+type WorkspaceSearchRunResponse = {
+  search_run?: AcquisitionSearchRunRow | null;
+  queue?: { enqueued?: boolean; reason?: string | null; task_name?: string | null };
 };
 
 type LiveFeedTone = 'lime' | 'cyan' | 'warn' | 'neutral';
@@ -1047,6 +1061,7 @@ export default function WorkspaceCockpitPage() {
   const [readinessEvidence, setReadinessEvidence] = useState<BuyerReadinessEvidenceRow[]>([]);
   const [sharingGrants, setSharingGrants] = useState<DocumentSharingGrantRow[]>([]);
   const [actionApprovals, setActionApprovals] = useState<ExternalActionApprovalRow[]>([]);
+  const [searchRuns, setSearchRuns] = useState<AcquisitionSearchRunRow[]>([]);
   const [marketObservations, setMarketObservations] = useState<MarketObservationRow[]>([]);
   const [documentCount, setDocumentCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1074,13 +1089,15 @@ export default function WorkspaceCockpitPage() {
   const [manualPropertyOpen, setManualPropertyOpen] = useState(false);
   const [manualPropertyDraft, setManualPropertyDraft] = useState<ManualPropertyDraft>(emptyManualPropertyDraft);
   const [manualPropertySaving, setManualPropertySaving] = useState(false);
+  const [sourcingInstruction, setSourcingInstruction] = useState('');
+  const [sourcingSources, setSourcingSources] = useState<string[]>(['aqar', 'bayut']);
 
   const agentScope: AgentScope = { kind: 'workspace', workspaceId };
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
     try {
-      const [workspaceResult, opportunitiesResult, documentsResult, profileResult] = await Promise.all([
+      const [workspaceResult, opportunitiesResult, documentsResult, profileResult, searchRunsResult] = await Promise.all([
         supabase.from('workspaces').select('id, name, description, analysis_brief, org_id, owner_id').eq('id', workspaceId).maybeSingle(),
         supabase
           .from('acquisition_opportunities')
@@ -1096,6 +1113,12 @@ export default function WorkspaceCockpitPage() {
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(1),
+        supabase
+          .from('acquisition_search_runs')
+          .select('id,status,query_description,candidate_count,error_summary,created_at,updated_at')
+          .eq('workspace_id', workspaceId)
+          .order('updated_at', { ascending: false })
+          .limit(5),
       ]);
 
       const opportunityRows = (opportunitiesResult.data ?? []) as OpportunityRow[];
@@ -1104,8 +1127,9 @@ export default function WorkspaceCockpitPage() {
       setWorkspace((workspaceResult.data as WorkspaceRow | null) ?? null);
       setOpportunities(opportunityRows);
       setReadinessProfile(currentReadinessProfile);
+      setSearchRuns((searchRunsResult.data ?? []) as AcquisitionSearchRunRow[]);
       setDocumentCount(documentsResult.count ?? 0);
-      setSelectedOpportunityId((current) => current ?? opportunityRows[0]?.id ?? null);
+      setSelectedOpportunityId((current) => current && opportunityRows.some((item) => item.id === current) ? current : null);
 
       const approvalsPromise = supabase
         .from('external_action_approvals')
@@ -1161,26 +1185,22 @@ export default function WorkspaceCockpitPage() {
     void loadWorkspace();
   }, [loadWorkspace]);
 
-  const selectedOpportunity = opportunities.find((item) => item.id === selectedOpportunityId) ?? opportunities[0] ?? null;
+  const selectedOpportunity = opportunities.find((item) => item.id === selectedOpportunityId) ?? null;
   const selectedMissing = missingInfoList(selectedOpportunity?.missing_info_json);
   const missingCount = countMissingInfo(opportunities);
   const pursueCount = opportunities.filter((item) => recommendationFor(item) === 'pursue' || item.stage === 'pursue').length;
   const latestUpdate = events[0]?.created_at ?? selectedOpportunity?.updated_at ?? null;
   const brokerageActive = readinessProfile?.brokerage_status === 'signed' || readinessProfile?.brokerage_status === 'active';
-  const currentBlocker = !readinessProfile
-    ? t('progress.nextReadiness')
-    : selectedMissing.length > 0
-      ? t('progress.nextDiligence')
-      : !brokerageActive
-        ? t('progress.nextBrokerage')
-        : t('progress.nextOffer');
-  const hasActionBlocker = !readinessProfile || selectedMissing.length > 0 || !brokerageActive;
   const primaryAction = resolvePrimaryAcquisitionAction({
     opportunity: selectedOpportunity,
+    opportunityCount: opportunities.length,
+    selectedOpportunityId,
     hasReadinessProfile: Boolean(readinessProfile),
     brokerageActive,
     activeFinancingConsentCount: activeGrantCount(sharingGrants),
   });
+  const currentBlocker = primaryAction.label;
+  const hasActionBlocker = ['upload_financing_document', 'request_missing_documents', 'activate_buyer_broker', 'share_financing_packet'].includes(primaryAction.action_id);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('acquisition_workspace_drawer_width');
@@ -1458,6 +1478,30 @@ export default function WorkspaceCockpitPage() {
     }
   }, [manualPropertyDraft, openPropertyFiles, supabase, t, workspaceId]);
 
+  const runSourcing = useCallback(async () => {
+    setApprovalBusy('run_sourcing');
+    setApprovalError(null);
+    try {
+      const response = await invokeZohalBackendJson<WorkspaceSearchRunResponse>(
+        supabase,
+        `/api/acquisition/v1/workspaces/${workspaceId}/search-runs`,
+        {
+          instruction: sourcingInstruction.trim() || undefined,
+          sources: sourcingSources.length ? sourcingSources : ['aqar', 'bayut'],
+          mandate: workspace?.analysis_brief || workspace?.description || workspace?.name || undefined,
+        },
+      );
+      if (response.search_run) {
+        setSearchRuns((current) => [response.search_run as AcquisitionSearchRunRow, ...current.filter((item) => item.id !== response.search_run?.id)].slice(0, 5));
+      }
+      await loadWorkspace();
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
+    } finally {
+      setApprovalBusy(null);
+    }
+  }, [loadWorkspace, sourcingInstruction, sourcingSources, supabase, t, workspace, workspaceId]);
+
   const requestExternalAction = useCallback(async (actionType: string, draftPayload: Record<string, string> = {}) => {
     setApprovalBusy(actionType);
     setApprovalError(null);
@@ -1734,8 +1778,14 @@ export default function WorkspaceCockpitPage() {
   }, [opportunities, supabase, t]);
 
   const executePrimaryAction = useCallback(async () => {
-    if (!selectedOpportunity && primaryAction.action_id !== 'add_listing_evidence') return;
+    if (!selectedOpportunity && !['add_listing_evidence', 'run_sourcing', 'select_candidate'].includes(primaryAction.action_id)) return;
     switch (primaryAction.action_id) {
+      case 'run_sourcing':
+        await runSourcing();
+        return;
+      case 'select_candidate':
+        setSelectedOpportunityId(opportunities[0]?.id ?? null);
+        return;
       case 'add_listing_evidence': {
         openPropertyFiles({ upload: true });
         return;
@@ -1790,15 +1840,20 @@ export default function WorkspaceCockpitPage() {
       case 'close_property':
         await updateSelectedStage('closed');
         return;
+      case 'waive_visit':
+        await updateSelectedStage('formal_diligence');
+        return;
       default:
         await requestExternalAction('send_negotiation_message', { acquisition_action_id: primaryAction.action_id });
     }
   }, [
     openBuyerVault,
     openPropertyFiles,
+    opportunities,
     primaryAction.action_id,
     readinessProfile,
     requestExternalAction,
+    runSourcing,
     scheduleVisit,
     selectedMissing,
     selectedOpportunity,
@@ -1811,15 +1866,26 @@ export default function WorkspaceCockpitPage() {
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[image:var(--console-bg)] bg-background text-text">
       {!loading ? (
         <HeaderProgressPortal targetId={headerProgressSlotId}>
-          <ProgressTracker
-            opportunity={selectedOpportunity}
-            missingItems={selectedMissing}
-            readinessProfile={readinessProfile}
-            brokerageActive={brokerageActive}
-            onOpenDrawer={openDrawer}
-            onRequestVisit={() => void scheduleVisit()}
-            compact
-          />
+          <div className="flex w-full min-w-0 items-center justify-center gap-3">
+            <ProgressTracker
+              opportunity={selectedOpportunity}
+              opportunityCount={opportunities.length}
+              searchRuns={searchRuns}
+              missingItems={selectedMissing}
+              readinessProfile={readinessProfile}
+              brokerageActive={brokerageActive}
+              onOpenDrawer={openDrawer}
+              onRequestVisit={() => void scheduleVisit()}
+              compact
+            />
+            <BuyerReadinessBadge
+              profile={readinessProfile}
+              evidence={readinessEvidence}
+              activeGrantCount={activeGrantCount(sharingGrants)}
+              brokerageActive={brokerageActive}
+              onOpen={() => openDrawer('consent')}
+            />
+          </div>
         </HeaderProgressPortal>
       ) : null}
       <div className={cn('relative flex min-h-0 min-w-0 flex-1 overflow-hidden', agentOpen && 'hidden lg:flex')}>
@@ -1832,8 +1898,6 @@ export default function WorkspaceCockpitPage() {
           <BuyBoxCard
             workspace={workspace}
             onEdit={openBuyBoxEditor}
-            onSource={() => void requestExternalAction('send_outreach', { request_kind: 'mandate_sourcing', mandate: workspace?.analysis_brief || workspace?.description || workspace?.name || '' })}
-            onOpenAgent={() => setAgentOpen(true)}
           />
           <OpportunityRail
             opportunities={opportunities}
@@ -1872,6 +1936,8 @@ export default function WorkspaceCockpitPage() {
                 <div className="xl:hidden">
                   <ProgressTracker
                     opportunity={selectedOpportunity}
+                    opportunityCount={opportunities.length}
+                    searchRuns={searchRuns}
                     missingItems={selectedMissing}
                     readinessProfile={readinessProfile}
                     brokerageActive={brokerageActive}
@@ -1899,17 +1965,24 @@ export default function WorkspaceCockpitPage() {
                       opportunity={selectedOpportunity}
                       marketObservations={marketObservations}
                       openItems={missingCount}
+                      opportunityCount={opportunities.length}
                       confidence={humanize(confidenceFor(selectedOpportunity)) || t('notSet')}
                       primaryActionLabel={primaryAction.label}
                       primaryActionResult={primaryAction.result}
                       currentBlocker={currentBlocker}
                       hasActionBlocker={hasActionBlocker}
                       actionBusy={Boolean(readinessBusy || approvalBusy)}
+                      searchRuns={searchRuns}
+                      sourcingInstruction={sourcingInstruction}
+                      sourcingSources={sourcingSources}
+                      onSourcingInstructionChange={setSourcingInstruction}
+                      onSourcingSourcesChange={setSourcingSources}
                       onPrimaryAction={() => void executePrimaryAction()}
                       onAddEvidence={() => openPropertyFiles({ upload: true })}
                       onUploadPropertyDocument={() => openPropertyFiles({ upload: true, analysisPolicy: 'acquisition_property' })}
                       onOpenBuyerVault={() => openBuyerVault(true)}
                       onScheduleVisit={() => void scheduleVisit()}
+                      onWaiveVisit={() => void updateSelectedStage('formal_diligence')}
                       onPassProperty={() => selectedOpportunity?.id ? void rejectOpportunity(selectedOpportunity.id) : undefined}
                     />
                   ) : activePrimaryTab === 'underwriting' ? (
@@ -2034,13 +2107,9 @@ function HeaderProgressPortal({ targetId, children }: { targetId: string; childr
 function BuyBoxCard({
   workspace,
   onEdit,
-  onSource,
-  onOpenAgent,
 }: {
   workspace: WorkspaceRow | null;
   onEdit: () => void;
-  onSource: () => void;
-  onOpenAgent: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const [expanded, setExpanded] = useState(false);
@@ -2108,24 +2177,6 @@ function BuyBoxCard({
             {(compactMandate.length ? compactMandate : [t('notSet')]).map((item) => (
               <p key={item} className="truncate text-xs text-text-soft">{item}</p>
             ))}
-          </div>
-          <div className="grid gap-2">
-            <button
-              type="button"
-              onClick={onSource}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent px-3 py-2 text-sm font-bold text-[color:var(--accent-text)] shadow-[0_0_18px_var(--accent-soft)] transition hover:bg-accent-alt"
-            >
-              <Radar className="h-4 w-4" />
-              {t('sourceDeals')}
-            </button>
-            <button
-              type="button"
-              onClick={onOpenAgent}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-sm font-semibold text-text transition hover:bg-surface-alt"
-            >
-              <MessageSquare className="h-4 w-4" />
-              {t('openSourcingAgent')}
-            </button>
           </div>
         </div>
       ) : null}
@@ -2551,8 +2602,50 @@ function HeroChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function BuyerReadinessBadge({
+  profile,
+  evidence,
+  activeGrantCount,
+  brokerageActive,
+  onOpen,
+}: {
+  profile: BuyerReadinessProfileRow | null;
+  evidence: BuyerReadinessEvidenceRow[];
+  activeGrantCount: number;
+  brokerageActive: boolean;
+  onOpen: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const identityReady = evidence.some((item) => ['identity', 'commercial_registration', 'company_authorization'].includes(String(item.evidence_type || '')) && ['verified', 'accepted', 'approved'].includes(String(item.status || '')));
+  const fundingEvidence = evidence.some((item) => String(item.sensitivity_level || '') === 'financial' || /fund|proof_of_funds|financ/i.test(String(item.evidence_type || '')));
+  const level = profile?.readiness_level ?? 0;
+  const statusParts = [
+    identityReady ? t('buyerReadinessBadge.idReady') : t('buyerReadinessBadge.idMissing'),
+    fundingEvidence ? t('buyerReadinessBadge.fundingPrivate') : t('buyerReadinessBadge.fundingNotRecorded'),
+    brokerageActive ? t('buyerReadinessBadge.brokerageSigned') : t('buyerReadinessBadge.brokerageUnsigned'),
+    activeGrantCount > 0 ? t('buyerReadinessBadge.consentActive') : t('buyerReadinessBadge.consentInactive'),
+  ];
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="hidden max-w-[220px] shrink-0 rounded-[12px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface px-3 py-2 text-left shadow-[var(--shadowSm)] transition hover:border-accent/35 hover:bg-surface-alt 2xl:block"
+    >
+      <span className="flex items-center gap-2">
+        <ShieldCheck className={cn('h-4 w-4', level > 0 ? 'text-highlight' : 'text-text-muted')} />
+        <span className="truncate text-xs font-bold text-text">{profile ? t('buyerReadinessBadge.level', { level }) : t('buyerReadinessBadge.notStarted')}</span>
+      </span>
+      <span className="mt-1 block truncate text-[10px] leading-4 text-text-muted">
+        {statusParts.join(' · ')}
+      </span>
+    </button>
+  );
+}
+
 function ProgressTracker({
   opportunity,
+  opportunityCount,
+  searchRuns,
   missingItems,
   readinessProfile,
   brokerageActive,
@@ -2561,6 +2654,8 @@ function ProgressTracker({
   compact = false,
 }: {
   opportunity: OpportunityRow | null;
+  opportunityCount: number;
+  searchRuns: AcquisitionSearchRunRow[];
   missingItems: string[];
   readinessProfile: BuyerReadinessProfileRow | null;
   brokerageActive: boolean;
@@ -2570,15 +2665,23 @@ function ProgressTracker({
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const steps = [
-    t('progress.mandate'),
-    t('progress.candidate'),
-    t('progress.screened'),
-    t('progress.visit'),
-    t('progress.diligence'),
-    t('progress.offer'),
-    t('progress.close'),
+    t('progress.mandateReady'),
+    t('progress.sourceDeals'),
+    t('progress.selectDeal'),
+    t('progress.verifyInfo'),
+    t('progress.visitInspect'),
+    t('progress.offerPath'),
+    t('progress.outcome'),
   ];
-  const current = progressStepIndexForStage(opportunity?.stage);
+  const latestSearchStatus = searchRuns[0]?.status ?? null;
+  const sourcingActive = ['queued', 'running', 'processing'].includes(String(latestSearchStatus || ''));
+  const current = opportunity
+    ? progressStepIndexForStage(opportunity.stage)
+    : opportunityCount > 0
+      ? 3
+      : sourcingActive
+        ? 2
+        : 1;
   const blockers = [
     !readinessProfile ? t('progress.blockerReadiness') : null,
     !brokerageActive ? t('progress.blockerBrokerage') : null,
@@ -2590,7 +2693,7 @@ function ProgressTracker({
       ? t('progress.nextDiligence')
       : !brokerageActive
         ? t('progress.nextBrokerage')
-        : current < 3
+        : current < 5
           ? t('progress.nextVisit')
           : t('progress.nextOffer');
   const blocked = blockers.length > 0;
@@ -2963,33 +3066,47 @@ function OverviewModule({
   opportunity,
   marketObservations,
   openItems,
+  opportunityCount,
   confidence,
   primaryActionLabel,
   primaryActionResult,
   currentBlocker,
   hasActionBlocker,
   actionBusy,
+  searchRuns,
+  sourcingInstruction,
+  sourcingSources,
+  onSourcingInstructionChange,
+  onSourcingSourcesChange,
   onPrimaryAction,
   onAddEvidence,
   onUploadPropertyDocument,
   onOpenBuyerVault,
   onScheduleVisit,
+  onWaiveVisit,
   onPassProperty,
 }: {
   opportunity: OpportunityRow | null;
   marketObservations: MarketObservationRow[];
   openItems: number;
+  opportunityCount: number;
   confidence: string;
   primaryActionLabel: string;
   primaryActionResult: string;
   currentBlocker: string;
   hasActionBlocker: boolean;
   actionBusy: boolean;
+  searchRuns: AcquisitionSearchRunRow[];
+  sourcingInstruction: string;
+  sourcingSources: string[];
+  onSourcingInstructionChange: (value: string) => void;
+  onSourcingSourcesChange: (value: string[]) => void;
   onPrimaryAction: () => void;
   onAddEvidence: () => void;
   onUploadPropertyDocument: () => void;
   onOpenBuyerVault: () => void;
   onScheduleVisit: () => void;
+  onWaiveVisit: () => void;
   onPassProperty: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
@@ -3021,18 +3138,25 @@ function OverviewModule({
       <div className="space-y-5">
         <MandateActionsPanel
           openItems={openItems}
+          opportunityCount={opportunityCount}
           confidence={confidence}
           title={currentBlocker}
           actionLabel={primaryActionLabel}
           actionResult={primaryActionResult}
           blocked={hasActionBlocker}
           busy={actionBusy}
+          searchRuns={searchRuns}
+          sourcingInstruction={sourcingInstruction}
+          sourcingSources={sourcingSources}
+          onSourcingInstructionChange={onSourcingInstructionChange}
+          onSourcingSourcesChange={onSourcingSourcesChange}
           opportunity={opportunity}
           onPrimaryAction={onPrimaryAction}
           onAddEvidence={onAddEvidence}
           onUploadPropertyDocument={onUploadPropertyDocument}
           onOpenBuyerVault={onOpenBuyerVault}
           onScheduleVisit={onScheduleVisit}
+          onWaiveVisit={onWaiveVisit}
           onPassProperty={onPassProperty}
         />
         <Panel className="p-4">
@@ -4743,41 +4867,59 @@ function LiveFeedRail({
 
 function MandateActionsPanel({
   openItems,
+  opportunityCount,
   confidence,
   title,
   actionLabel,
   actionResult,
   blocked,
   busy,
+  searchRuns,
+  sourcingInstruction,
+  sourcingSources,
+  onSourcingInstructionChange,
+  onSourcingSourcesChange,
   opportunity,
   onPrimaryAction,
   onAddEvidence,
   onUploadPropertyDocument,
   onOpenBuyerVault,
   onScheduleVisit,
+  onWaiveVisit,
   onPassProperty,
 }: {
   openItems: number;
+  opportunityCount: number;
   confidence: string;
   title: string;
   actionLabel: string;
   actionResult: string;
   blocked: boolean;
   busy: boolean;
+  searchRuns: AcquisitionSearchRunRow[];
+  sourcingInstruction: string;
+  sourcingSources: string[];
+  onSourcingInstructionChange: (value: string) => void;
+  onSourcingSourcesChange: (value: string[]) => void;
   opportunity: OpportunityRow | null;
   onPrimaryAction: () => void;
   onAddEvidence: () => void;
   onUploadPropertyDocument: () => void;
   onOpenBuyerVault: () => void;
   onScheduleVisit: () => void;
+  onWaiveVisit: () => void;
   onPassProperty: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
+  const latestSearchRun = searchRuns[0] ?? null;
+  const showSourcingForm = opportunityCount === 0;
+  const sourceOptions = ['aqar', 'bayut'];
   const commands = [
     { key: 'evidence', label: t('actionDock.addEvidence'), meta: t('actionDock.addEvidenceMeta'), onClick: onAddEvidence, disabled: false },
     { key: 'property-document', label: t('actionDock.uploadPropertyDocument'), meta: t('actionDock.uploadPropertyDocumentMeta'), onClick: onUploadPropertyDocument, disabled: !opportunity },
     { key: 'buyer-vault', label: t('actionDock.openBuyerVault'), meta: t('actionDock.openBuyerVaultMeta'), onClick: onOpenBuyerVault, disabled: false },
     { key: 'visit', label: t('scheduleVisit'), meta: t('progress.nextVisit'), onClick: onScheduleVisit, disabled: !opportunity },
+    { key: 'waive-visit', label: t('actionDock.waiveVisit'), meta: t('actionDock.waiveVisitMeta'), onClick: onWaiveVisit, disabled: !opportunity },
     { key: 'pass', label: t('pass'), meta: t('actionDock.passMeta'), onClick: onPassProperty, disabled: !opportunity },
   ];
   return (
@@ -4797,9 +4939,59 @@ function MandateActionsPanel({
             {openItems} {t('openItems')}
           </span>
           <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-2.5 py-1 text-[11px] font-semibold text-text-soft">
+            {t('actionDock.dealsFound', { count: opportunityCount })}
+          </span>
+          <span className="rounded-full border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt px-2.5 py-1 text-[11px] font-semibold text-text-soft">
             {t('confidence')}: {confidence}
           </span>
         </div>
+        {showSourcingForm ? (
+          <div className="mt-4 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt/70 p-3">
+            <label className="block text-xs font-semibold text-text-soft" htmlFor="acquisition-sourcing-instruction">
+              {t('actionDock.sourcingInstruction')}
+            </label>
+            <textarea
+              id="acquisition-sourcing-instruction"
+              value={sourcingInstruction}
+              onChange={(event) => onSourcingInstructionChange(event.target.value)}
+              rows={3}
+              className="mt-2 w-full resize-y rounded-[12px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface px-3 py-2 text-sm leading-5 text-text outline-none transition placeholder:text-text-muted focus:border-accent/55"
+              placeholder={t('actionDock.sourcingPlaceholder')}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {sourceOptions.map((source) => {
+                const selected = sourcingSources.includes(source);
+                return (
+                  <button
+                    key={source}
+                    type="button"
+                    onClick={() => {
+                      const next = selected ? sourcingSources.filter((item) => item !== source) : [...sourcingSources, source];
+                      onSourcingSourcesChange(next.length ? next : [source]);
+                    }}
+                    className={cn(
+                      'rounded-[10px] border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] transition',
+                      selected ? 'border-accent/45 bg-accent/15 text-accent' : 'border-[rgba(var(--accent-rgb),0.16)] bg-surface text-text-muted hover:text-text'
+                    )}
+                  >
+                    {source}
+                  </button>
+                );
+              })}
+            </div>
+            {latestSearchRun ? (
+              <p className="mt-3 rounded-[10px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface px-3 py-2 text-xs leading-5 text-text-soft">
+                {t('actionDock.latestSourcingRun', {
+                  status: humanize(latestSearchRun.status) || t('notSet'),
+                  count: latestSearchRun.candidate_count ?? 0,
+                })}
+                {latestSearchRun.error_summary ? ` · ${latestSearchRun.error_summary}` : ''}
+              </p>
+            ) : (
+              <p className="mt-3 text-xs leading-5 text-text-muted">{t('actionDock.noSourcingRuns')}</p>
+            )}
+          </div>
+        ) : null}
         <p className="mt-4 text-sm leading-6 text-text-soft">{actionResult}</p>
         <div className="mt-4 flex items-center gap-2">
           <div className={cn('h-px flex-1', blocked ? 'bg-warning/30' : 'bg-success/25')} />

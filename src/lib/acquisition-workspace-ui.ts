@@ -18,9 +18,12 @@ export type AcquisitionScenarioSeed = {
 };
 
 export type AcquisitionActionId =
+  | 'run_sourcing'
+  | 'select_candidate'
   | 'add_listing_evidence'
   | 'request_missing_documents'
   | 'schedule_visit'
+  | 'waive_visit'
   | 'request_contractor_evaluation'
   | 'upload_property_document'
   | 'upload_financing_document'
@@ -44,6 +47,8 @@ export type AcquisitionPrimaryAction = {
 
 export type AcquisitionActionContext = {
   opportunity?: AcquisitionUiOpportunity | null;
+  opportunityCount?: number;
+  selectedOpportunityId?: string | null;
   hasReadinessProfile?: boolean;
   brokerageActive?: boolean;
   activeFinancingConsentCount?: number;
@@ -117,24 +122,30 @@ export function progressStepIndexForStage(stage: string | null | undefined): num
   switch (stage) {
     case 'submitted':
       return 1;
+    case 'searching':
+    case 'candidate_sourcing':
+      return 2;
     case 'screening':
+      return 3;
     case 'needs_info':
     case 'watch':
     case 'pursue':
     case 'workspace_created':
-      return 2;
+      return 4;
     case 'visit_requested':
     case 'quote_requested':
-      return 3;
+      return 5;
     case 'formal_diligence':
-      return 4;
+      return 5;
     case 'offer':
     case 'offer_drafted':
     case 'offer_submitted':
     case 'negotiation':
-      return 5;
-    case 'closed':
       return 6;
+    case 'passed':
+    case 'archived':
+    case 'closed':
+      return 7;
     default:
       return 0;
   }
@@ -154,18 +165,32 @@ export function acquisitionMissingItems(value: unknown): string[] {
 export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContext): AcquisitionPrimaryAction {
   const stage = context.opportunity?.stage || 'submitted';
   const missing = acquisitionMissingItems(context.opportunity?.missing_info_json);
+  const opportunityCount = context.opportunityCount ?? (context.opportunity?.id ? 1 : 0);
   const hasReadiness = Boolean(context.hasReadinessProfile);
   const brokerageActive = Boolean(context.brokerageActive);
   const consented = (context.activeFinancingConsentCount ?? 0) > 0;
 
   if (!context.opportunity?.id) {
+    if (opportunityCount > 0) {
+      return {
+        action_id: 'select_candidate',
+        stage: 'candidate',
+        label: 'Select deal',
+        result: 'Choose one candidate from the ranked pipeline to start verification.',
+        adapter: 'decision',
+        blocked: false,
+        secondary_action_id: 'run_sourcing',
+      };
+    }
+
     return {
-      action_id: 'add_listing_evidence',
-      stage: 'submitted',
-      label: 'Add listing evidence',
-      result: 'Creates a property folder and starts property analysis.',
-      adapter: 'files',
+      action_id: 'run_sourcing',
+      stage: 'sourcing',
+      label: 'Run sourcing',
+      result: 'Starts a mandate search run and scores matching deals.',
+      adapter: 'decision',
       blocked: false,
+      secondary_action_id: 'add_listing_evidence',
     };
   }
 
@@ -201,6 +226,7 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
       result: 'Creates an inspection request and waits for the contractor report.',
       adapter: 'contractor',
       blocked: false,
+      secondary_action_id: 'waive_visit',
     };
   }
 
