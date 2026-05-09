@@ -241,7 +241,7 @@ type AcquisitionClaimRow = {
 
 type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
-type PrimaryWorkspaceTab = 'overview' | 'underwriting' | 'renovation';
+type PrimaryWorkspaceTab = 'overview' | 'underwriting';
 
 type ScenarioState = {
   strategy: 'rent_hold' | 'flip';
@@ -1924,20 +1924,6 @@ export default function WorkspaceCockpitPage() {
                       onResetDraft={resetScenarioDraft}
                       onRunUnderwriting={runUnderwriting}
                     />
-                  ) : activePrimaryTab === 'renovation' ? (
-                    <RenovationTab
-                      opportunity={selectedOpportunity}
-                      scenario={scenario}
-                      underwriting={underwriting}
-                      saving={scenarioBusy}
-                      generating={capexBusy}
-                      error={capexError}
-                      events={renovationEvents}
-                      onGenerateEstimate={generateCapexEstimate}
-                      onApplyEstimate={applyRenovationEstimateToDeal}
-                      onEditDealAssumptions={() => setActivePrimaryTab('underwriting')}
-                      onRequestQuote={() => void requestExternalAction('send_outreach', { request_kind: 'quote_pack' })}
-                    />
                   ) : null}
                 </div>
               </section>
@@ -2746,7 +2732,6 @@ function PrimaryWorkspaceTabs({
   const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = [
     { key: 'overview', label: t('overviewTab'), icon: ShieldCheck },
     { key: 'underwriting', label: t('underwritingTab'), icon: Gauge },
-    { key: 'renovation', label: t('renovationTab'), icon: Wrench },
   ];
   return (
     <div className="flex w-full gap-2 rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/75 p-2 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
