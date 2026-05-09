@@ -5,12 +5,13 @@
 @tailwind utilities;
 
 /*
- * Zohal Design Language - CSS Variables
+ * Mihad Design — Zohal Theme Design Language (CSS variables)
  *
- * Three palettes share the same token surface:
- *   - zohal-light    Editorial Acquisition Desk (cream / paper / brass / ink)
- *   - zohal-dark     Obsidian Acquisition Console (existing lime / cyan)
- *   - zohal-cockpit  Institutional Acquisition Cockpit (charcoal / brass / ivory)
+ * Two themes share the same token surface:
+ *   - zohal-light  Architectural White & Signal Amber
+ *   - zohal-dark   Charcoal & Gold Luxury
+ *
+ * Spec: zohal-platform/Documentation/Design/Mihad Design.md
  */
 
 /* Shared font + radii tokens (palette-independent) */
@@ -27,140 +28,92 @@
   --rPill: 999px;
 }
 
-/* Editorial Acquisition Desk (light) — replaces the previous white default */
+/* Mihad Light — Architectural White & Signal Amber */
 :root,
 [data-theme='zohal-light'] {
-  --bg: #f4f0e8;
-  --surface: #fbf8f2;
-  --surface-alt: #eee8dd;
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --surface-alt: #f7f7f4;
   --surface-active: #ffffff;
-  --surface-nested: #f0eadf;
-  --text: #22211f;
-  --text-soft: #5c564d;
-  --text-muted: #837b70;
-  --text-faint: #a59b8a;
-  --border: #d8d0c2;
-  --border-strong: #b9ae9c;
-  --accent: #b2793e;
-  --accent-rgb: 178, 121, 62;
-  --accent-alt: #c98b41;
-  --highlight: #c7642b;
-  --highlight-rgb: 199, 100, 43;
-  --success: #4f7d4a;
-  --error: #b8412b;
-  --warning: #b07a25;
-  --warning-soft: rgba(176, 122, 37, 0.12);
-  --accent-soft: rgba(178, 121, 62, 0.1);
-  --accent-dim: rgba(178, 121, 62, 0.05);
-  --accent-text: #fbf8f2;
-  --button-primary-bg: #b2793e;
-  --button-primary-bg-hover: #9a6532;
-  --button-primary-text: #fbf8f2;
-  --grid-color: rgba(34, 33, 31, 0.04);
-  --grid-opacity: 0.45;
+  --surface-nested: #f1f2ef;
+  --text: #1f2528;
+  --text-soft: #4b5356;
+  --text-muted: #73777a;
+  --text-faint: #9a9b98;
+  --border: #d8dad4;
+  --border-strong: #b9bdb4;
+  --accent: #c47a22;
+  --accent-rgb: 196, 122, 34;
+  --accent-alt: #e29a38;
+  --highlight: #245c5a;
+  --highlight-rgb: 36, 92, 90;
+  --success: #218c5a;
+  --error: #c0392b;
+  --warning: #b86a16;
+  --warning-soft: rgba(184, 106, 22, 0.12);
+  --accent-soft: rgba(196, 122, 34, 0.1);
+  --accent-dim: rgba(196, 122, 34, 0.05);
+  --accent-text: #ffffff;
+  --button-primary-bg: #c47a22;
+  --button-primary-bg-hover: #e29a38;
+  --button-primary-text: #ffffff;
+  --grid-color: rgba(31, 37, 40, 0.04);
+  --grid-opacity: 0.42;
   --grid-size: 28px;
-  --shadowSm: 0 1px 2px rgba(34, 33, 31, 0.04), 0 1px 3px rgba(34, 33, 31, 0.05);
-  --shadowMd: 0 4px 12px rgba(34, 33, 31, 0.05), 0 18px 48px rgba(34, 33, 31, 0.07);
-  --nav-bg-top: rgba(244, 240, 232, 0.78);
-  --nav-bg-scrolled: rgba(244, 240, 232, 0.94);
-  --nav-border: rgba(34, 33, 31, 0.1);
+  --shadowSm: 0 1px 2px rgba(31, 37, 40, 0.04), 0 8px 24px rgba(31, 37, 40, 0.055);
+  --shadowMd: 0 4px 12px rgba(31, 37, 40, 0.06), 0 18px 48px rgba(31, 37, 40, 0.08);
+  --nav-bg-top: rgba(246, 247, 245, 0.78);
+  --nav-bg-scrolled: rgba(246, 247, 245, 0.94);
+  --nav-border: rgba(31, 37, 40, 0.1);
   --console-bg:
-    radial-gradient(circle at 75% 18%, rgba(178, 121, 62, 0.06) 0%, transparent 38%),
-    radial-gradient(circle at 22% 70%, rgba(199, 100, 43, 0.04) 0%, transparent 40%),
-    linear-gradient(180deg, #f4f0e8 0%, #ede5d6 100%);
-  --panel-bg:
-    linear-gradient(180deg, #fbf8f2 0%, #f0eadf 100%);
+    radial-gradient(circle at 78% 16%, rgba(196, 122, 34, 0.045) 0%, transparent 38%),
+    radial-gradient(circle at 18% 72%, rgba(36, 92, 90, 0.035) 0%, transparent 42%),
+    linear-gradient(180deg, #f6f7f5 0%, #f1f2ef 100%);
+  --panel-bg: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
 }
 
-/* Obsidian Acquisition Console (existing dark — preserved) */
+/* Mihad Dark — Charcoal & Gold Luxury */
 [data-theme='dark'],
 [data-theme='zohal-dark'] {
-  --bg: #0a0f14;
-  --surface: #0f151b;
-  --surface-alt: #141c23;
-  --surface-active: #18222a;
-  --surface-nested: #0f1a14;
-  --text: #f5f7ef;
-  --text-soft: #9eafa6;
-  --text-muted: #748179;
-  --text-faint: #566156;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --accent: #b7f34a;
-  --accent-rgb: 183, 243, 74;
-  --accent-alt: #d1ff76;
-  --highlight: #2fd7ff;
-  --highlight-rgb: 47, 215, 255;
-  --success: #74d7a0;
-  --error: #f05a5a;
-  --warning: #f0b33f;
-  --warning-soft: rgba(240, 179, 63, 0.12);
-  --accent-soft: rgba(183, 243, 74, 0.12);
-  --accent-dim: rgba(183, 243, 74, 0.055);
-  --accent-text: #0a0c0a;
-  --button-primary-bg: #b7f34a;
-  --button-primary-bg-hover: #d1ff76;
-  --button-primary-text: #0a0c0a;
-  --grid-color: rgba(183, 243, 74, 0.028);
-  --grid-opacity: 0.12;
-  --grid-size: 58px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 36px rgba(0, 0, 0, 0.32);
-  --shadowMd: 0 12px 36px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --nav-bg-top: rgba(10, 15, 20, 0.78);
-  --nav-bg-scrolled: rgba(10, 15, 20, 0.92);
-  --nav-border: rgba(255, 255, 255, 0.07);
-  --console-bg:
-    radial-gradient(circle at 70% 20%, rgba(183, 243, 74, 0.07) 0%, transparent 35%),
-    radial-gradient(circle at 25% 65%, rgba(47, 215, 255, 0.05) 0%, transparent 35%),
-    linear-gradient(180deg, #0a0f14 0%, #080c10 100%);
-  --panel-bg:
-    linear-gradient(180deg, #141c23 0%, #0a0f14 100%);
-}
-
-/* Institutional Acquisition Cockpit (new charcoal / brass dark) */
-[data-theme='zohal-cockpit'] {
-  --bg: #0f1113;
-  --surface: #181a1c;
-  --surface-alt: #131619;
-  --surface-active: #1d2023;
-  --surface-nested: #15171a;
-  --text: #f2eee8;
-  --text-soft: #b9b1a5;
-  --text-muted: #8a857d;
-  --text-faint: #6a655d;
-  --border: #2c2e31;
-  --border-strong: #3a3d41;
-  --accent: #b8935a;
-  --accent-rgb: 184, 147, 90;
-  --accent-alt: #d4af37;
-  --highlight: #d4af37;
-  --highlight-rgb: 212, 175, 55;
-  --success: #8aa37a;
-  --error: #c9695a;
-  --warning: #d4af37;
-  --warning-soft: rgba(212, 175, 55, 0.12);
-  --accent-soft: rgba(184, 147, 90, 0.14);
-  --accent-dim: rgba(184, 147, 90, 0.06);
-  --accent-text: #0f1113;
-  --button-primary-bg: #b8935a;
-  --button-primary-bg-hover: #c9a368;
-  --button-primary-text: #0f1113;
-  --brass-border: #8f744b;
-  --muted-bronze: #7e6a4a;
+  --bg: #0c0c0c;
+  --surface: #121212;
+  --surface-alt: #161616;
+  --surface-active: #1a1a1a;
+  --surface-nested: #211a13;
+  --text: #f6f2e8;
+  --text-soft: #d8d0c2;
+  --text-muted: #a8a29a;
+  --text-faint: #78716c;
+  --border: #2a2a2a;
+  --border-strong: #3a3a3a;
+  --accent: #d4af37;
+  --accent-rgb: 212, 175, 55;
+  --accent-alt: #f2c96d;
+  --highlight: #c8a96a;
+  --highlight-rgb: 200, 169, 106;
+  --success: #16a34a;
+  --error: #ef4c4c;
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+  --accent-soft: rgba(212, 175, 55, 0.12);
+  --accent-dim: rgba(212, 175, 55, 0.055);
+  --accent-text: #0c0c0c;
+  --button-primary-bg: #d4af37;
+  --button-primary-bg-hover: #f2c96d;
+  --button-primary-text: #0c0c0c;
   --grid-color: rgba(212, 175, 55, 0.025);
   --grid-opacity: 0.14;
   --grid-size: 48px;
-  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 36px rgba(0, 0, 0, 0.42);
   --shadowMd: 0 18px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --nav-bg-top: rgba(15, 17, 19, 0.8);
-  --nav-bg-scrolled: rgba(15, 17, 19, 0.94);
-  --nav-border: #2c2e31;
+  --nav-bg-top: rgba(12, 12, 12, 0.82);
+  --nav-bg-scrolled: rgba(12, 12, 12, 0.94);
+  --nav-border: #2a2a2a;
   --console-bg:
-    radial-gradient(circle at 78% 18%, rgba(184, 147, 90, 0.08) 0%, transparent 38%),
-    radial-gradient(circle at 20% 72%, rgba(212, 175, 55, 0.04) 0%, transparent 42%),
-    linear-gradient(180deg, #0f1113 0%, #0a0c0e 100%);
-  --panel-bg:
-    linear-gradient(180deg, #181a1c 0%, #131619 100%);
+    radial-gradient(circle at 72% 18%, rgba(212, 175, 55, 0.07) 0%, transparent 36%),
+    radial-gradient(circle at 22% 70%, rgba(200, 169, 106, 0.04) 0%, transparent 40%),
+    linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 100%);
+  --panel-bg: linear-gradient(180deg, #1a1a1a 0%, #121212 100%);
 }
 
 /* Base Styles */
@@ -223,7 +176,7 @@ body {
 /* Focus Ring */
 @layer base {
   *:focus-visible {
-    @apply outline-none ring-2 ring-highlight ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
   }
 }
 

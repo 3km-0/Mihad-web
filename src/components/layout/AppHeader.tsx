@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Crown, FolderOpen, House, LogOut, Menu, Moon, Search, Settings, Sparkles, Sun } from 'lucide-react';
+import { Crown, FolderOpen, House, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
@@ -55,13 +55,8 @@ export function AppHeader({ title, subtitle, leading, actions, className }: AppH
 
   const upcomingThemeMode: ThemeMode = nextThemeModeFn(themeMode);
   const themeToggleLabel =
-    upcomingThemeMode === 'light'
-      ? tSettingsPage('switchToLightMode')
-      : upcomingThemeMode === 'cockpit'
-        ? tSettingsPage('switchToCockpitMode')
-        : tSettingsPage('switchToDarkMode');
-  const ThemeToggleIcon =
-    upcomingThemeMode === 'light' ? Sun : upcomingThemeMode === 'cockpit' ? Sparkles : Moon;
+    upcomingThemeMode === 'light' ? tSettingsPage('switchToLightMode') : tSettingsPage('switchToDarkMode');
+  const ThemeToggleIcon = upcomingThemeMode === 'light' ? Sun : Moon;
 
   return (
     <header

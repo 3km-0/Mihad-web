@@ -15,7 +15,7 @@ describe('theme mode helpers', () => {
     document.documentElement.setAttribute('data-theme', 'zohal-light');
   });
 
-  it('defaults to Obsidian dark mode when no preference is stored', () => {
+  it('defaults to Mihad dark when no preference is stored', () => {
     expect(DEFAULT_THEME_MODE).toBe('dark');
     expect(readThemeModeFromStorage()).toBeNull();
     expect(initializeThemeMode()).toBe('dark');
@@ -34,26 +34,25 @@ describe('theme mode helpers', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('applies the cockpit (charcoal / brass) theme', () => {
-    applyThemeMode('cockpit');
-
-    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-cockpit');
-    expect(window.localStorage.getItem('theme')).toBe('cockpit');
+  it('migrates legacy cockpit storage to dark', () => {
+    window.localStorage.setItem('theme', 'cockpit');
+    expect(readThemeModeFromStorage()).toBe('dark');
+    initializeThemeMode();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zohal-dark');
+    expect(window.localStorage.getItem('theme')).toBe('dark');
   });
 
   it('normalizes supported theme values only', () => {
     expect(normalizeThemeMode('light')).toBe('light');
     expect(normalizeThemeMode('dark')).toBe('dark');
-    expect(normalizeThemeMode('cockpit')).toBe('cockpit');
+    expect(normalizeThemeMode('cockpit')).toBe('dark');
     expect(normalizeThemeMode('sepia')).toBeNull();
     expect(themeModeToDataTheme('light')).toBe('zohal-light');
     expect(themeModeToDataTheme('dark')).toBe('zohal-dark');
-    expect(themeModeToDataTheme('cockpit')).toBe('zohal-cockpit');
   });
 
-  it('cycles through the three palettes in order', () => {
+  it('toggles between the two Mihad themes', () => {
     expect(nextThemeMode('light')).toBe('dark');
-    expect(nextThemeMode('dark')).toBe('cockpit');
-    expect(nextThemeMode('cockpit')).toBe('light');
+    expect(nextThemeMode('dark')).toBe('light');
   });
 });

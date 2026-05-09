@@ -409,8 +409,8 @@ type LiveFeedItem = {
 };
 
 // Borders and panel chrome for the acquisition workspace use the active
-// Zohal palette (editorial / obsidian / cockpit) via CSS variables instead of
-// hard-coded obsidian values, so the workspace adopts the same mood as the
+// Mihad Design (light / dark) via CSS variables instead of hard-coded values,
+// so the workspace adopts the same mood as the
 // rest of the app.
 const cockpitBorder = 'border-border';
 const cockpitPanel =

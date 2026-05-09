@@ -13,7 +13,6 @@ import {
   Database,
   Moon,
   Sun,
-  Sparkles,
   Trash2,
   LogOut,
   AlertTriangle,
@@ -255,15 +254,13 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3 mb-6">
               {theme === 'light' ? (
                 <Sun className="w-5 h-5 text-accent" />
-              ) : theme === 'cockpit' ? (
-                <Sparkles className="w-5 h-5 text-accent" />
               ) : (
                 <Moon className="w-5 h-5 text-accent" />
               )}
               <h2 className="text-lg font-semibold text-text">{t('appearance')}</h2>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <button
                 onClick={() => handleThemeChange('light')}
                 className={cn(
@@ -293,21 +290,6 @@ export default function SettingsPage() {
                   <span className="font-medium">{tSettings('dark')}</span>
                 </div>
                 <span className="text-xs text-text-soft">{tSettings('darkDesc')}</span>
-              </button>
-              <button
-                onClick={() => handleThemeChange('cockpit')}
-                className={cn(
-                  'flex flex-col items-start gap-2 rounded-zohal border p-4 text-left transition-all',
-                  theme === 'cockpit'
-                    ? 'border-accent bg-accent/10'
-                    : 'border-border hover:border-accent/50'
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  <span className="font-medium">{tSettings('cockpit')}</span>
-                </div>
-                <span className="text-xs text-text-soft">{tSettings('cockpitDesc')}</span>
               </button>
             </div>
           </Card>

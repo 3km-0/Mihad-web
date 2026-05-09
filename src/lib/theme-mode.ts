@@ -1,35 +1,31 @@
 'use client';
 
 /**
- * Three Zohal palettes share the same token surface:
- *   - 'light'    Editorial Acquisition Desk (cream / paper / brass / ink)
- *   - 'dark'     Obsidian Acquisition Console (existing lime / cyan)
- *   - 'cockpit'  Institutional Acquisition Cockpit (charcoal / brass / ivory)
+ * Mihad Design — two themes share the same token surface:
+ *   - 'light'  Architectural White & Signal Amber (`zohal-light`)
+ *   - 'dark'   Charcoal & Gold Luxury (`zohal-dark`)
+ *
+ * Legacy stored value `cockpit` normalizes to `dark`.
+ *
+ * Spec: zohal-platform/Documentation/Design/Mihad Design.md
  */
-export type ThemeMode = 'light' | 'dark' | 'cockpit';
-export type DataTheme = 'zohal-light' | 'zohal-dark' | 'zohal-cockpit';
+export type ThemeMode = 'light' | 'dark';
+export type DataTheme = 'zohal-light' | 'zohal-dark';
 
-export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'cockpit'] as const;
+export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark'] as const;
 
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_CHANGE_EVENT = 'zohal-theme-change';
 export const DEFAULT_THEME_MODE: ThemeMode = 'dark';
 
 export function normalizeThemeMode(value: string | null | undefined): ThemeMode | null {
-  if (value === 'light' || value === 'dark' || value === 'cockpit') return value;
+  if (value === 'light') return 'light';
+  if (value === 'dark' || value === 'cockpit') return 'dark';
   return null;
 }
 
 export function themeModeToDataTheme(theme: ThemeMode): DataTheme {
-  switch (theme) {
-    case 'light':
-      return 'zohal-light';
-    case 'cockpit':
-      return 'zohal-cockpit';
-    case 'dark':
-    default:
-      return 'zohal-dark';
-  }
+  return theme === 'light' ? 'zohal-light' : 'zohal-dark';
 }
 
 export function readThemeModeFromStorage(): ThemeMode | null {
@@ -79,8 +75,7 @@ export function initializeThemeMode(): ThemeMode {
 }
 
 export function nextThemeMode(theme: ThemeMode): ThemeMode {
-  const idx = THEME_MODES.indexOf(theme);
-  return THEME_MODES[(idx + 1) % THEME_MODES.length];
+  return theme === 'light' ? 'dark' : 'light';
 }
 
 export function subscribeToThemeMode(callback: (theme: ThemeMode) => void): () => void {
