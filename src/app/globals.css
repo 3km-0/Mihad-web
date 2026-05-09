@@ -49,6 +49,7 @@
   --highlight-rgb: 36, 92, 90;
   --success: #218c5a;
   --error: #c0392b;
+  --error-rgb: 192, 57, 43;
   --warning: #b86a16;
   --warning-soft: rgba(184, 106, 22, 0.12);
   --accent-soft: rgba(196, 122, 34, 0.1);
@@ -93,6 +94,7 @@
   --highlight-rgb: 200, 169, 106;
   --success: #16a34a;
   --error: #ef4c4c;
+  --error-rgb: 239, 76, 76;
   --warning: #f59e0b;
   --warning-soft: rgba(245, 158, 11, 0.12);
   --accent-soft: rgba(212, 175, 55, 0.12);

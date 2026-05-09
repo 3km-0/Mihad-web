@@ -397,7 +397,7 @@ type WorkspaceSearchRunResponse = {
   queue?: { enqueued?: boolean; reason?: string | null; task_name?: string | null };
 };
 
-type LiveFeedTone = 'lime' | 'cyan' | 'warn' | 'neutral';
+type LiveFeedTone = 'lime' | 'cyan' | 'warn' | 'error' | 'neutral';
 
 type LiveFeedItem = {
   id: string;
@@ -5067,20 +5067,24 @@ function LiveFeedRow({ item }: { item: LiveFeedItem }) {
     lime: 'text-accent',
     cyan: 'text-highlight',
     warn: 'text-warning',
+    error: 'text-error',
     neutral: 'text-text-muted',
   }[item.tone];
   const toneBorder = {
     lime: 'border-accent/18 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]',
     cyan: 'border-highlight/18 shadow-[inset_0_1px_0_rgba(var(--highlight-rgb),.05)]',
     warn: 'border-warning/22 shadow-[inset_0_1px_0_rgba(255,199,89,.06)]',
+    error: 'border-error/20 bg-[rgba(var(--error-rgb),0.04)] shadow-[inset_0_1px_0_rgba(var(--error-rgb),.06)]',
     neutral: 'border-[rgba(var(--accent-rgb),0.12)] shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.04)]',
   }[item.tone];
   const dotClass = {
     lime: 'bg-accent shadow-[0_0_12px_var(--accent-soft)]',
     cyan: 'bg-highlight shadow-[0_0_12px_rgba(var(--highlight-rgb),.22)]',
     warn: 'bg-warning shadow-[0_0_12px_rgba(255,199,89,.2)]',
+    error: 'bg-error shadow-[0_0_12px_rgba(var(--error-rgb),.25)]',
     neutral: 'bg-text-muted',
   }[item.tone];
+  const titleClass = item.tone === 'error' ? 'text-error' : 'text-text';
   return (
     <article className={cn('rounded-[18px] border bg-surface-alt/40 px-4 py-3.5 transition hover:border-accent/28', toneBorder)}>
       <div className="flex items-center justify-between gap-3">
@@ -5090,7 +5094,7 @@ function LiveFeedRow({ item }: { item: LiveFeedItem }) {
         </div>
         {item.time ? <span className={cn('shrink-0 text-right text-[11px] font-semibold', toneClass)}>{formatRelativeTime(item.time)}</span> : null}
       </div>
-      <p className="mt-3 line-clamp-2 break-words text-sm font-semibold leading-5 text-text" dir="auto">{item.title}</p>
+      <p className={cn('mt-3 line-clamp-2 break-words text-sm font-semibold leading-5', titleClass)} dir="auto">{item.title}</p>
       <p className="mt-1.5 line-clamp-3 break-words text-sm leading-6 text-text-soft" dir="auto">{item.body}</p>
     </article>
   );
@@ -5107,9 +5111,10 @@ function feedTagForEvent(eventType: string | null | undefined, t: ReturnType<typ
 
 function feedToneForEvent(eventType: string | null | undefined): LiveFeedTone {
   const type = `${eventType ?? ''}`.toLowerCase();
-  if (type.includes('risk') || type.includes('missing') || type.includes('diligence')) return 'warn';
+  if (type.includes('risk') || type.includes('missing') || type.includes('flagged')) return 'error';
+  if (type.includes('diligence')) return 'warn';
   if (type.includes('evidence') || type.includes('document') || type.includes('source') || type.includes('broker')) return 'cyan';
-  return 'neutral';
+  return 'lime';
 }
 
 function RightPane({
