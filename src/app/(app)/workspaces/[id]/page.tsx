@@ -2380,7 +2380,7 @@ function OpportunityRail({
               }}
               className={cn(
                 'cursor-pointer',
-                'group relative rounded-[28px] border text-left transition dark:bg-[linear-gradient(180deg,rgba(18,26,21,.84),rgba(8,12,10,.90))] dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]',
+                'group relative rounded-[16px] border text-left transition dark:shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.055)]',
                 compact ? 'min-w-[260px] p-4' : 'min-h-[238px] w-full p-6',
                 selectedId === item.id
                   ? 'border-[rgba(var(--accent-rgb),0.52)] bg-[rgba(var(--accent-rgb),0.075)] shadow-[0_0_0_1px_rgba(var(--accent-rgb),.16),0_20px_48px_rgba(var(--accent-rgb),.11)]'
@@ -2469,6 +2469,26 @@ function CockpitHero({
   const confidence = humanize(confidenceFor(opportunity)) || t('notSet');
   const displayTitle = cleanDisplayText(title);
   const thesis = investmentThesisFor(opportunity, t('heroAnalystThesis'));
+
+  const recommendationTone = ((): 'success' | 'warning' | 'error' | 'neutral' => {
+    const r = recommendationFor(opportunity)?.toLowerCase() ?? '';
+    if (r === 'pursue') return 'success';
+    if (r === 'pass' || r === 'reject') return 'error';
+    if (r === 'conditional') return 'warning';
+    return 'neutral';
+  })();
+  const confidenceTone = ((): 'success' | 'warning' | 'error' | 'neutral' => {
+    const c = confidenceFor(opportunity)?.toLowerCase() ?? '';
+    if (c === 'high') return 'success';
+    if (c === 'low') return 'warning';
+    return 'neutral';
+  })();
+  const openItemsTone: 'success' | 'warning' = missingCount > 0 ? 'warning' : 'success';
+  const riskItems = missingInfoList(opportunity?.missing_info_json);
+  const riskLabel = riskItems[0]
+    || metadataString(opportunity, ['risk_note', 'screening_risk'])
+    || (missingCount > 0 ? `${missingCount} open` : t('notSet'));
+  const riskTone: 'error' | 'warning' | 'success' = riskItems.length > 0 ? 'warning' : missingCount > 0 ? 'warning' : 'success';
   useEffect(() => {
     setPhotoIndex(0);
   }, [opportunity?.id]);
@@ -2478,7 +2498,7 @@ function CockpitHero({
     setPhotoIndex((current) => Math.min(Math.max(current + direction, 0), Math.max(photos.length - 1, 0)));
   };
   return (
-    <Panel className="relative overflow-hidden rounded-[28px] border-border p-7" data-testid="acquisition-cockpit-hero">
+    <Panel className="relative overflow-hidden rounded-[24px] border-border p-7" data-testid="acquisition-cockpit-hero">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(var(--accent-rgb),.055),transparent_36%),radial-gradient(circle_at_92%_18%,rgba(var(--highlight-rgb),.045),transparent_32%)]" />
       <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,.92fr)] xl:items-stretch">
@@ -2570,17 +2590,17 @@ function CockpitHero({
               ) : null}
             </>
           ) : (
-            <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb,35,215,255),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb,35,215,255),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
+            <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(var(--highlight-rgb),.18)_1px,transparent_1px),linear-gradient(90deg,rgba(var(--highlight-rgb),.14)_1px,transparent_1px)] [background-size:34px_34px]" />
           )}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
           <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-[9px] border border-highlight/25 bg-black/35 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-highlight backdrop-blur">
             {photos.length > 1 ? t('photoCounter', { current: photoIndex + 1, total: photos.length }) : t('photoEvidence')}
           </div>
           <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 grid gap-3 sm:grid-cols-4">
-            <HeroChip label={t('mandateFit')} value={recommendation} />
-            <HeroChip label={t('confidence')} value={confidence} />
-            <HeroChip label={t('openItems')} value={missingCount.toString()} />
-            <HeroChip label={t('sources')} value={documentCount.toString()} />
+            <HeroChip label={t('mandateFit')} value={recommendation} tone={recommendationTone} />
+            <HeroChip label={t('confidence')} value={confidence} tone={confidenceTone} />
+            <HeroChip label={t('openItems')} value={missingCount.toString()} tone={openItemsTone} />
+            <HeroChip label={t('risk')} value={riskLabel} tone={riskTone} />
           </div>
         </div>
       </div>
@@ -2593,11 +2613,17 @@ function CockpitHero({
   );
 }
 
-function HeroChip({ label, value }: { label: string; value: string }) {
+function HeroChip({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'success' | 'warning' | 'error' | 'neutral' }) {
+  const valueClass = {
+    success: 'text-success',
+    warning: 'text-warning',
+    error: 'text-error',
+    neutral: 'text-text-soft',
+  }[tone];
   return (
     <div className="rounded-[12px] border border-[rgba(var(--accent-rgb),0.26)] bg-black/35 px-3 py-2 backdrop-blur">
-      <p className="text-xs font-semibold text-text">{label}</p>
-      <p className="mt-1 truncate text-[11px] text-text-soft">{value}</p>
+      <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-text-muted">{label}</p>
+      <p className={`mt-1 truncate text-[11px] font-semibold ${valueClass}`}>{value}</p>
     </div>
   );
 }
@@ -2729,7 +2755,7 @@ function ProgressTracker({
                   className={cn(
                     'absolute left-1/2 h-0.5 w-full rounded-full transition-colors',
                     compact ? 'top-[15px]' : 'top-[19px]',
-                    completed ? 'bg-success/65' : active ? 'bg-accent/70' : 'bg-border'
+                    completed ? 'bg-highlight/55' : active ? 'bg-accent/70' : 'bg-border'
                   )}
                 />
               ) : null}
@@ -2744,7 +2770,7 @@ function ProgressTracker({
                 className={cn(
                   'group relative flex w-full flex-col items-center text-center transition hover:text-text',
                   compact ? 'px-1' : 'px-2',
-                  completed && 'text-success',
+                  completed && 'text-highlight',
                   active && 'text-text',
                   pending && 'text-text-muted'
                 )}
@@ -2752,8 +2778,8 @@ function ProgressTracker({
                 <span className={cn(
                   'relative z-[1] grid place-items-center rounded-full border font-black transition',
                   compact ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-sm',
-                  completed && 'border-accent/45 bg-accent/18 text-accent',
-                  active && !nodeBlocked && 'border-accent/65 bg-accent/14 text-accent shadow-[0_0_0_5px_var(--accent-dim),0_0_20px_rgba(var(--accent-rgb,183,243,74),.12)]',
+                  completed && 'border-highlight/45 bg-highlight/18 text-highlight',
+                  active && !nodeBlocked && 'border-accent/65 bg-accent/14 text-accent shadow-[0_0_0_5px_var(--accent-dim),0_0_20px_rgba(var(--accent-rgb),.12)]',
                   nodeBlocked && 'border-warning bg-warning text-[color:var(--accent-text)] shadow-[0_0_0_6px_var(--warning-soft),0_0_30px_rgba(245,183,58,.18)]',
                   pending && 'border-[rgba(var(--accent-rgb),0.16)] bg-[color:var(--bg)] text-text-muted'
                 )}>
@@ -4446,7 +4472,7 @@ function VisualCompanion({
             onClick={() => setMode(item.key)}
             className={cn(
               'min-h-9 rounded-[8px] px-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition',
-              mode === item.key ? 'bg-highlight text-background shadow-[0_0_20px_rgba(var(--highlight-rgb,35,215,255),.18)]' : 'text-text-muted hover:bg-surface-alt hover:text-text'
+              mode === item.key ? 'bg-highlight text-background shadow-[0_0_20px_rgba(var(--highlight-rgb),.18)]' : 'text-text-muted hover:bg-surface-alt hover:text-text'
             )}
           >
             {item.label}
@@ -4558,7 +4584,7 @@ function VisualCompanion({
       {mode === 'parcel' ? (
         <div className="relative min-h-[250px] overflow-hidden rounded-[18px] border border-[rgba(var(--accent-rgb),0.16)] bg-background p-5">
           <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:28px_28px]" />
-          <div className="relative mx-auto mt-6 h-36 w-48 rotate-[-8deg] border-2 border-highlight bg-highlight/10 shadow-[0_0_26px_rgba(var(--highlight-rgb,35,215,255),.20)]" />
+          <div className="relative mx-auto mt-6 h-36 w-48 rotate-[-8deg] border-2 border-highlight bg-highlight/10 shadow-[0_0_26px_rgba(var(--highlight-rgb),.20)]" />
           <div className="relative mt-7 rounded-[14px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-highlight">{t('parcelSignal')}</p>
             <p className="mt-1 text-sm text-text">{[facts.area, facts.price].filter(Boolean).join(' · ') || t('notSet')}</p>
@@ -5153,7 +5179,7 @@ function RightPane({
           {Array.from({ length: 28 }).map((_, index) => (
             <span
               key={index}
-              className="w-full rounded-t-sm bg-accent/70 shadow-[0_0_10px_rgba(var(--accent-rgb,185,255,38),.18)]"
+              className="w-full rounded-t-sm bg-accent/70 shadow-[0_0_10px_rgba(var(--accent-rgb),.18)]"
               style={{ height: `${22 + Math.abs(Math.sin(index * 0.72)) * 58}%` }}
             />
           ))}

@@ -144,7 +144,7 @@ body {
 }
 
 .website-shell ::selection {
-  background: var(--accent-soft, rgba(79, 70, 229, 0.14));
+  background: var(--accent-soft);
   color: var(--text);
 }
 
