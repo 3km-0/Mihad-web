@@ -52,10 +52,9 @@ function normalizeText(value) {
 }
 
 function normalizePhone(value) {
-  const raw = normalizeText(value);
-  const hasPlus = raw.startsWith("+");
-  const digits = raw.replace(/[^\d]/g, "");
-  return digits ? `${hasPlus ? "+" : ""}${digits}` : "";
+  const digits = String(value || "").replace(/[^\d]/g, "");
+  if (digits.length < 8) return "";
+  return `+${digits}`;
 }
 
 function normalizeUuid(value) {
@@ -117,7 +116,7 @@ function parseBudgetRange(text) {
   return {
     min: Math.min(...values),
     max: Math.max(...values),
-    currency: /sar|ريال|ر\.س/i.test(normalized) ? "SAR" : "SAR",
+    currency: "SAR",
   };
 }
 
@@ -332,7 +331,9 @@ function buildBrokerDraft(language, signals) {
 async function loadConversationByPhone(supabase, phoneNumber) {
   const { data, error } = await supabase
     .from("whatsapp_conversations")
-    .select("*")
+    .select(
+      "id, channel, phone_number, mode, language, active_workspace_id, active_opportunity_id, active_acquisition_thread_id, awaiting_upload_kind, linked_profile_id, last_user_goal, state_json, last_inbound_message_id, last_message_at",
+    )
     .eq("channel", "whatsapp")
     .eq("phone_number", phoneNumber)
     .maybeSingle();
@@ -420,7 +421,7 @@ async function createOrUpdateMandate(supabase, { workspaceId, userId, phoneNumbe
   return data;
 }
 
-async function createOrUpdateOpportunity(supabase, { conversationId, workspaceId, phoneNumber, textBody, signals }) {
+async function createOrUpdateOpportunity(supabase, { conversationId, workspaceId, phoneNumber, textBody, signals, language = "en" }) {
   const query = supabase
     .from("acquisition_opportunities")
     .select("*")
@@ -452,7 +453,7 @@ async function createOrUpdateOpportunity(supabase, { conversationId, workspaceId
     metadata_json: {
       latest_message: textBody,
       screening,
-      broker_draft: buildBrokerDraft("en", signals),
+      broker_draft: buildBrokerDraft(language, signals),
       property_type: signals.propertyType,
       material_types: signals.materialTypes,
       locations: signals.locations,
@@ -529,7 +530,9 @@ async function ensureAcquisitionArtifacts(supabase, { opportunity, signals, work
     evidence_refs_json: [],
   }));
 
-  await supabase.from("acquisition_claims").insert(claimRows);
+  await supabase.from("acquisition_claims").insert(claimRows).then(({ error }) => {
+    if (error) console.warn(`acquisition_claims insert failed for opportunity ${opportunity.id}: ${error.message}`);
+  });
   await supabase.from("acquisition_scenarios").insert({
     opportunity_id: opportunity.id,
     workspace_id: workspaceId,
@@ -544,6 +547,8 @@ async function ensureAcquisitionArtifacts(supabase, { opportunity, signals, work
       confidence: signals.confidence,
     },
     editable: true,
+  }).then(({ error }) => {
+    if (error) console.warn(`acquisition_scenarios insert failed for opportunity ${opportunity.id}: ${error.message}`);
   });
 
   if (signals.missingInfo.length) {
@@ -558,7 +563,9 @@ async function ensureAcquisitionArtifacts(supabase, { opportunity, signals, work
         owner_kind: "broker",
         evidence_refs_json: [],
       })),
-    );
+    ).then(({ error }) => {
+      if (error) console.warn(`acquisition_diligence_items insert failed for opportunity ${opportunity.id}: ${error.message}`);
+    });
   }
 }
 
@@ -598,6 +605,7 @@ async function handleAcquisitionRoute({ supabase, conversation, body, language, 
         phoneNumber,
         textBody,
         signals,
+        language,
       });
 
   if (opportunity?.id) {
@@ -706,7 +714,7 @@ async function handleDocumentIngestion({ supabase, conversation, body, language,
   };
 }
 
-async function orchestrateWhatsappMessage({ supabase, body }) {
+async function orchestrateWhatsappMessage({ supabase, body, requestId, log }) {
   const phoneNumber = normalizePhone(body.phone_number);
   if (!phoneNumber) {
     const error = new Error("Missing phone_number");

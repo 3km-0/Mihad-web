@@ -15,13 +15,7 @@ import {
   extractOutputText,
   getAIStageConfig,
 } from "./ai-provider.js";
-import {
-  createPrivateLiveAccessLink,
-  ensurePrivateLiveExperienceRefresh,
-  openPrivateLiveExperienceLink,
-  preferredPrivateLiveExperienceUrl,
-} from "./private-live.js";
-import {
+import { ensurePrivateLiveExperienceRefresh } from "./private-live.js";import {
   buildSupabaseInternalHeaders,
   getSupabaseUrl,
 } from "../runtime/supabase.js";
@@ -730,163 +724,6 @@ function buildAutomationActivity(message, extra = {}) {
   };
 }
 
-function normalizeWhatsappPhone(value) {
-  const digits = String(value || "").replace(/[^\d]/g, "");
-  if (digits.length < 8) return null;
-  return `+${digits}`;
-}
-
-function extractWhatsappPhoneFromSourceMetadata(sourceMetadata) {
-  if (!sourceMetadata || typeof sourceMetadata !== "object" || Array.isArray(sourceMetadata)) {
-    return null;
-  }
-  if (String(sourceMetadata.source_type || "").toLowerCase() !== "whatsapp") {
-    return null;
-  }
-  return normalizeWhatsappPhone(sourceMetadata.whatsapp_phone_number);
-}
-
-function clipWhatsappMessage(body, maxChars = 4096) {
-  const trimmed = String(body || "").trim();
-  if (!trimmed) return "";
-  if (trimmed.length <= maxChars) return trimmed;
-  return `${trimmed.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
-}
-
-async function sendWhatsappTextMessage({ to, body, requestId }) {
-  const phoneNumberId = String(process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
-  const accessToken = String(process.env.WHATSAPP_ACCESS_TOKEN || "").trim();
-  const graphVersion = String(process.env.WHATSAPP_GRAPH_VERSION || "v24.0").trim();
-  const normalizedTo = normalizeWhatsappPhone(to);
-  const clippedBody = clipWhatsappMessage(body);
-
-  if (!phoneNumberId) {
-    throw new Error("WHATSAPP_PHONE_NUMBER_ID not configured");
-  }
-  if (!accessToken) {
-    throw new Error("WHATSAPP_ACCESS_TOKEN not configured");
-  }
-  if (!normalizedTo) {
-    throw new Error("Invalid recipient phone number");
-  }
-  if (!clippedBody) {
-    throw new Error("Cannot send empty WhatsApp message");
-  }
-
-  const response = await fetch(
-    `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        ...(requestId ? { "x-request-id": requestId } : {}),
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: normalizedTo.replace(/^\+/, ""),
-        type: "text",
-        text: {
-          preview_url: false,
-          body: clippedBody,
-        },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(
-      `WhatsApp send failed (${response.status}): ${details.slice(0, 240)}`,
-    );
-  }
-}
-
-async function sendWhatsappAutomationCompletion({
-  supabase,
-  requestId,
-  automationRun,
-  experienceId,
-}) {
-  if (String(automationRun?.trigger_kind || "").trim().toLowerCase() !== "document_ingestion_completed") {
-    return;
-  }
-
-  const sourceDocumentId = normalizeUuid(automationRun?.source_document_id);
-  if (!sourceDocumentId) return;
-
-  const { data: completionDocument, error: completionDocumentError } = await supabase
-    .from("documents")
-    .select("workspace_id, source_metadata")
-    .eq("id", sourceDocumentId)
-    .maybeSingle();
-  if (completionDocumentError) {
-    throw new Error(completionDocumentError.message);
-  }
-
-  const whatsappPhone = extractWhatsappPhoneFromSourceMetadata(
-    completionDocument?.source_metadata,
-  );
-  if (!whatsappPhone) return;
-
-  let preferredPortalUrl = null;
-  const triggeredByUserId = normalizeUuid(automationRun?.triggered_by_user_id);
-  if (experienceId && triggeredByUserId) {
-    try {
-      const accessLink = await createPrivateLiveAccessLink({
-        requestId,
-        userId: triggeredByUserId,
-        experienceId,
-        ttlSeconds: 60 * 60 * 24,
-      });
-      preferredPortalUrl =
-        String(accessLink?.short_url || "").trim() ||
-        String(accessLink?.redeem_url || "").trim() ||
-        String(accessLink?.experience_url || "").trim() ||
-        null;
-    } catch (_error) {
-      try {
-        const openResult = await openPrivateLiveExperienceLink({
-          requestId,
-          userId: triggeredByUserId,
-          experienceId,
-        });
-        const redeemUrl = String(openResult?.redeem_url || "").trim();
-        preferredPortalUrl = redeemUrl || preferredPrivateLiveExperienceUrl(openResult);
-      } catch {
-        preferredPortalUrl = null;
-      }
-    }
-  }
-
-  const workspaceId = normalizeUuid(
-    completionDocument?.workspace_id || automationRun?.workspace_id,
-  );
-  let workspaceName = "your workspace";
-  if (workspaceId) {
-    const { data: workspaceRecord, error: workspaceError } = await supabase
-      .from("workspaces")
-      .select("name")
-      .eq("id", workspaceId)
-      .maybeSingle();
-    if (workspaceError) {
-      throw new Error(workspaceError.message);
-    }
-    const resolvedName = String(workspaceRecord?.name || "").trim();
-    if (resolvedName) workspaceName = resolvedName;
-  }
-
-  const messageBody = preferredPortalUrl
-    ? `Your document has been analyzed and "${workspaceName}" is updated. Open the Live Portal: ${preferredPortalUrl}`
-    : `Your document has been analyzed and "${workspaceName}" is updated. Open the workspace in Zohal to view the refreshed Live Portal.`;
-
-  await sendWhatsappTextMessage({
-    to: whatsappPhone,
-    body: messageBody,
-    requestId,
-  });
-}
-
 async function markAutomationRunSucceededNode({
   supabase,
   requestId,
@@ -946,20 +783,6 @@ async function markAutomationRunSucceededNode({
       updated_at: completedAt,
     })
     .eq("id", automationRun.automation_id);
-
-  try {
-    await sendWhatsappAutomationCompletion({
-      supabase,
-      requestId,
-      automationRun,
-      experienceId,
-    });
-  } catch (error) {
-    console.warn("WhatsApp automation completion message failed on GCP", {
-      parent_run_id: normalizedParentRunId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
 }
 
 async function markActionSucceeded({
