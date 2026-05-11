@@ -8,6 +8,8 @@
 /coverage
 /artifacts/playwright/
 /services/zohal-backend/artifacts/acquisition-smoke/
+/services/zohal-backend/artifacts/
+/services/zohal-backend/node_modules/
 /services/acquisition-browser-worker/artifacts/browser-worker/
 /services/acquisition-browser-worker/artifacts/auth-state/
 

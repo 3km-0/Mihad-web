@@ -54,7 +54,7 @@ Deploy:
 
 ```bash
 cd /Users/Abdulah/Developer/Zohal/Zohal-web
-bash infra/gcp/zohal-backend/deploy.sh
+PROJECT_ID=asens-ai bash infra/gcp/zohal-backend/deploy.sh
 ```
 
 Optional overrides:
@@ -79,6 +79,11 @@ Compatibility note:
 
 Notes:
 - The script deploys Cloud Run from `services/zohal-backend/`.
+- `PROJECT_ID` is required; the script refuses to infer it from the active
+  `gcloud` config. The default guard only permits `PROJECT_ID=asens-ai` unless
+  `ALLOW_NON_ZOHAL_PROJECT=true` is set for an intentional non-Zohal deploy.
+- If `gcloud` is not on `PATH`, the script falls back to common Homebrew
+  install paths. Set `GCLOUD_BIN=/path/to/gcloud` to override.
 - It updates `INGESTION_SERVICE_BASE_URL` and `ANALYSIS_SERVICE_BASE_URL` after
   the Cloud Run URL is known.
 - `SERVICE_REGION` controls where Cloud Run runs; `ORCHESTRATION_REGION` controls

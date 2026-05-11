@@ -6,7 +6,52 @@ SERVICE_DIR="${ROOT_DIR}/services/zohal-backend"
 INGESTION_WORKFLOW_FILE="${SERVICE_DIR}/workflows/document-ingestion-v1.yaml"
 ANALYSIS_WORKFLOW_FILE="${SERVICE_DIR}/workflows/contract-analysis-v1.yaml"
 
-PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
+resolve_gcloud_bin() {
+  if command -v gcloud >/dev/null 2>&1; then
+    command -v gcloud
+    return
+  fi
+  for candidate in \
+    /opt/homebrew/share/google-cloud-sdk/bin/gcloud \
+    /usr/local/share/google-cloud-sdk/bin/gcloud; do
+    if [[ -x "${candidate}" ]]; then
+      echo "${candidate}"
+      return
+    fi
+  done
+  return 1
+}
+
+GCLOUD_BIN="${GCLOUD_BIN:-}"
+if [[ -z "${GCLOUD_BIN}" ]]; then
+  GCLOUD_BIN="$(resolve_gcloud_bin || true)"
+fi
+if [[ -z "${GCLOUD_BIN}" || ! -x "${GCLOUD_BIN}" ]]; then
+  echo "gcloud was not found. Install Google Cloud SDK or set GCLOUD_BIN=/path/to/gcloud." >&2
+  exit 1
+fi
+
+gcloud() {
+  "${GCLOUD_BIN}" "$@"
+}
+
+PROJECT_ID="${PROJECT_ID:-}"
+EXPECTED_GCP_PROJECT_ID="${EXPECTED_GCP_PROJECT_ID:-asens-ai}"
+ACTIVE_GCLOUD_PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
+if [[ -z "${PROJECT_ID}" ]]; then
+  echo "PROJECT_ID must be set explicitly; refusing to infer it from gcloud config." >&2
+  echo "Current gcloud config project: ${ACTIVE_GCLOUD_PROJECT:-<unset>}" >&2
+  echo "Example: PROJECT_ID=${EXPECTED_GCP_PROJECT_ID} bash infra/gcp/zohal-backend/deploy.sh" >&2
+  exit 1
+fi
+if [[ -n "${EXPECTED_GCP_PROJECT_ID}" && "${PROJECT_ID}" != "${EXPECTED_GCP_PROJECT_ID}" && "${ALLOW_NON_ZOHAL_PROJECT:-}" != "true" ]]; then
+  echo "Refusing to deploy to PROJECT_ID=${PROJECT_ID}; expected ${EXPECTED_GCP_PROJECT_ID}." >&2
+  echo "Set ALLOW_NON_ZOHAL_PROJECT=true only for an intentional non-Zohal deploy." >&2
+  exit 1
+fi
+if [[ -n "${ACTIVE_GCLOUD_PROJECT}" && "${ACTIVE_GCLOUD_PROJECT}" != "${PROJECT_ID}" ]]; then
+  echo "Notice: active gcloud config project is ${ACTIVE_GCLOUD_PROJECT}; deploying with explicit PROJECT_ID=${PROJECT_ID}." >&2
+fi
 SERVICE_REGION="${SERVICE_REGION:-me-central2}"
 ORCHESTRATION_REGION="${ORCHESTRATION_REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-zohal-backend}"
