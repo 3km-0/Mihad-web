@@ -1143,7 +1143,9 @@ export default function WorkspaceCockpitPage() {
           .limit(5),
       ]);
 
-      const opportunityRows = (opportunitiesResult.data ?? []) as OpportunityRow[];
+      const opportunityRows = [...(opportunitiesResult.data ?? [])].sort((a, b) =>
+        (rawScoreFor(b as OpportunityRow) ?? -1) - (rawScoreFor(a as OpportunityRow) ?? -1),
+      ) as OpportunityRow[];
       const profileRows = (profileResult.data ?? []) as BuyerReadinessProfileRow[];
       const currentReadinessProfile = profileRows[0] ?? null;
       setWorkspace((workspaceResult.data as WorkspaceRow | null) ?? null);

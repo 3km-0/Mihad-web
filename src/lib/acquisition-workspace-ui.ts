@@ -82,14 +82,28 @@ export function acquisitionMetadataNumber(item: AcquisitionUiOpportunity | null 
   return null;
 }
 
+/** URLs that look like broker identity images (logos, agent headshots, platform assets). */
+function isBrokerLogo(url: string): boolean {
+  return (
+    /\/assets\//i.test(url) ||
+    /my_bayut|bayut_logo|aqar_logo/i.test(url) ||
+    /\/logo[s]?\./i.test(url) ||
+    /\/(icon|brand|avatar|agent[-_]photo|broker[-_]photo|profile[-_]pic)\./i.test(url)
+  );
+}
+
 export function photoRefsForOpportunity(item: AcquisitionUiOpportunity | null | undefined): string[] {
   const value = acquisitionMetadataValue(item, ['photo_refs', 'photoRefs', 'photos', 'image_urls']);
   const refs = Array.isArray(value) ? value : [];
-  return [...new Set(refs
+  const cleaned = [...new Set(refs
     .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
     .filter((entry) => /^https?:\/\//i.test(entry))
     .filter((entry) => !/\.(svg|gif)(?:$|[?#])/i.test(entry))
-  )].slice(0, 8);
+  )];
+  // Real property photos first, suspected broker logos pushed to the end
+  const real = cleaned.filter((url) => !isBrokerLogo(url));
+  const logos = cleaned.filter((url) => isBrokerLogo(url));
+  return [...real, ...logos].slice(0, 8);
 }
 
 export function cleanListingTitle(value: string | null | undefined): string | null {
