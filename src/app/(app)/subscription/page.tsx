@@ -189,7 +189,7 @@ export default function SubscriptionPage() {
 
   const getPrice = (plan: SubscriptionPlan): number | null => {
     if (plan.tier === 'team') return null;
-    if (plan.tier === 'pro') return billingPeriod === 'monthly' ? 299 : 2999;
+    if (plan.tier === 'pro') return billingPeriod === 'monthly' ? 199 : 1990;
     return billingPeriod === 'monthly' ? plan.price_monthly_sar : plan.price_yearly_sar;
   };
 

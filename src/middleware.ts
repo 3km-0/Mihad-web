@@ -68,7 +68,21 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/ask', '/workspaces', '/documents', '/notes', '/search', '/tasks', '/settings'];
+  const protectedPaths = [
+    '/ask',
+    '/automations',
+    '/integrations',
+    '/onboarding',
+    '/organization',
+    '/portfolio',
+    '/subscription',
+    '/workspaces',
+    '/documents',
+    '/notes',
+    '/search',
+    '/tasks',
+    '/settings',
+  ];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
@@ -79,6 +93,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  const isOnboardingPath = request.nextUrl.pathname.startsWith('/onboarding');
+  const appPathsRequiringOnboarding = protectedPaths.filter((path) => path !== '/onboarding');
+  const isAppPathRequiringOnboarding = appPathsRequiringOnboarding.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
+  if (user && (isOnboardingPath || isAppPathRequiringOnboarding)) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_completed_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    const onboardingComplete = Boolean(profile?.onboarding_completed_at);
+
+    if (!onboardingComplete && isAppPathRequiringOnboarding) {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
+    }
+
+    if (onboardingComplete && isOnboardingPath) {
+      return NextResponse.redirect(new URL('/workspaces', request.url));
+    }
+  }
+
   // Redirect authenticated users away from auth pages
   const authPaths = ['/auth/login', '/auth/signup'];
   const isAuthPath = authPaths.some((path) =>
@@ -86,7 +123,12 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isAuthPath && user) {
-    return NextResponse.redirect(new URL('/workspaces', request.url));
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_completed_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    return NextResponse.redirect(new URL(profile?.onboarding_completed_at ? '/workspaces' : '/onboarding', request.url));
   }
 
   // Auto-set Arabic for first-time GCC visitors.

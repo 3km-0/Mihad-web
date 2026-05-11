@@ -2,6 +2,23 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 
+async function getPostAuthRedirect(origin: string, fallback = '/workspaces') {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return `${origin}${fallback}`;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarding_completed_at')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  return profile?.onboarding_completed_at ? `${origin}${fallback}` : `${origin}/onboarding`;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
@@ -17,7 +34,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.redirect(`${origin}/auth/verify?error=invalid_link`);
     }
-    return NextResponse.redirect(`${origin}/workspaces`);
+    return NextResponse.redirect(await getPostAuthRedirect(origin));
   }
 
   if (code) {
@@ -84,5 +101,5 @@ export async function GET(request: NextRequest) {
   if (integration === 'google_drive' || integration === 'onedrive') {
     return NextResponse.redirect(`${origin}/settings`);
   }
-  return NextResponse.redirect(`${origin}/workspaces`);
+  return NextResponse.redirect(await getPostAuthRedirect(origin));
 }

@@ -4,6 +4,16 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button, Input, Card } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
+import {
+  assetTypes,
+  createAcquisitionWorkspace,
+  renovationAppetites,
+  riskOptions,
+  splitList,
+  strategyTypes,
+  timelineOptions,
+  optionalNumber,
+} from '@/lib/acquisition-workspace';
 import type { Workspace } from '@/types/database';
 
 interface WorkspaceModalProps {
@@ -11,26 +21,6 @@ interface WorkspaceModalProps {
   initialParentFolderId?: string | null;
   onClose: () => void;
   onSaved: () => void;
-}
-
-const assetTypes = ['villa', 'townhouse', 'apartment', 'building', 'land', 'mixed_use'] as const;
-const strategyTypes = ['buy_renovate_rent', 'buy_renovate_sell', 'income_hold', 'family_office', 'opportunistic'] as const;
-const renovationAppetites = ['light', 'medium', 'heavy', 'avoid'] as const;
-const timelineOptions = ['now', '30_days', '90_days', 'six_months'] as const;
-const riskOptions = ['conservative', 'balanced', 'opportunistic'] as const;
-
-function splitList(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function optionalNumber(value: string) {
-  const normalized = value.replace(/[^\d.]/g, '');
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSaved }: WorkspaceModalProps) {
@@ -132,55 +122,14 @@ export function WorkspaceModal({ workspace, initialParentFolderId, onClose, onSa
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const summary = description.trim() || generatedBrief;
-        const createdAt = new Date().toISOString();
-        const { data: createdWorkspace, error } = await supabase
-          .from('workspaces')
-          .insert({
-            name: name.trim(),
-            description: summary || null,
-            analysis_brief: generatedBrief || summary || null,
-            workspace_type: 'project',
-            icon: 'scope',
-            color: '#B7F34A',
-            parent_folder_id: initialParentFolderId || null,
-            owner_id: user.id,
-            status: 'active',
-            preparation_status: 'seeded',
-            preparation_metadata: {
-              seed_source: 'acquisition_workspace_creation_form',
-              seeded_at: createdAt,
-              product_model: 'Mandate -> Opportunity -> Screening -> Acquisition Workspace -> Coordination -> Decision',
-              living_interface_state: 'pending_snapshot',
-              buy_box: buyBox,
-            },
-          })
-          .select('id')
-          .single();
-
-        if (error) throw error;
-
-        const mandateResult = await supabase.from('acquisition_mandates').insert({
-          workspace_id: createdWorkspace.id,
-          user_id: user.id,
-          title: name.trim(),
-          status: 'active',
-          buy_box_json: buyBox,
-          target_locations_json: buyBox.districts.length ? buyBox.districts : [buyBox.city || 'Riyadh'],
-          budget_range_json: {
-            min: buyBox.budget_min_sar,
-            max: buyBox.budget_max_sar,
-            currency: 'SAR',
-          },
-          risk_appetite: buyBox.risk_appetite,
-          excluded_criteria_json: buyBox.avoid,
-          confidence_json: {
-            intake_source: 'workspace_creation_form',
-            basis_label: 'investor_provided',
-          },
+        await createAcquisitionWorkspace(supabase, {
+          userId: user.id,
+          name,
+          description: description || generatedBrief,
+          parentFolderId: initialParentFolderId || null,
+          buyBox,
+          seedSource: 'acquisition_workspace_creation_form',
         });
-
-        if (mandateResult.error) throw mandateResult.error;
       }
 
       onSaved();

@@ -64,7 +64,6 @@ export function MoyasarTrialSetupForm({
           month: expiryMonth.trim(),
           year: expiryYear.trim(),
           cvc: cvc.trim(),
-          save_only: true,
           callback_url: callbackUrl,
         }),
       });
