@@ -1,7 +1,7 @@
 # Zohal Web
 
 Status: Active
-Last reviewed: 2026-04-26
+Last reviewed: 2026-05-11
 
 Web companion for the Zohal document and acquisition workspace platform. Built
 with Next.js 15, React 19, TypeScript, Tailwind, next-intl, and Supabase SSR
@@ -44,7 +44,24 @@ reset.
 - operator and Ask flows
 - settings, billing, and subscription UI
 - Living Interface publication controls for the active `market` family
+- Acquisition Report creation and weekly report orchestration through the GCP
+  backend
 - web-side GCP backend service code under `services/zohal-backend/`
+
+## Acquisition Report Backend Lane
+
+`services/zohal-backend` owns the Acquisition Report API aliases:
+
+- `POST /api/acquisition/v1/workspaces/:workspaceId/acquisition-reports`
+- `POST /api/acquisition/v1/acquisition-reports/:reportId/notes`
+- compatibility routes under `/deal-desk`
+- internal weekly orchestration under `/internal/acquisition/reports/weekly`
+
+The report lane keeps Supabase report records and Cloudflare delivery/proof
+URLs, but it is deterministic presentation data, not arbitrary AI-generated UI
+code. Default reports are public-unlisted, rank by `investment_score` when
+available, and default to the top 5 deals unless structured preferences say
+otherwise.
 
 ## Commands
 
