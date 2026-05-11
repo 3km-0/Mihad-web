@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "smoke:acquisition:e2e": "node scripts/acquisition-e2e-smoke.mjs",
-    "smoke:acquisition:deal-desk": "node scripts/acquisition-deal-desk-smoke.mjs",
+    "smoke:acquisition:deal-desk": "ACQUISITION_SMOKE_REPORT_ENDPOINT=deal-desk node scripts/acquisition-deal-desk-smoke.mjs",
+    "smoke:acquisition-report": "ACQUISITION_SMOKE_REPORT_ENDPOINT=acquisition-reports node scripts/acquisition-deal-desk-smoke.mjs",
     "test": "node --test"
   },
   "dependencies": {

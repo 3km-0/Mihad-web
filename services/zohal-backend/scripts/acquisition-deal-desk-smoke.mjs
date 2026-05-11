@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// End-to-end Deal Desk API smoke against a running zohal-backend service.
+// End-to-end Acquisition Report API smoke against a running zohal-backend service.
 //
 // Required:
 //   ACQUISITION_SMOKE_BASE_URL=http://localhost:8080
@@ -14,9 +14,12 @@ const baseUrl = String(process.env.ACQUISITION_SMOKE_BASE_URL || "http://localho
 const workspaceId = String(process.env.ACQUISITION_SMOKE_WORKSPACE_ID || "").trim();
 const mandateId = String(process.env.ACQUISITION_SMOKE_MANDATE_ID || "").trim();
 const token = String(process.env.INTERNAL_FUNCTION_JWT || process.env.INTERNAL_API_TOKEN || "").trim();
+const reportEndpoint = String(process.env.ACQUISITION_SMOKE_REPORT_ENDPOINT || "acquisition-reports").trim() === "deal-desk"
+  ? "deal-desk"
+  : "acquisition-reports";
 
 function fail(message) {
-  process.stderr.write(`[deal-desk-smoke] FAIL - ${message}\n`);
+  process.stderr.write(`[acquisition-report-smoke] FAIL - ${message}\n`);
   process.exit(1);
 }
 
@@ -65,7 +68,7 @@ async function probeRoute(baseUrl, routePath, cookie) {
   const html = await response.text().catch(() => "");
   if (!response.ok) fail(`${routePath || "/"} returned HTTP ${response.status}`);
   if (!html.includes("data-evidence-id")) fail(`${routePath || "/"} is missing evidence markers`);
-  if (!html.includes("zdd-shell")) fail(`${routePath || "/"} is missing the Deal Desk Vector shell`);
+  if (!html.includes("zdd-shell")) fail(`${routePath || "/"} is missing the Acquisition Report shell`);
 }
 
 const opportunityIds = String(process.env.ACQUISITION_SMOKE_OPPORTUNITY_IDS || "")
@@ -73,44 +76,47 @@ const opportunityIds = String(process.env.ACQUISITION_SMOKE_OPPORTUNITY_IDS || "
   .map((item) => item.trim())
   .filter(Boolean);
 
-process.stdout.write(`[deal-desk-smoke] creating Deal Desk for workspace ${workspaceId}\n`);
-const created = await request(`/api/acquisition/v1/workspaces/${encodeURIComponent(workspaceId)}/deal-desk`, {
+process.stdout.write(`[acquisition-report-smoke] creating Acquisition Report for workspace ${workspaceId}\n`);
+const created = await request(`/api/acquisition/v1/workspaces/${encodeURIComponent(workspaceId)}/${reportEndpoint}`, {
   ...(mandateId ? { mandate_id: mandateId } : {}),
   ...(opportunityIds.length ? { opportunity_ids: opportunityIds } : {}),
   language: "en",
-  presentation_instruction: "Smoke proof: private mandate report with shortlist, scenarios, renovation exposure, notes, and proof.",
+  top_n: 5,
+  presentation_instruction: "Smoke proof: weekly acquisition report with shortlist, scenarios, renovation exposure, notes, and proof.",
   delivery_hint: "smoke",
 });
 
 const reportId = created.report_id || created.data?.report_id;
 const status = created.status || created.data?.status || "unknown";
-const liveUrl = created.live_url || created.data?.live_url || "";
+const liveUrl = created.report_url || created.data?.report_url || created.live_url || created.data?.live_url || "";
 const redeemUrl = created.redeem_url || created.data?.redeem_url || "";
 if (!reportId) fail(`missing report_id in response: ${JSON.stringify(created)}`);
+if ((created.artifact_kind || created.data?.artifact_kind) !== "acquisition_report") {
+  fail(`unexpected artifact_kind: ${JSON.stringify(created)}`);
+}
 if ((created.surface_family || created.data?.surface_family) !== "deal_desk") {
   fail(`unexpected surface_family: ${JSON.stringify(created)}`);
 }
 if (status !== "private_live") fail(`expected private_live status, got ${status}`);
 if (!liveUrl) fail(`missing live_url in response: ${JSON.stringify(created)}`);
-if (!redeemUrl) fail(`missing redeem_url in response: ${JSON.stringify(created)}`);
-process.stdout.write(`[deal-desk-smoke] report_id=${reportId} status=${status}\n`);
-process.stdout.write(`[deal-desk-smoke] live_url=${liveUrl}\n`);
+process.stdout.write(`[acquisition-report-smoke] report_id=${reportId} status=${status}\n`);
+process.stdout.write(`[acquisition-report-smoke] report_url=${liveUrl}\n`);
 
 await probeRoute(liveUrl, "", null);
-process.stdout.write("[deal-desk-smoke] PASS - direct live URL renders without an access cookie\n");
+process.stdout.write("[acquisition-report-smoke] PASS - direct report URL renders without an access cookie\n");
 
 const session = await redeemSession(redeemUrl, liveUrl);
 for (const routePath of ["", "/opportunities", "/compare", "/scenario-lab", "/renovation", "/proof", "/notes"]) {
   await probeRoute(session.baseUrl, routePath, session.cookie);
 }
-process.stdout.write("[deal-desk-smoke] PASS - redeem URL renders all Deal Desk routes with evidence markers\n");
+process.stdout.write("[acquisition-report-smoke] PASS - all Acquisition Report routes render with evidence markers\n");
 
-const note = await request(`/api/acquisition/v1/deal-desk/${encodeURIComponent(reportId)}/notes`, {
+const note = await request(`/api/acquisition/v1/acquisition-reports/${encodeURIComponent(reportId)}/notes`, {
   note_kind: "preference",
   body: "Smoke note: preserve proof and prefer simpler tenancy stories next report.",
-  viewer_ref: "deal-desk-smoke",
+  viewer_ref: "acquisition-report-smoke",
 });
 if (!(note.note?.id || note.data?.note?.id)) {
   fail(`missing note id in response: ${JSON.stringify(note)}`);
 }
-process.stdout.write(`[deal-desk-smoke] PASS - note stored for report ${reportId}\n`);
+process.stdout.write(`[acquisition-report-smoke] PASS - note stored for report ${reportId}\n`);

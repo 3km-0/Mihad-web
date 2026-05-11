@@ -74,6 +74,11 @@ class Query {
     return this;
   }
 
+  in(field, values) {
+    this.filters.push({ field, values: new Set(values || []), op: "in" });
+    return this;
+  }
+
   order() {
     return this;
   }
@@ -84,7 +89,10 @@ class Query {
   }
 
   _matches(row) {
-    return this.filters.every((filter) => row[filter.field] === filter.value);
+    return this.filters.every((filter) => {
+      if (filter.op === "in") return filter.values.has(row[filter.field]);
+      return row[filter.field] === filter.value;
+    });
   }
 
   _rows() {
@@ -339,6 +347,108 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   assert(
     supabase.db.acquisition_claims.some((claim) => claim.opportunity_id === promoted.opportunity.id),
   );
+});
+
+test("acquisition report payload ranks by investment score and structured top_n", async () => {
+  const supabase = createMockSupabase({
+    acquisition_mandates: [{
+      id: "mandate_1",
+      workspace_id: "ws_1",
+      status: "active",
+      title: "North Riyadh villas",
+      buy_box_json: { property_type: "villa" },
+      target_locations_json: ["Riyadh"],
+      budget_range_json: { max: 5000000 },
+    }],
+    acquisition_search_runs: [],
+    acquisition_opportunities: [
+      {
+        id: "opp_fit",
+        workspace_id: "ws_1",
+        title: "High fit, lower IQS",
+        stage: "workspace_created",
+        metadata_json: { fit_score: 95, investment_score: 74, asking_price: 3300000 },
+      },
+      {
+        id: "opp_iqs",
+        workspace_id: "ws_1",
+        title: "Best investment score",
+        stage: "watch",
+        metadata_json: { fit_score: 70, investment_score: 93, asking_price: 3000000 },
+      },
+      {
+        id: "opp_tail",
+        workspace_id: "ws_1",
+        title: "Third option",
+        stage: "workspace_created",
+        metadata_json: { fit_score: 82, investment_score: 61, asking_price: 3100000 },
+      },
+    ],
+    acquisition_candidate_opportunities: [],
+    acquisition_claims: [],
+    acquisition_diligence_items: [],
+    acquisition_scenarios: [],
+    acquisition_deal_desk_notes: [],
+  });
+
+  const payload = await __test.buildAcquisitionReportPayload(supabase, "ws_1", {
+    top_n: 2,
+    presentation: { include_ai_analysis: false, hidden_sections: ["renovation"] },
+  });
+
+  assert.equal(payload.artifact_kind, "acquisition_report");
+  assert.equal(payload.report.title, "North Riyadh villas Acquisition Report");
+  assert.equal(payload.presentation.top_n, 2);
+  assert.equal(payload.presentation.include_ai_analysis, false);
+  assert.deepEqual(payload.ranked_candidates.map((row) => row.title), [
+    "Best investment score",
+    "High fit, lower IQS",
+  ]);
+});
+
+test("weekly acquisition report creation is idempotent by mandate period", async () => {
+  const supabase = createMockSupabase({
+    acquisition_mandates: [{
+      id: "mandate_1",
+      workspace_id: "ws_1",
+      status: "active",
+      title: "Weekly mandate",
+      buy_box_json: {},
+      target_locations_json: [],
+      budget_range_json: {},
+    }],
+    acquisition_search_runs: [],
+    acquisition_opportunities: [{
+      id: "opp_1",
+      workspace_id: "ws_1",
+      title: "Weekly candidate",
+      stage: "workspace_created",
+      metadata_json: { investment_score: 88, asking_price: 3000000 },
+    }],
+    acquisition_candidate_opportunities: [],
+    acquisition_claims: [],
+    acquisition_diligence_items: [],
+    acquisition_scenarios: [],
+    acquisition_deal_desk_reports: [],
+    acquisition_deal_desk_notes: [],
+  });
+
+  const first = await __test.createAcquisitionReport(supabase, "ws_1", {
+    mandate_id: "mandate_1",
+    report_period: "2026-W20",
+    schedule_kind: "weekly",
+  }, { requestId: "req_1", idempotent: true });
+  const second = await __test.createAcquisitionReport(supabase, "ws_1", {
+    mandate_id: "mandate_1",
+    report_period: "2026-W20",
+    schedule_kind: "weekly",
+  }, { requestId: "req_2", idempotent: true });
+
+  assert.equal(first.report_id, second.report_id);
+  assert.equal(second.idempotent, true);
+  assert.equal(supabase.db.acquisition_deal_desk_reports.length, 1);
+  assert.equal(supabase.db.acquisition_deal_desk_reports[0].artifact_kind, "acquisition_report");
+  assert.equal(supabase.db.acquisition_deal_desk_reports[0].presentation_json.top_n, 5);
 });
 
 test("manual listing intake records manual source metadata", async () => {
