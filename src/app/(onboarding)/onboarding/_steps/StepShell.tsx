@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Button, Card } from '@/components/ui';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +17,8 @@ export function StepShell({
   continueLabel = 'Continue',
   backLabel = 'Back',
   loading = false,
+  backgroundImageSrc,
+  onCancel,
   onBack,
   onContinue,
   children,
@@ -29,14 +33,41 @@ export function StepShell({
   continueLabel?: string;
   backLabel?: string;
   loading?: boolean;
+  backgroundImageSrc?: string;
+  onCancel?: () => void;
   onBack: () => void;
   onContinue?: () => void;
   children: React.ReactNode;
 }) {
   const progress = Math.round(((step + 1) / totalSteps) * 100);
+  const [imageAvailable, setImageAvailable] = useState(Boolean(backgroundImageSrc));
+
+  useEffect(() => {
+    setImageAvailable(Boolean(backgroundImageSrc));
+  }, [backgroundImageSrc]);
 
   return (
     <div className="min-h-screen overflow-hidden bg-background text-text">
+      {backgroundImageSrc && imageAvailable ? (
+        <div className="pointer-events-none fixed inset-0 opacity-45">
+          <Image
+            src={backgroundImageSrc}
+            alt=""
+            aria-hidden="true"
+            fill
+            sizes="100vw"
+            className="object-cover grayscale-[15%] saturate-[75%] brightness-[70%] contrast-[105%]"
+            onError={() => setImageAvailable(false)}
+          />
+        </div>
+      ) : null}
+      {backgroundImageSrc && imageAvailable ? (
+        <>
+          <div className="pointer-events-none fixed inset-0 bg-background/45" />
+          <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(90deg,rgba(12,12,12,0.58)_0%,rgba(12,12,12,0.34)_42%,rgba(12,12,12,0.58)_100%)]" />
+          <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_45%,rgba(212,175,55,0.08),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(143,116,75,0.10),transparent_32%)]" />
+        </>
+      ) : null}
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(183,243,74,0.18),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(255,199,89,0.12),transparent_28%)]" />
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8 lg:px-10">
         <header className="flex items-center justify-between gap-4">
@@ -44,12 +75,19 @@ export function StepShell({
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">Zohal</p>
             <p className="mt-1 text-sm text-text-soft">Acquisition onboarding</p>
           </div>
-          <div className="min-w-[160px] text-right">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
-              Step {step + 1} of {totalSteps}
-            </p>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-alt">
-              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+          <div className="flex items-center gap-4">
+            {onCancel ? (
+              <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
+                Exit onboarding
+              </Button>
+            ) : null}
+            <div className="min-w-[160px] text-right">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
+                Step {step + 1} of {totalSteps}
+              </p>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-alt">
+                <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+              </div>
             </div>
           </div>
         </header>

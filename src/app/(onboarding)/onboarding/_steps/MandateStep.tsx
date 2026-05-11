@@ -17,11 +17,11 @@ export function MandateStep({ data, setData }: StepProps) {
   return (
     <div className="space-y-5">
       <Input
-        label="Districts"
+        label="Districts (optional)"
         placeholder="Hittin, Narjis, Malqa"
         value={data.districts}
         onChange={(event) => setData({ districts: event.target.value })}
-        hint="Separate districts with commas."
+        hint="Leave empty to screen across the whole selected city."
       />
       <ChoiceGrid options={strategies} value={data.strategy} onChange={(strategy) => setData({ strategy: strategy as StrategyType })} />
     </div>

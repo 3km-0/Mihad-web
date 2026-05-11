@@ -14,6 +14,10 @@ function twilioAuthHeader(accountSid: string, authToken: string) {
   return `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`;
 }
 
+function normalizeChannel(value: unknown) {
+  return value === 'sms' ? 'sms' : 'whatsapp';
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -25,8 +29,9 @@ export async function POST(request: Request) {
     return jsonError('Not authenticated', 401);
   }
 
-  const body = (await request.json().catch(() => null)) as { phone?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { phone?: unknown; channel?: unknown } | null;
   const phone = normalizePhone(body?.phone);
+  const channel = normalizeChannel(body?.channel);
   if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
     return jsonError('Enter a valid phone number in international format.', 400, 'invalid_phone');
   }
@@ -46,14 +51,14 @@ export async function POST(request: Request) {
     },
     body: new URLSearchParams({
       To: phone,
-      Channel: 'sms',
+      Channel: channel,
     }),
   });
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    return jsonError(data?.message || 'Failed to send verification code.', response.status);
+    return jsonError(data?.message || `Failed to send ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} verification code.`, response.status);
   }
 
-  return NextResponse.json({ success: true, status: data?.status || 'pending' });
+  return NextResponse.json({ success: true, status: data?.status || 'pending', channel });
 }

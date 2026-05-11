@@ -26,6 +26,26 @@ function normalizeStoredPersona(value: unknown) {
   return normalized ? 'operator' : null;
 }
 
+function getInternalBackendToken() {
+  return (
+    process.env.INTERNAL_FUNCTION_JWT ||
+    process.env.INTERNAL_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    ''
+  ).trim();
+}
+
+function internalBackendHeaders() {
+  const token = getInternalBackendToken();
+  if (!token) return null;
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    apikey: token,
+    'x-internal-function-jwt': token,
+  };
+}
+
 async function findExistingOnboardingWorkspace(service: Awaited<ReturnType<typeof createServiceClient>>, userId: string) {
   const { data: workspace } = await service
     .from('workspaces')
@@ -50,6 +70,62 @@ async function findExistingOnboardingWorkspace(service: Awaited<ReturnType<typeo
     workspaceId: workspace.id as string,
     mandateId: mandate?.id as string | undefined,
   };
+}
+
+async function triggerSearchRunProcessing(searchRunId: string) {
+  const headers = internalBackendHeaders();
+  if (!headers) return { attempted: false, error: 'Internal backend token is not configured.' };
+
+  const response = await fetch(zohalBackendUrl('/internal/acquisition/search-run'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ search_run_id: searchRunId }),
+    cache: 'no-store',
+  });
+  const payload = await response.json().catch(() => ({}));
+  return {
+    attempted: true,
+    ok: response.ok,
+    status: response.status,
+    payload,
+    error: response.ok ? null : String(payload?.message || payload?.error || `Search processor returned ${response.status}`),
+  };
+}
+
+async function createSearchRunFallback(
+  service: Awaited<ReturnType<typeof createServiceClient>>,
+  input: {
+    workspaceId: string;
+    mandateId: string | null;
+    userId: string;
+    queryDescription: string;
+    limits: Record<string, unknown>;
+  }
+) {
+  if (!input.mandateId) {
+    throw new Error('Workspace mandate is missing, so the search run cannot be created.');
+  }
+
+  const { data, error } = await service
+    .from('acquisition_search_runs')
+    .insert({
+      workspace_id: input.workspaceId,
+      mandate_id: input.mandateId,
+      user_id: input.userId,
+      status: 'queued',
+      trigger_kind: 'operator',
+      sources_json: ['aqar', 'bayut'],
+      query_description: input.queryDescription,
+      limits_json: input.limits,
+    })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to create onboarding search run.');
+  }
+
+  return data as Record<string, unknown>;
 }
 
 export async function POST(request: Request) {
@@ -119,29 +195,35 @@ export async function POST(request: Request) {
     buyBox.budget_max_sar ? `up to ${buyBox.budget_max_sar} SAR` : null,
     buyBox.strategy ? `for ${buyBox.strategy}` : null,
   ].filter(Boolean);
+  const queryDescription = instructionParts.join(' ');
+  const searchLimits = {
+    max_result_pages_per_source: 1,
+    max_detail_pages_per_source: 8,
+    per_source_timeout_ms: 45000,
+    per_run_timeout_ms: 120000,
+    retry_transient_failures: true,
+  };
 
   let searchPayload: Record<string, unknown> | null = null;
   let searchRunError: string | null = null;
+  let searchRunProcessing: Record<string, unknown> | null = null;
   try {
+    const headers = internalBackendHeaders();
+    if (!headers) {
+      throw new Error('Internal backend token is not configured.');
+    }
+
     const searchResponse = await fetch(
       zohalBackendUrl(`/api/acquisition/v1/workspaces/${workspaceId}/search-runs`),
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers,
         body: JSON.stringify({
-          query_description: instructionParts.join(' '),
-          sourcing_instruction: instructionParts.join(' '),
+          user_id: session.user.id,
+          query_description: queryDescription,
+          sourcing_instruction: queryDescription,
           sources: ['aqar', 'bayut'],
-          limits: {
-            max_result_pages_per_source: 1,
-            max_detail_pages_per_source: 8,
-            per_source_timeout_ms: 45000,
-            per_run_timeout_ms: 120000,
-            retry_transient_failures: true,
-          },
+          limits: searchLimits,
         }),
         cache: 'no-store',
       }
@@ -155,6 +237,39 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     searchRunError = error instanceof Error ? error.message : 'Search workflow request failed';
+  }
+
+  if (searchRunError) {
+    try {
+      const fallbackSearchRun = await createSearchRunFallback(service, {
+        workspaceId,
+        mandateId,
+        userId: session.user.id,
+        queryDescription,
+        limits: searchLimits,
+      });
+      searchPayload = { search_run: fallbackSearchRun, fallback: true };
+      searchRunError = null;
+    } catch (error) {
+      searchRunError = error instanceof Error ? error.message : 'Fallback search run creation failed';
+    }
+  }
+
+  const searchRun =
+    (searchPayload?.data as { search_run?: Record<string, unknown>; queue?: { enqueued?: boolean } } | undefined)?.search_run ||
+    (searchPayload?.search_run as Record<string, unknown> | undefined) ||
+    null;
+  const queue =
+    (searchPayload?.data as { queue?: { enqueued?: boolean } } | undefined)?.queue ||
+    (searchPayload?.queue as { enqueued?: boolean } | undefined) ||
+    null;
+  const searchRunId = typeof searchRun?.id === 'string' ? searchRun.id : '';
+
+  if (searchRunId && queue?.enqueued !== true) {
+    searchRunProcessing = await triggerSearchRunProcessing(searchRunId);
+    if (searchRunProcessing.error) {
+      searchRunError = String(searchRunProcessing.error);
+    }
   }
 
   const now = new Date().toISOString();
@@ -179,10 +294,8 @@ export async function POST(request: Request) {
     success: true,
     workspace_id: workspaceId,
     mandate_id: mandateId,
-    search_run:
-      (searchPayload?.data as { search_run?: unknown } | undefined)?.search_run ||
-      searchPayload?.search_run ||
-      null,
+    search_run: searchRun,
+    search_run_processing: searchRunProcessing,
     search_run_error: searchRunError,
   });
 }

@@ -22,6 +22,7 @@ const ONBOARDING_DRAFT_STORAGE_KEY = 'zohal_onboarding_draft_v1';
 const TOKEN_PENDING_RETRY_DELAYS_MS = [0, 2500, 4000, 6000];
 
 const initialData: OnboardingData = {
+  language: 'en',
   persona: 'self_serve_buyer',
   displayName: '',
   city: 'Riyadh',
@@ -30,8 +31,8 @@ const initialData: OnboardingData = {
   phoneVerified: false,
   assetType: 'villa',
   strategy: 'buy_renovate_rent',
-  budgetMin: '',
-  budgetMax: '',
+  budgetMin: '1500000',
+  budgetMax: '5000000',
   financing: '',
   districts: '',
   timeline: '90_days',
@@ -52,41 +53,49 @@ const steps = [
     eyebrow: 'Buyer profile',
     title: 'Tell us who is buying.',
     subtitle: 'Set the account persona, buyer identity, and first market before the mandate is created.',
+    backgroundImageSrc: '/onboarding/profile.jpg',
   },
   {
     eyebrow: 'Phone verification',
     title: 'Verify your phone number.',
     subtitle: 'This protects the acquisition workflow and prepares the account for WhatsApp-ready coordination.',
+    backgroundImageSrc: '/onboarding/phone.jpg',
   },
   {
     eyebrow: 'Mandate focus',
     title: 'What should Zohal screen first?',
-    subtitle: 'Choose the asset, districts, and strategy that define the first acquisition search.',
+    subtitle: 'Choose the asset and strategy that define the first acquisition search. Districts are optional; empty means any suitable district in the selected city.',
+    backgroundImageSrc: '/onboarding/mandate.jpg',
   },
   {
     eyebrow: 'Budget',
     title: 'Set the working budget.',
     subtitle: 'The browser search will use this to filter candidates before deeper screening.',
+    backgroundImageSrc: '/onboarding/budget.jpg',
   },
   {
     eyebrow: 'Readiness',
     title: 'Define pace and risk.',
     subtitle: 'This helps separate urgent pursuits from watchlist candidates.',
+    backgroundImageSrc: '/onboarding/readiness.jpg',
   },
   {
     eyebrow: 'Workspace',
     title: 'Add preferences and name the workspace.',
     subtitle: 'These become the workspace brief and the first pass/watch filters.',
+    backgroundImageSrc: '/onboarding/workspace.jpg',
   },
   {
     eyebrow: 'Free trial',
     title: 'Start with one week free.',
     subtitle: 'No charge today. Your card is saved with Moyasar and only charged after the trial if you do not cancel.',
+    backgroundImageSrc: '/onboarding/trial.jpg',
   },
   {
     eyebrow: 'Launch',
     title: 'We are preparing your acquisition desk.',
     subtitle: 'Zohal is creating the workspace and triggering the first browser-backed search run.',
+    backgroundImageSrc: '/onboarding/launch.jpg',
   },
 ] as const;
 
@@ -192,13 +201,13 @@ export default function OnboardingPage() {
     renovation_appetite: data.renovationAppetite,
     must_haves: data.mustHaves,
     avoid: data.avoid,
-    notes: `Buyer entity: ${data.entityType}`,
+    notes: `Buyer entity: ${data.entityType}; onboarding language: ${data.language}`,
   }), [data]);
 
   const canContinue = useMemo(() => {
     if (step === 0) return Boolean(data.displayName.trim() && data.city.trim());
     if (step === 1) return data.phoneVerified;
-    if (step === 2) return Boolean(data.districts.trim());
+    if (step === 2) return true;
     if (step === 3) return Boolean(data.budgetMax.trim());
     if (step === 5) return Boolean(data.workspaceName.trim());
     if (step === 6) return data.trialActivated;
@@ -247,6 +256,10 @@ export default function OnboardingPage() {
     setStep((current) => Math.max(current - 1, 0));
   };
 
+  const cancelOnboarding = () => {
+    router.replace('/');
+  };
+
   const stepProps = { data, setData };
   const content = [
     <div key="profile" className="space-y-6">
@@ -281,6 +294,8 @@ export default function OnboardingPage() {
       canContinue={canContinue}
       continueLabel={step === 6 ? 'Create workspace' : 'Continue'}
       loading={submitting}
+      backgroundImageSrc={current.backgroundImageSrc}
+      onCancel={step === 7 ? undefined : cancelOnboarding}
       onBack={goBack}
       onContinue={step === 7 ? undefined : goNext}
     >

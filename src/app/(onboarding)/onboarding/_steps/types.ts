@@ -1,6 +1,7 @@
 import type { AssetType, RenovationAppetite, RiskOption, StrategyType, TimelineOption } from '@/lib/acquisition-workspace';
 
 export type OnboardingData = {
+  language: 'en' | 'ar';
   persona: string;
   displayName: string;
   city: string;
