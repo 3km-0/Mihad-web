@@ -470,9 +470,37 @@ function confidenceFor(item: OpportunityRow | null | undefined): string | null {
   return metadataString(item, ['confidence', 'confidence_label', 'screening_readiness']);
 }
 
+function rawScoreFor(item: OpportunityRow | null | undefined): number | null {
+  // Top-level keys (legacy demo seeds and explicitly written fields)
+  const topLevel = metadataNumber(item, ['score', 'fit_score', 'mandate_score']);
+  if (topLevel !== null) return topLevel;
+  // Nested path: metadata_json.screening.fit.score (Playwright-sourced opportunities)
+  const meta = item?.metadata_json as Record<string, unknown> | null | undefined;
+  const screening = meta?.screening as Record<string, unknown> | null | undefined;
+  const fit = screening?.fit as Record<string, unknown> | null | undefined;
+  const nested = fit?.score;
+  if (typeof nested === 'number' && Number.isFinite(nested)) return nested;
+  return null;
+}
+
 function scoreFor(item: OpportunityRow | null | undefined): string | null {
-  const score = metadataNumber(item, ['score', 'fit_score', 'mandate_score']);
+  const score = rawScoreFor(item);
   return score === null ? null : Math.round(score).toString();
+}
+
+const STAGE_PRIORITY: Record<string, number> = {
+  formal_diligence: 8, offer_submitted: 7, offer_drafted: 7, offer: 7,
+  negotiation: 6, visit_requested: 5, quote_requested: 5,
+  pursue: 4, needs_info: 3, workspace_created: 2, watch: 1, screening: 0,
+};
+
+function bestOpportunityId(rows: OpportunityRow[]): string | null {
+  if (!rows.length) return null;
+  return [...rows].sort((a, b) => {
+    const scoreDiff = (rawScoreFor(b) ?? 0) - (rawScoreFor(a) ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return (STAGE_PRIORITY[b.stage ?? ''] ?? 0) - (STAGE_PRIORITY[a.stage ?? ''] ?? 0);
+  })[0]?.id ?? null;
 }
 
 function sourceUrlFor(item: OpportunityRow | null | undefined): string | null {
@@ -1129,7 +1157,12 @@ export default function WorkspaceCockpitPage() {
       setReadinessProfile(currentReadinessProfile);
       setSearchRuns((searchRunsResult.data ?? []) as AcquisitionSearchRunRow[]);
       setDocumentCount(documentsResult.count ?? 0);
-      setSelectedOpportunityId((current) => current && opportunityRows.some((item) => item.id === current) ? current : null);
+      setSelectedOpportunityId((current) => {
+        // Keep the current selection if it still exists in the freshly-loaded list
+        if (current && opportunityRows.some((item) => item.id === current)) return current;
+        // Otherwise auto-select the best opportunity (highest fit score, then most advanced stage)
+        return bestOpportunityId(opportunityRows);
+      });
 
       const approvalsPromise = supabase
         .from('external_action_approvals')
