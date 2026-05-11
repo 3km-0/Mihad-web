@@ -471,15 +471,9 @@ function confidenceFor(item: OpportunityRow | null | undefined): string | null {
 }
 
 function rawScoreFor(item: OpportunityRow | null | undefined): number | null {
-  // Top-level keys (legacy demo seeds and explicitly written fields)
-  const topLevel = metadataNumber(item, ['score', 'fit_score', 'mandate_score']);
-  if (topLevel !== null) return topLevel;
-  // Nested path: metadata_json.screening.fit.score (Playwright-sourced opportunities)
   const meta = item?.metadata_json as Record<string, unknown> | null | undefined;
-  const screening = meta?.screening as Record<string, unknown> | null | undefined;
-  const fit = screening?.fit as Record<string, unknown> | null | undefined;
-  const nested = fit?.score;
-  if (typeof nested === 'number' && Number.isFinite(nested)) return nested;
+  const iqs = meta?.investment_score;
+  if (typeof iqs === 'number' && Number.isFinite(iqs)) return iqs;
   return null;
 }
 

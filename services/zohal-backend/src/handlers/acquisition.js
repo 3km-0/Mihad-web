@@ -15,6 +15,7 @@ import { createServiceClient } from "../runtime/supabase.js";
 import { runRenovationCapexAgent } from "../renovation/agent.js";
 import { assertWorkspaceWriteAccess } from "../renovation/catalog.js";
 import { runAndPersistUnderwriting } from "../underwriting/persistence.js";
+import { computeInvestmentScore } from "../market/investment-scorer.js";
 
 const SEARCH_TASK_QUEUE = String(
   process.env.GCP_ACQUISITION_SEARCH_TASK_QUEUE || "acquisition-search-runs",
@@ -1005,10 +1006,24 @@ async function screenCandidate(supabase, candidateId, options = {}) {
 
 async function promoteCandidate(supabase, candidateId) {
   const candidate = await fetchCandidate(supabase, candidateId);
+  const mandate = await fetchMandate(supabase, candidate.mandate_id).catch(() => null);
   const screening = candidate.screening_output_json && Object.keys(candidate.screening_output_json).length
     ? candidate.screening_output_json
-    : buildScreeningOutput(candidate, await fetchMandate(supabase, candidate.mandate_id));
+    : buildScreeningOutput(candidate, mandate);
   const title = candidate.title || "Acquisition opportunity";
+
+  // Compute Investment Quality Score (non-fatal: falls back to null on error)
+  let investmentScore = null;
+  let investmentScoreBreakdown = null;
+  try {
+    const iqs = await computeInvestmentScore({ candidate, mandate, supabase });
+    investmentScore = iqs.total;
+    investmentScoreBreakdown = iqs;
+  } catch (scoringErr) {
+    // Score computation is best-effort; never block promotion
+    console.warn(`[promoteCandidate] investment score failed for ${candidateId}: ${scoringErr?.message}`);
+  }
+
   const { data: opportunity, error: opportunityError } = await supabase
     .from("acquisition_opportunities")
     .insert({
@@ -1040,6 +1055,8 @@ async function promoteCandidate(supabase, candidateId) {
         confidence: screening.confidence,
         decision: screening.decision,
         contact_access: candidate.limited_evidence_snapshot_json?.contact_access || null,
+        investment_score: investmentScore,
+        investment_score_breakdown: investmentScoreBreakdown,
       },
     })
     .select("*")
