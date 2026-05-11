@@ -3,7 +3,7 @@
 import { MoyasarTrialSetupForm } from '@/components/payment/MoyasarTrialSetupForm';
 import type { StepProps } from './types';
 
-export function TrialStep({ data, setData }: StepProps) {
+export function TrialStep({ data, setData, error }: StepProps & { error?: string | null }) {
   const callbackUrl =
     typeof window === 'undefined'
       ? '/onboarding'
@@ -33,7 +33,14 @@ export function TrialStep({ data, setData }: StepProps) {
           Trial activated. You can create your workspace now.
         </div>
       ) : (
-        <MoyasarTrialSetupForm tier="pro" period="monthly" callbackUrl={callbackUrl} onTokenReady={activateTrial} />
+        <>
+          {error ? (
+            <div className="rounded-zohal border border-error/30 bg-error/10 p-3 text-sm text-error">
+              {error}
+            </div>
+          ) : null}
+          <MoyasarTrialSetupForm tier="pro" period="monthly" callbackUrl={callbackUrl} onTokenReady={activateTrial} />
+        </>
       )}
     </div>
   );

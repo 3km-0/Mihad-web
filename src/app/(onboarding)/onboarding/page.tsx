@@ -18,6 +18,8 @@ import { TrialStep } from './_steps/TrialStep';
 import { CreatingStep } from './_steps/CreatingStep';
 import type { OnboardingData } from './_steps/types';
 
+const ONBOARDING_DRAFT_STORAGE_KEY = 'zohal_onboarding_draft_v1';
+
 const initialData: OnboardingData = {
   persona: 'self_serve_buyer',
   displayName: '',
@@ -43,13 +45,8 @@ const initialData: OnboardingData = {
 const steps = [
   {
     eyebrow: 'Buyer profile',
-    title: 'Who are you here as?',
-    subtitle: 'This helps Zohal shape the first acquisition workspace around the way you make decisions.',
-  },
-  {
-    eyebrow: 'Identity',
     title: 'Tell us who is buying.',
-    subtitle: 'Keep account identity, buyer identity, and the mandate separate from day one.',
+    subtitle: 'Set the account persona, buyer identity, and first market before the mandate is created.',
   },
   {
     eyebrow: 'Phone verification',
@@ -57,9 +54,9 @@ const steps = [
     subtitle: 'This protects the acquisition workflow and prepares the account for WhatsApp-ready coordination.',
   },
   {
-    eyebrow: 'Asset focus',
-    title: 'What kind of asset should Zohal screen first?',
-    subtitle: 'Choose the acquisition target that best matches your first mandate.',
+    eyebrow: 'Mandate focus',
+    title: 'What should Zohal screen first?',
+    subtitle: 'Choose the asset, districts, and strategy that define the first acquisition search.',
   },
   {
     eyebrow: 'Budget',
@@ -67,24 +64,14 @@ const steps = [
     subtitle: 'The browser search will use this to filter candidates before deeper screening.',
   },
   {
-    eyebrow: 'Mandate',
-    title: 'Where should the search focus?',
-    subtitle: 'Districts and strategy turn a broad market into a usable acquisition mandate.',
-  },
-  {
     eyebrow: 'Readiness',
     title: 'Define pace and risk.',
     subtitle: 'This helps separate urgent pursuits from watchlist candidates.',
   },
   {
-    eyebrow: 'Preferences',
-    title: 'Add must-haves and exclusions.',
-    subtitle: 'These keep the search focused and make pass/watch decisions more explainable.',
-  },
-  {
     eyebrow: 'Workspace',
-    title: 'Name your acquisition workspace.',
-    subtitle: 'This workspace will hold the mandate, candidates, evidence, notes, and decisions.',
+    title: 'Add preferences and name the workspace.',
+    subtitle: 'These become the workspace brief and the first pass/watch filters.',
   },
   {
     eyebrow: 'Free trial',
@@ -103,6 +90,7 @@ export default function OnboardingPage() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [data, setDataState] = useState<OnboardingData>(initialData);
+  const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -111,12 +99,44 @@ export default function OnboardingPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = sessionStorage.getItem(ONBOARDING_DRAFT_STORAGE_KEY);
+    if (!raw) {
+      setHydrated(true);
+      return;
+    }
+    try {
+      const draft = JSON.parse(raw) as { data?: Partial<OnboardingData>; step?: number };
+      if (draft.data) {
+        setDataState((current) => ({ ...current, ...draft.data }));
+      }
+      if (typeof draft.step === 'number') {
+        setStep(Math.max(0, Math.min(draft.step, steps.length - 2)));
+      }
+    } catch {
+      sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !hydrated) return;
+    sessionStorage.setItem(ONBOARDING_DRAFT_STORAGE_KEY, JSON.stringify({ data, step }));
+  }, [data, hydrated, step]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     if (typeof window === 'undefined' || searchParams.get('trial_return') !== '1') return;
     const raw = sessionStorage.getItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      setStep(6);
+      return;
+    }
 
     try {
       const pending = JSON.parse(raw) as { tokenId?: string };
+      setStep(6);
       if (!pending.tokenId) return;
       fetch('/api/onboarding/trial/activate', {
         method: 'POST',
@@ -128,12 +148,17 @@ export default function OnboardingPage() {
           if (!response.ok) throw new Error(payload?.error || 'Failed to start trial');
           sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
           setData({ trialActivated: true });
+          setStep(6);
         })
-        .catch((error) => setSubmitError(error instanceof Error ? error.message : 'Failed to start trial'));
+        .catch((error) => {
+          setStep(6);
+          setSubmitError(error instanceof Error ? error.message : 'Failed to start trial');
+        });
     } catch {
       sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+      setStep(6);
     }
-  }, [searchParams, setData]);
+  }, [hydrated, searchParams, setData]);
 
   const buyBox = useMemo<BuyBoxInput>(() => ({
     city: data.city,
@@ -152,19 +177,19 @@ export default function OnboardingPage() {
   }), [data]);
 
   const canContinue = useMemo(() => {
-    if (step === 1) return Boolean(data.displayName.trim() && data.city.trim());
-    if (step === 2) return data.phoneVerified;
-    if (step === 4) return Boolean(data.budgetMax.trim());
-    if (step === 5) return Boolean(data.districts.trim());
-    if (step === 8) return Boolean(data.workspaceName.trim());
-    if (step === 9) return data.trialActivated;
+    if (step === 0) return Boolean(data.displayName.trim() && data.city.trim());
+    if (step === 1) return data.phoneVerified;
+    if (step === 2) return Boolean(data.districts.trim());
+    if (step === 3) return Boolean(data.budgetMax.trim());
+    if (step === 5) return Boolean(data.workspaceName.trim());
+    if (step === 6) return data.trialActivated;
     return true;
   }, [data, step]);
 
   const completeOnboarding = async () => {
     setSubmitting(true);
     setSubmitError(null);
-    setStep(10);
+    setStep(7);
     try {
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
@@ -178,6 +203,10 @@ export default function OnboardingPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || 'Failed to complete onboarding');
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+        sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+      }
       router.replace(`/workspaces/${payload.workspace_id}`);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to complete onboarding');
@@ -187,7 +216,7 @@ export default function OnboardingPage() {
   };
 
   const goNext = () => {
-    if (step === 9) {
+    if (step === 6) {
       completeOnboarding();
       return;
     }
@@ -201,16 +230,22 @@ export default function OnboardingPage() {
 
   const stepProps = { data, setData };
   const content = [
-    <PersonaStep key="persona" {...stepProps} />,
-    <IdentityStep key="identity" {...stepProps} />,
+    <div key="profile" className="space-y-6">
+      <PersonaStep {...stepProps} />
+      <IdentityStep {...stepProps} />
+    </div>,
     <PhoneStep key="phone" {...stepProps} />,
-    <AssetTypeStep key="asset" {...stepProps} />,
+    <div key="mandate" className="space-y-6">
+      <AssetTypeStep {...stepProps} />
+      <MandateStep {...stepProps} />
+    </div>,
     <BudgetStep key="budget" {...stepProps} />,
-    <MandateStep key="mandate" {...stepProps} />,
     <TimelineStep key="timeline" {...stepProps} />,
-    <PreferencesStep key="preferences" {...stepProps} />,
-    <WorkspaceNameStep key="workspace" {...stepProps} />,
-    <TrialStep key="trial" {...stepProps} />,
+    <div key="workspace" className="space-y-6">
+      <PreferencesStep {...stepProps} />
+      <WorkspaceNameStep {...stepProps} />
+    </div>,
+    <TrialStep key="trial" {...stepProps} error={submitError} />,
     <CreatingStep key="creating" error={submitError} />,
   ];
 
@@ -225,10 +260,10 @@ export default function OnboardingPage() {
       totalSteps={steps.length}
       canGoBack={step > 0 && !submitting}
       canContinue={canContinue}
-      continueLabel={step === 9 ? 'Create workspace' : 'Continue'}
+      continueLabel={step === 6 ? 'Create workspace' : 'Continue'}
       loading={submitting}
       onBack={goBack}
-      onContinue={step === 10 ? undefined : goNext}
+      onContinue={step === 7 ? undefined : goNext}
     >
       {content[step]}
     </StepShell>
