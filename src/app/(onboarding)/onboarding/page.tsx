@@ -19,6 +19,7 @@ import { CreatingStep } from './_steps/CreatingStep';
 import type { OnboardingData } from './_steps/types';
 
 const ONBOARDING_DRAFT_STORAGE_KEY = 'zohal_onboarding_draft_v1';
+const TOKEN_PENDING_RETRY_DELAYS_MS = [0, 2500, 4000, 6000];
 
 const initialData: OnboardingData = {
   persona: 'self_serve_buyer',
@@ -41,6 +42,10 @@ const initialData: OnboardingData = {
   workspaceName: '',
   trialActivated: false,
 };
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const steps = [
   {
@@ -138,22 +143,36 @@ export default function OnboardingPage() {
       const pending = JSON.parse(raw) as { tokenId?: string };
       setStep(6);
       if (!pending.tokenId) return;
-      fetch('/api/onboarding/trial/activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: pending.tokenId }),
-      })
-        .then(async (response) => {
+      (async () => {
+        for (let attempt = 0; attempt < TOKEN_PENDING_RETRY_DELAYS_MS.length; attempt += 1) {
+          const delayMs = TOKEN_PENDING_RETRY_DELAYS_MS[attempt];
+          if (delayMs > 0) {
+            await sleep(delayMs);
+          }
+
+          const response = await fetch('/api/onboarding/trial/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token_id: pending.tokenId }),
+          });
           const payload = await response.json();
-          if (!response.ok) throw new Error(payload?.error || 'Failed to start trial');
-          sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
-          setData({ trialActivated: true });
-          setStep(6);
-        })
-        .catch((error) => {
-          setStep(6);
-          setSubmitError(error instanceof Error ? error.message : 'Failed to start trial');
-        });
+          if (response.ok) {
+            sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+            setData({ trialActivated: true });
+            setStep(6);
+            return;
+          }
+
+          if (payload?.code === 'token_pending' && attempt < TOKEN_PENDING_RETRY_DELAYS_MS.length - 1) {
+            continue;
+          }
+
+          throw new Error(payload?.error || 'Failed to start trial');
+        }
+      })().catch((error) => {
+        setStep(6);
+        setSubmitError(error instanceof Error ? error.message : 'Failed to start trial');
+      });
     } catch {
       sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
       setStep(6);

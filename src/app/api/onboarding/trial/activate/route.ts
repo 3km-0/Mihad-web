@@ -15,9 +15,10 @@ type MoyasarToken = {
 const TRIAL_DAYS = 7;
 const TRIAL_TIER = 'pro';
 const TRIAL_PERIOD = 'monthly';
+const TOKEN_STATUS_RETRY_DELAYS_MS = [0, 750, 1500, 2500, 3500, 5000];
 
-function jsonError(message: string, status: number, code?: string) {
-  return NextResponse.json({ error: message, code }, { status });
+function jsonError(message: string, status: number, code?: string, extra?: Record<string, unknown>) {
+  return NextResponse.json({ error: message, code, ...extra }, { status });
 }
 
 function normalizeTokenId(value: unknown) {
@@ -28,6 +29,44 @@ function parseNumber(value: string | number | null | undefined) {
   if (value === null || value === undefined) return null;
   const parsed = Number.parseInt(String(value), 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchVerifiedMoyasarToken(tokenId: string, moyasarSecretKey: string) {
+  let lastToken: MoyasarToken | null = null;
+
+  for (const delayMs of TOKEN_STATUS_RETRY_DELAYS_MS) {
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+
+    const tokenResponse = await fetch(`https://api.moyasar.com/v1/tokens/${encodeURIComponent(tokenId)}`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${moyasarSecretKey}:`).toString('base64')}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!tokenResponse.ok) {
+      if (tokenResponse.status >= 500) {
+        continue;
+      }
+      return { token: null, lookupFailed: true };
+    }
+
+    const token = (await tokenResponse.json()) as MoyasarToken;
+    lastToken = token;
+    const status = String(token.status || '').toLowerCase();
+
+    if (token.id !== tokenId || status === 'active' || status === 'inactive') {
+      return { token, lookupFailed: false };
+    }
+  }
+
+  return { token: lastToken, lookupFailed: false };
 }
 
 export async function POST(request: Request) {
@@ -75,20 +114,27 @@ export async function POST(request: Request) {
     return jsonError('This account has already used its free trial.', 409, 'trial_consumed');
   }
 
-  const tokenResponse = await fetch(`https://api.moyasar.com/v1/tokens/${encodeURIComponent(tokenId)}`, {
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${moyasarSecretKey}:`).toString('base64')}`,
-    },
-    cache: 'no-store',
-  });
-
-  if (!tokenResponse.ok) {
+  const { token, lookupFailed } = await fetchVerifiedMoyasarToken(tokenId, moyasarSecretKey);
+  if (lookupFailed || !token) {
     return jsonError('Unable to verify card token with Moyasar.', 502, 'token_lookup_failed');
   }
 
-  const token = (await tokenResponse.json()) as MoyasarToken;
-  if (token.id !== tokenId || String(token.status || '').toLowerCase() !== 'active') {
-    return jsonError(token.message || 'Card verification is not complete.', 400, 'token_not_active');
+  if (token.id !== tokenId) {
+    return jsonError('Unable to verify the returned card token.', 502, 'token_lookup_mismatch');
+  }
+
+  const tokenStatus = String(token.status || '').toLowerCase();
+  if (tokenStatus === 'inactive') {
+    return jsonError(token.message || 'Card verification failed. Please try another card.', 400, 'token_inactive');
+  }
+
+  if (tokenStatus !== 'active') {
+    return jsonError(
+      'Moyasar is still finalizing card verification. Please wait a few seconds and try again.',
+      409,
+      'token_pending',
+      { token_status: tokenStatus || null }
+    );
   }
 
   const now = new Date();
