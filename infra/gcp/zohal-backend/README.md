@@ -86,6 +86,9 @@ Notes:
   install paths. Set `GCLOUD_BIN=/path/to/gcloud` to override.
 - It updates `INGESTION_SERVICE_BASE_URL` and `ANALYSIS_SERVICE_BASE_URL` after
   the Cloud Run URL is known.
+- Acquisition Report publishing requires `EXPERIENCES_PUBLICATION_URL`,
+  `EXPERIENCES_PUBLICATION_API_URL`, or `PUBLICATION_API_BASE_URL`; prefer the
+  direct Cloud Run publication API URL to avoid proxy timeouts.
 - `SERVICE_REGION` controls where Cloud Run runs; `ORCHESTRATION_REGION` controls
   where Cloud Tasks and Cloud Workflows live.
 - Use `SET_SECRETS` to attach Secret Manager secrets during deploy and
