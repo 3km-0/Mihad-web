@@ -490,6 +490,10 @@ test("weekly acquisition report creation is idempotent by mandate period", async
   const reportPayload = supabase.db.acquisition_deal_desk_reports[0].payload_json;
   assert.equal(reportPayload.computed_outputs.underwriting_runs, 1);
   assert(reportPayload.ranked_candidates[0].modeled_yield_pct > 0);
+  assert.equal(reportPayload.ranked_candidates[0].economics_snapshot.status, "complete");
+  assert(reportPayload.ranked_candidates[0].economics_snapshot.headline_metrics.equity_required > 0);
+  assert(reportPayload.ranked_candidates[0].economics_snapshot.cash_flow.annual.length >= 1);
+  assert.equal(reportPayload.ranked_candidates[0].economics_snapshot.return_sensitivity[1].label, "Base");
   assert.equal(reportPayload.ranked_candidates[0].location_source, "listing_json");
   assert.equal(supabase.db.acquisition_opportunities[0].metadata_json.location_analysis.max, 15);
 });

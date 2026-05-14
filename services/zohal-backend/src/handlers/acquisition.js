@@ -2292,6 +2292,119 @@ function compactJson(value, fallback = {}) {
   return value && typeof value === "object" ? value : fallback;
 }
 
+function finiteNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function roundedNumber(value, digits = 0) {
+  const numeric = finiteNumber(value);
+  if (numeric === null) return null;
+  const factor = 10 ** digits;
+  return Math.round(numeric * factor) / factor;
+}
+
+function ratioToPct(value) {
+  const numeric = finiteNumber(value);
+  return numeric === null ? null : roundedNumber(numeric * 100, 1);
+}
+
+function scenarioMetrics(underwriting = {}, key) {
+  const scenarios = Array.isArray(underwriting.scenarios) ? underwriting.scenarios : [];
+  return compactJson(scenarios.find((scenario) => normalizeText(scenario?.key).toLowerCase() === key)?.metrics, {});
+}
+
+function buildEconomicsSnapshot(underwriting = {}) {
+  const status = normalizeText(underwriting.status || underwriting.summary?.status);
+  const summary = compactJson(underwriting.summary, {});
+  const assumptions = compactJson(underwriting.assumptions, {});
+  const base = scenarioMetrics(underwriting, "base");
+  const downside = scenarioMetrics(underwriting, "downside");
+  const upside = scenarioMetrics(underwriting, "upside");
+  const baseIrr = finiteNumber(base.irr ?? summary.median_irr);
+
+  if (status !== "complete" || !Object.keys(base).length) {
+    const missing = Array.isArray(assumptions.missing_assumptions)
+      ? assumptions.missing_assumptions.map(normalizeText).filter(Boolean)
+      : [];
+    return {
+      status: status || "not_modeled",
+      basis: "not_modeled",
+      generated_at: underwriting.generated_at || null,
+      missing_assumptions: missing,
+      message: missing.length
+        ? `Needs ${missing.join(", ")} before economics can be modeled.`
+        : "Economics are not modeled yet.",
+    };
+  }
+
+  const exitPrice = finiteNumber(base.exit_price);
+  const terminalEquity = finiteNumber(base.net_sale_proceeds);
+  const debtPayoffEstimate = exitPrice !== null && terminalEquity !== null
+    ? Math.max(0, exitPrice - terminalEquity)
+    : null;
+  const cashFlows = Array.isArray(base.cash_flows) ? base.cash_flows : [];
+  const annualCashFlows = cashFlows.slice(1).map((amount, index, all) => {
+    const isExitYear = index === all.length - 1;
+    const operatingAmount = isExitYear && terminalEquity !== null
+      ? Number(amount) - terminalEquity
+      : amount;
+    return {
+      year: index + 1,
+      amount: roundedNumber(operatingAmount, 0),
+    };
+  }).filter((item) => item.amount !== null);
+
+  return {
+    status: "complete",
+    basis: "modeled_output",
+    generated_at: underwriting.generated_at || null,
+    headline_metrics: {
+      equity_required: roundedNumber(base.equity_required, 0),
+      annual_cash_flow: roundedNumber(base.annual_cash_flow, 0),
+      cash_on_cash_pct: ratioToPct(base.cash_on_cash),
+      base_irr_pct: ratioToPct(baseIrr),
+    },
+    cash_flow: {
+      hold_period_years: annualCashFlows.length || finiteNumber(assumptions.exit?.hold_period_years),
+      annual: annualCashFlows,
+    },
+    capital_stack: {
+      total_project_cost: roundedNumber(base.total_project_cost, 0),
+      debt: roundedNumber(base.loan_amount, 0),
+      equity: roundedNumber(base.equity_required, 0),
+      ltv_pct: roundedNumber(underwriting.financing?.ltv_pct ?? assumptions.financing?.ltv_pct, 1),
+    },
+    exit_waterfall: {
+      net_sale: roundedNumber(exitPrice, 0),
+      debt_payoff: roundedNumber(debtPayoffEstimate, 0),
+      terminal_equity: roundedNumber(terminalEquity, 0),
+    },
+    return_sensitivity: [
+      { key: "downside", label: "Downside", irr_pct: ratioToPct(downside.irr ?? summary.p10_irr) },
+      { key: "base", label: "Base", irr_pct: ratioToPct(baseIrr) },
+      { key: "upside", label: "Upside", irr_pct: ratioToPct(upside.irr ?? summary.p90_irr) },
+    ],
+    confidence: {
+      target_irr_pct: ratioToPct(summary.target_irr),
+      probability_target_irr_pct: ratioToPct(summary.probability_target_irr),
+      probability_capital_loss_pct: ratioToPct(summary.probability_capital_loss),
+      median_equity_multiple: roundedNumber(summary.median_equity_multiple, 2),
+    },
+    assumptions: {
+      annual_rent: roundedNumber(assumptions.operations?.gross_annual_rent, 0),
+      vacancy_pct: roundedNumber(assumptions.operations?.vacancy_pct, 1),
+      financing_rate_pct: roundedNumber(assumptions.financing?.financing_rate_pct, 2),
+      hold_period_years: roundedNumber(assumptions.exit?.hold_period_years, 0),
+    },
+    summary: {
+      recommendation: summary.recommendation || null,
+      main_risk: summary.main_risk || null,
+      next_action: summary.next_action || null,
+    },
+  };
+}
+
 async function selectRows(query, tableName) {
   const { data, error } = await query;
   if (error) throw new Error(`Failed to load ${tableName}: ${error.message}`);
@@ -2411,12 +2524,17 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     const underwriting = scenario.outputs_json?.underwriting;
     if (underwriting && !underwritingByOpportunity.has(scenario.opportunity_id)) {
       underwritingByOpportunity.set(scenario.opportunity_id, {
+        ...underwriting,
         scenario_id: scenario.id,
         status: underwriting.status || null,
         summary: underwriting.summary || null,
         risk_flags: underwriting.risk_flags || [],
         generated_at: underwriting.generated_at || scenario.updated_at || null,
         basis: "modeled_output",
+        economics_snapshot: buildEconomicsSnapshot({
+          ...underwriting,
+          generated_at: underwriting.generated_at || scenario.updated_at || null,
+        }),
       });
     }
   }
@@ -2506,6 +2624,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       asking_price: Number.isFinite(askingPrice) ? askingPrice : null,
       capex_base: Number.isFinite(capexBase) ? capexBase : null,
       modeled_yield_pct: Number.isFinite(modeledYield) ? modeledYield : null,
+      economics_snapshot: underwriting?.economics_snapshot || buildEconomicsSnapshot(underwriting || {}),
       investment_score: investmentScore,
       area_sqm: opportunity.metadata_json?.area_sqm || opportunity.result_json?.area_sqm || null,
       property_type: opportunity.metadata_json?.property_type || opportunity.result_json?.property_type || null,
