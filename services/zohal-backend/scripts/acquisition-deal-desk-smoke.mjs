@@ -143,7 +143,7 @@ const created = await request(`/api/acquisition/v1/workspaces/${encodeURICompone
   ...(opportunityIds.length ? { opportunity_ids: opportunityIds } : {}),
   language: "en",
   top_n: 5,
-  presentation_instruction: "Smoke proof: weekly acquisition report with shortlist, scenarios, renovation exposure, notes, and proof.",
+  presentation_instruction: "Smoke proof: weekly acquisition report with ranked deal highlights, ratings, AI analysis, simple charts, notes, and proof.",
   delivery_hint: "smoke",
 });
 
