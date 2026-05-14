@@ -139,12 +139,15 @@ if (!workspaceId) {
 }
 
 process.stdout.write(`[acquisition-report-smoke] creating Acquisition Report for workspace ${workspaceId}\n`);
+const presentationInstruction = reportLanguage.toLowerCase().startsWith("ar")
+  ? "اختبار نشر: تقرير استحواذ أسبوعي يتضمن ترتيب الصفقات، الملخصات، التقييم، تحليل زحل، الرسوم المبسطة، الملاحظات، والإثبات."
+  : "Smoke proof: weekly acquisition report with ranked deal highlights, ratings, AI analysis, simple charts, notes, and proof.";
 const created = await request(`/api/acquisition/v1/workspaces/${encodeURIComponent(workspaceId)}/${reportEndpoint}`, {
   ...(mandateId ? { mandate_id: mandateId } : {}),
   ...(opportunityIds.length ? { opportunity_ids: opportunityIds } : {}),
   language: reportLanguage,
   top_n: 5,
-  presentation_instruction: "Smoke proof: weekly acquisition report with ranked deal highlights, ratings, AI analysis, simple charts, notes, and proof.",
+  presentation_instruction: presentationInstruction,
   delivery_hint: "smoke",
 });
 
