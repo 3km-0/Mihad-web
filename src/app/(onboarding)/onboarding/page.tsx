@@ -257,7 +257,7 @@ export default function OnboardingPage() {
   };
 
   const cancelOnboarding = () => {
-    router.replace('/');
+    router.replace('/home');
   };
 
   const stepProps = { data, setData };

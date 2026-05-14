@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Button, Card } from '@/components/ui';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function StepShell({
@@ -70,18 +70,26 @@ export function StepShell({
       ) : null}
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(183,243,74,0.18),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(255,199,89,0.12),transparent_28%)]" />
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8 lg:px-10">
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">Zohal</p>
             <p className="mt-1 text-sm text-text-soft">Acquisition onboarding</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">
             {onCancel ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
-                Exit onboarding
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={onCancel}
+                disabled={loading}
+                className="w-full border-accent/45 bg-accent/10 text-accent shadow-[0_0_24px_var(--accent-soft)] hover:border-accent hover:bg-accent/15 hover:text-accent sm:w-auto"
+              >
+                <Home className="h-4 w-4" />
+                Exit to home
               </Button>
             ) : null}
-            <div className="min-w-[160px] text-right">
+            <div className="w-full text-left sm:min-w-[180px] sm:text-right">
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
                 Step {step + 1} of {totalSteps}
               </p>
