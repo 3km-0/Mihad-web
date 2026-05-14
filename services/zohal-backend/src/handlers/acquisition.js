@@ -2339,8 +2339,12 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       title: normalizeText(candidate.title) || normalizeText(candidate.source_url) || "Candidate opportunity",
       source_channel: candidate.source || null,
       source_url: candidate.source_url || null,
+      address: normalizeText(candidate.address || candidate.location_text || candidate.title) || null,
       city: candidate.city || null,
       district: candidate.district || null,
+      region: candidate.region || candidate.province || null,
+      latitude: candidate.latitude ?? candidate.lat ?? null,
+      longitude: candidate.longitude ?? candidate.lng ?? candidate.lon ?? null,
       property_type: candidate.property_type || null,
       asking_price: candidate.asking_price ?? null,
       area_sqm: candidate.area_sqm ?? null,
@@ -2351,6 +2355,12 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       recommendation_state: recommendationState,
       basis: candidate.terms_policy === "allowed" ? "market_signal" : "uncertain_needs_diligence",
       evidence_id: candidate.source_fingerprint || candidate.id,
+      map_query: [
+        normalizeText(candidate.address || candidate.location_text || candidate.title),
+        normalizeText(candidate.district),
+        normalizeText(candidate.city),
+        normalizeText(candidate.region || candidate.province),
+      ].filter(Boolean).join(", "),
       summary: normalizeText(candidate.short_description) ||
         normalizeText(candidate.screening_output_json?.summary) ||
         normalizeText(fit.reason),
@@ -2374,6 +2384,13 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       opportunity_id: opportunity.id,
       title: normalizeText(opportunity.title || opportunity.name || opportunity.address) || "Opportunity",
       source_channel: opportunity.source_channel || null,
+      source_url: opportunity.metadata_json?.source_url || opportunity.result_json?.source_url || null,
+      address: normalizeText(opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address || opportunity.title) || null,
+      city: opportunity.metadata_json?.city || opportunity.result_json?.city || null,
+      district: opportunity.metadata_json?.district || opportunity.result_json?.district || null,
+      region: opportunity.metadata_json?.region || opportunity.result_json?.region || null,
+      latitude: opportunity.metadata_json?.latitude ?? opportunity.metadata_json?.lat ?? opportunity.result_json?.latitude ?? opportunity.result_json?.lat ?? null,
+      longitude: opportunity.metadata_json?.longitude ?? opportunity.metadata_json?.lng ?? opportunity.metadata_json?.lon ?? opportunity.result_json?.longitude ?? opportunity.result_json?.lng ?? opportunity.result_json?.lon ?? null,
       stage: opportunity.stage || null,
       recommendation_state: normalizeDealDeskRecommendation(opportunity.stage, {
         fit_score: opportunity.metadata_json?.fit_score || opportunity.result_json?.fit_score,
@@ -2391,6 +2408,12 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       underwriting,
       evidence_id: typeof evidenceId === "string" ? evidenceId : evidenceId?.evidence_id || opportunity.id,
       claim_count: claimRows.length,
+      map_query: [
+        normalizeText(opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address || opportunity.title),
+        normalizeText(opportunity.metadata_json?.district || opportunity.result_json?.district),
+        normalizeText(opportunity.metadata_json?.city || opportunity.result_json?.city),
+        normalizeText(opportunity.metadata_json?.region || opportunity.result_json?.region),
+      ].filter(Boolean).join(", "),
     };
   });
 
