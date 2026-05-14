@@ -2405,6 +2405,22 @@ function buildEconomicsSnapshot(underwriting = {}) {
   };
 }
 
+function compactReportRow(row = {}) {
+  return {
+    opportunity_id: row.opportunity_id || null,
+    candidate_id: row.candidate_id || null,
+    title: row.title || null,
+    recommendation_state: row.recommendation_state || null,
+    investment_score: row.investment_score ?? null,
+    fit_score: row.fit_score ?? null,
+    asking_price: row.asking_price ?? null,
+    capex_base: row.capex_base ?? null,
+    modeled_yield_pct: row.modeled_yield_pct ?? null,
+    basis: row.basis || null,
+    evidence_id: row.evidence_id || null,
+  };
+}
+
 async function selectRows(query, tableName) {
   const { data, error } = await query;
   if (error) throw new Error(`Failed to load ${tableName}: ${error.message}`);
@@ -2524,16 +2540,13 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     const underwriting = scenario.outputs_json?.underwriting;
     if (underwriting && !underwritingByOpportunity.has(scenario.opportunity_id)) {
       underwritingByOpportunity.set(scenario.opportunity_id, {
+        ...underwriting,
         scenario_id: scenario.id,
         status: underwriting.status || null,
         summary: underwriting.summary || null,
         risk_flags: underwriting.risk_flags || [],
         generated_at: underwriting.generated_at || scenario.updated_at || null,
         basis: "modeled_output",
-        economics_snapshot: buildEconomicsSnapshot({
-          ...underwriting,
-          generated_at: underwriting.generated_at || scenario.updated_at || null,
-        }),
       });
     }
   }
@@ -2589,6 +2602,17 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     const underwriting = underwritingByOpportunity.get(opportunity.id) || null;
     const capexJson = compactJson(opportunity.renovation_capex_json || capexEvent?.estimate_json, {});
     const underwritingMedianIrr = Number(underwriting?.summary?.median_irr);
+    const economicsSnapshot = buildEconomicsSnapshot(underwriting || {});
+    const publicUnderwriting = underwriting
+      ? {
+        scenario_id: underwriting.scenario_id || null,
+        status: underwriting.status || null,
+        summary: underwriting.summary || null,
+        risk_flags: underwriting.risk_flags || [],
+        generated_at: underwriting.generated_at || null,
+        basis: underwriting.basis || "modeled_output",
+      }
+      : null;
     const modeledYield = Number(
       opportunity.metadata_json?.modeled_yield_pct ??
         opportunity.result_json?.modeled_yield_pct ??
@@ -2623,14 +2647,14 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       asking_price: Number.isFinite(askingPrice) ? askingPrice : null,
       capex_base: Number.isFinite(capexBase) ? capexBase : null,
       modeled_yield_pct: Number.isFinite(modeledYield) ? modeledYield : null,
-      economics_snapshot: underwriting?.economics_snapshot || buildEconomicsSnapshot(underwriting || {}),
+      economics_snapshot: economicsSnapshot,
       investment_score: investmentScore,
       area_sqm: opportunity.metadata_json?.area_sqm || opportunity.result_json?.area_sqm || null,
       property_type: opportunity.metadata_json?.property_type || opportunity.result_json?.property_type || null,
       photo_refs: photoRefs,
       confidence: normalizeText(opportunity.metadata_json?.confidence || opportunity.result_json?.confidence) || null,
       summary: normalizeText(opportunity.summary || opportunity.description || opportunity.result_json?.summary),
-      underwriting,
+      underwriting: publicUnderwriting,
       evidence_id: typeof evidenceId === "string" ? evidenceId : evidenceId?.evidence_id || opportunity.id,
       claim_count: claimRows.length,
       map_query: [
@@ -2701,7 +2725,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     ranked_candidates: ranked,
     opportunities: opportunityRows,
     recommendation_states: ["strong_pursue", "pursue_after_verification", "watch", "pass", "needs_info"],
-    comparison_matrix: { rows: ranked },
+    comparison_matrix: { rows: ranked.map(compactReportRow) },
     presentation,
     scenario_defaults: {
       rent_growth_pct: body.scenario_defaults?.rent_growth_pct ?? 4,
@@ -2712,7 +2736,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     },
     renovation: {
       opportunities: opportunityRows.map((row) => ({
-        ...row,
+        ...compactReportRow(row),
         capex: {
           low: row.capex_base ? Math.round(row.capex_base * 0.75) : null,
           base: row.capex_base,
