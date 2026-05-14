@@ -2421,7 +2421,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       title: normalizeText(body.title) || `${mandate.title || "Acquisition mandate"} Acquisition Report`,
       report_period: reportPeriod,
       summary: normalizeText(body.presentation_instruction) ||
-        "Weekly ranked acquisition shortlist with mandate fit, scenarios, renovation exposure, diligence gaps, and proof.",
+        "Weekly ranked acquisition report with deal highlights, ratings, AI analysis, simple comparison charts, and proof.",
       language: normalizeText(body.language) || "en",
       currency: normalizeText(body.currency) || "SAR",
       presentation,
