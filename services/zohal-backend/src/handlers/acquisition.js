@@ -2524,7 +2524,6 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     const underwriting = scenario.outputs_json?.underwriting;
     if (underwriting && !underwritingByOpportunity.has(scenario.opportunity_id)) {
       underwritingByOpportunity.set(scenario.opportunity_id, {
-        ...underwriting,
         scenario_id: scenario.id,
         status: underwriting.status || null,
         summary: underwriting.summary || null,
