@@ -10,6 +10,9 @@
  *   P3 — Market Liquidity               (15 pts) — recent transaction count
  *   P4 — Listing Evidence Quality       (20 pts) — completeness of scraped data
  *   P5 — Budget Position                (15 pts) — headroom inside mandate budget
+ *   P6 — Location Quality               (15 pts) — coordinate confidence + nearby amenity density
+ *
+ * The raw 115-point score is normalized back to 0–100 for the public IQS.
  *
  * Normalization language note:
  *   Listing sources (Bayut, Aqar) may emit district names as:
@@ -21,6 +24,8 @@
  *   maps common English names to Arabic → tries ILIKE in the DB.
  *   Extend DISTRICT_EN_TO_AR for new districts as data grows.
  */
+
+import { scoreLocationQuality } from "./location-scorer.js";
 
 // ---------------------------------------------------------------------------
 // District normalization
@@ -561,17 +566,27 @@ export async function computeInvestmentScore({ candidate, mandate, supabase }) {
   const p3 = scoreP3(latestMarketRow);
   const p4 = scoreP4(candidate);
   const p5 = scoreP5(askingPrice, budgetMin, budgetMax);
+  const p6 = await scoreLocationQuality({ candidate, mandate }).catch(() => ({
+    pts: 3,
+    max: 15,
+    note: "location_score_unavailable",
+  }));
 
-  const total = Math.round(p1.pts + p2.pts + p3.pts + p4.pts + p5.pts);
+  const rawTotal = p1.pts + p2.pts + p3.pts + p4.pts + p5.pts + p6.pts;
+  const maxPoints = p1.max + p2.max + p3.max + p4.max + p5.max + p6.max;
+  const total = Math.round(rawTotal / maxPoints * 100);
 
   return {
     total: Math.max(0, Math.min(100, total)),
+    raw_total: Math.round(rawTotal),
+    max_points: maxPoints,
     breakdown: {
       p1_price_efficiency: p1,
       p2_market_momentum: p2,
       p3_market_liquidity: p3,
       p4_evidence_quality: p4,
       p5_budget_position: p5,
+      p6_location_quality: p6,
     },
     market_district_matched: latestMarketRow?.district ?? null,
     district_lookup_input: districtRaw,

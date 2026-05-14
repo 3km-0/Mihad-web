@@ -3,7 +3,7 @@ import { BayutBrowsingAdapter } from "./adapters/bayut.js";
 import { access } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { boundedTextSnapshot } from "./adapters/shared.js";
+import { boundedTextSnapshot, extractLocationMetadata } from "./adapters/shared.js";
 
 const ADAPTERS = {
   aqar: AqarBrowsingAdapter,
@@ -64,10 +64,36 @@ async function newAdapterContext(browser, adapterRun) {
   return context;
 }
 
-async function fetchPageHtml(page, url, timeout) {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-  await page.waitForTimeout(600);
-  return await page.content();
+async function fetchPageHtml(page, url, timeout, options = {}) {
+  const locationHints = Array.isArray(options.locationHints) ? options.locationHints : null;
+  const responsePromises = [];
+  const onResponse = locationHints
+    ? (response) => {
+        const request = response.request();
+        const resourceType = request.resourceType();
+        const contentType = String(response.headers()["content-type"] || "").toLowerCase();
+        if (!["document", "script", "xhr", "fetch"].includes(resourceType)) return;
+        if (!/(json|javascript|html|text)/i.test(contentType) && !/(api|listing|property|search|map|geo|location)/i.test(response.url())) return;
+        if (responsePromises.length >= 24) return;
+        responsePromises.push(response.text()
+          .then((body) => extractLocationMetadata(body, { source: "network_api" }))
+          .then((metadata) => {
+            if (metadata?.latitude !== undefined && metadata?.longitude !== undefined) locationHints.push(metadata);
+          })
+          .catch(() => null));
+      }
+    : null;
+  try {
+    if (onResponse) page.on("response", onResponse);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout });
+    await page.waitForTimeout(600);
+    if (responsePromises.length) {
+      await Promise.allSettled(responsePromises);
+    }
+    return await page.content();
+  } finally {
+    if (onResponse) page.off("response", onResponse);
+  }
 }
 
 function normalizeUrlForSuppression(value) {
@@ -222,11 +248,12 @@ export async function runAdapter({ adapter, mandate, searchRun, limits, browser,
     }
     for (const card of cards) {
       try {
-        const detailHtml = await fetchPageHtml(page, card.source_url, limits.per_source_timeout_ms);
+        const locationHints = [];
+        const detailHtml = await fetchPageHtml(page, card.source_url, limits.per_source_timeout_ms, { locationHints });
         if (adapterRun.detail_pages_fetched === 0) {
           await captureRunArtifact({ page, adapterRun, searchRun, kind: "detail", url: card.source_url, html: detailHtml });
         }
-        const candidate = adapter.parseListingDetail(detailHtml, card.source_url);
+        const candidate = adapter.parseListingDetail(detailHtml, card.source_url, { location_hints: locationHints });
         candidates.push({
           ...candidate,
           search_run_id: searchRun.id,

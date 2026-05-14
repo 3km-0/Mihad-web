@@ -34,6 +34,151 @@ export function parseNumber(value) {
   return match ? Number(match[1]) : null;
 }
 
+function finiteCoordinate(value, min, max) {
+  const normalized = String(value ?? "").replace(/[^\d.+-]/g, "");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) return null;
+  return Math.round(parsed * 1_000_000) / 1_000_000;
+}
+
+function coordinatePair(latitude, longitude) {
+  const lat = finiteCoordinate(latitude, -90, 90);
+  const lng = finiteCoordinate(longitude, -180, 180);
+  if (lat === null || lng === null) return null;
+  return { latitude: lat, longitude: lng };
+}
+
+function precisionRank(value) {
+  const rank = { unknown: 0, city: 1, district: 2, address_geocoded: 3, exact: 4 };
+  return rank[value] || 0;
+}
+
+export function chooseBestLocationMetadata(items = []) {
+  return items
+    .filter(Boolean)
+    .sort((left, right) => precisionRank(right.location_precision) - precisionRank(left.location_precision))[0] || null;
+}
+
+function compactLocationMetadata(value = {}) {
+  if (!value || typeof value !== "object") return null;
+  const pair = coordinatePair(value.latitude ?? value.lat, value.longitude ?? value.lng ?? value.lon);
+  const precision = pair ? "exact" : normalizeText(value.location_precision || value.precision || "");
+  const source = normalizeText(value.location_source || value.source || "");
+  const metadata = {
+    ...(pair || {}),
+    location_precision: pair ? "exact" : (["address_geocoded", "district", "city", "unknown"].includes(precision) ? precision : "unknown"),
+    location_source: source || (pair ? "listing_json" : "fallback"),
+    address: normalizeText(value.address || value.address_text || value.location_text) || null,
+    map_query: normalizeText(value.map_query || value.query) || (pair ? `${pair.latitude},${pair.longitude}` : null),
+  };
+  if (!pair && metadata.location_precision === "exact") metadata.location_precision = "unknown";
+  return Object.fromEntries(Object.entries(metadata).filter(([, item]) => item !== null && item !== ""));
+}
+
+function traverseForLocation(value, source, results, depth = 0) {
+  if (!value || depth > 8) return;
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 200)) traverseForLocation(item, source, results, depth + 1);
+    return;
+  }
+  if (typeof value !== "object") return;
+  const pair = coordinatePair(
+    value.latitude ?? value.lat ?? value.geo?.latitude ?? value.location?.latitude ?? value.coordinates?.latitude,
+    value.longitude ?? value.lng ?? value.lon ?? value.geo?.longitude ?? value.location?.longitude ?? value.coordinates?.longitude,
+  );
+  if (pair) {
+    results.push(compactLocationMetadata({
+      ...pair,
+      location_precision: "exact",
+      location_source: source,
+      address: value.address || value.name || value.title || value.locationName,
+    }));
+  }
+  for (const item of Object.values(value)) traverseForLocation(item, source, results, depth + 1);
+}
+
+function parseJsonLocationBlocks(text, source) {
+  const results = [];
+  for (const match of String(text || "").matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      traverseForLocation(JSON.parse(match[1]), "listing_json", results);
+    } catch {
+      // Keep scanning other blocks.
+    }
+  }
+  for (const match of String(text || "").matchAll(/<script\b[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      traverseForLocation(JSON.parse(match[1]), "listing_json", results);
+    } catch {
+      // Keep scanning other blocks.
+    }
+  }
+  for (const match of String(text || "").matchAll(/(?:latitude|lat)["']?\s*:\s*["']?(-?\d+(?:\.\d+)?)["']?[\s\S]{0,180}?(?:longitude|lng|lon)["']?\s*:\s*["']?(-?\d+(?:\.\d+)?)["']?/gi)) {
+    const pair = coordinatePair(match[1], match[2]);
+    if (pair) results.push(compactLocationMetadata({ ...pair, location_precision: "exact", location_source: source }));
+  }
+  for (const match of String(text || "").matchAll(/(?:longitude|lng|lon)["']?\s*:\s*["']?(-?\d+(?:\.\d+)?)["']?[\s\S]{0,180}?(?:latitude|lat)["']?\s*:\s*["']?(-?\d+(?:\.\d+)?)["']?/gi)) {
+    const pair = coordinatePair(match[2], match[1]);
+    if (pair) results.push(compactLocationMetadata({ ...pair, location_precision: "exact", location_source: source }));
+  }
+  return results;
+}
+
+function parseMapUrlLocation(text) {
+  const results = [];
+  for (const match of String(text || "").matchAll(/[@?&=/](-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)(?:[,/?&#"']|%2C)/g)) {
+    const pair = coordinatePair(match[1], match[2]);
+    if (pair) results.push(compactLocationMetadata({ ...pair, location_precision: "exact", location_source: "map_url" }));
+  }
+  return results;
+}
+
+export function extractLocationMetadata(text, { source = "listing_json", district = null, city = null, address = null } = {}) {
+  const exact = chooseBestLocationMetadata([
+    ...parseJsonLocationBlocks(text, source),
+    ...parseMapUrlLocation(text),
+  ]);
+  if (exact?.latitude !== undefined && exact?.longitude !== undefined) return exact;
+  const fallbackAddress = normalizeText(address);
+  if (fallbackAddress) {
+    return compactLocationMetadata({
+      location_precision: "address_geocoded",
+      location_source: "address_text",
+      address: fallbackAddress,
+      map_query: [fallbackAddress, city].filter(Boolean).join(", "),
+    });
+  }
+  const fallbackDistrict = normalizeText(district);
+  const fallbackCity = normalizeText(city);
+  if (fallbackDistrict || fallbackCity) {
+    return compactLocationMetadata({
+      location_precision: fallbackDistrict ? "district" : "city",
+      location_source: fallbackDistrict ? "district_fallback" : "city_fallback",
+      map_query: [fallbackDistrict, fallbackCity].filter(Boolean).join(", "),
+    });
+  }
+  return compactLocationMetadata({ location_precision: "unknown", location_source: "fallback" });
+}
+
+export function applyLocationMetadata(candidate, metadata) {
+  const location = compactLocationMetadata(metadata);
+  if (!candidate || !location) return candidate;
+  if (location.latitude !== undefined && location.longitude !== undefined) {
+    candidate.latitude = location.latitude;
+    candidate.longitude = location.longitude;
+  }
+  candidate.location_precision = location.location_precision;
+  candidate.location_source = location.location_source;
+  if (location.address) candidate.address = location.address;
+  if (location.map_query) candidate.map_query = location.map_query;
+  candidate.limited_evidence_snapshot_json = {
+    ...(candidate.limited_evidence_snapshot_json || {}),
+    location,
+  };
+  return candidate;
+}
+
 export function parsePrice(text) {
   const rawMultiline = String(text || "");
   const raw = normalizeText(rawMultiline);

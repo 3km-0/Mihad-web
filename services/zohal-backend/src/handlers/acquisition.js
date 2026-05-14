@@ -329,6 +329,87 @@ function normalizePhotoRefs(value) {
   )].slice(0, 12);
 }
 
+function normalizeCoordinate(value, min, max) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) return null;
+  return Math.round(parsed * 1_000_000) / 1_000_000;
+}
+
+function normalizeLocationPrecision(value, hasCoordinates = false) {
+  const normalized = normalizeText(value).toLowerCase();
+  if (hasCoordinates) return "exact";
+  return ["address_geocoded", "district", "city", "unknown"].includes(normalized) ? normalized : "unknown";
+}
+
+function normalizeLocationMetadata(...sources) {
+  const merged = Object.assign({}, ...sources
+    .filter((item) => item && typeof item === "object")
+    .map((item) => Object.fromEntries(Object.entries(item).filter(([, value]) => value !== undefined && value !== null && value !== ""))));
+  const latitude = normalizeCoordinate(merged.latitude ?? merged.lat, -90, 90);
+  const longitude = normalizeCoordinate(merged.longitude ?? merged.lng ?? merged.lon, -180, 180);
+  const hasCoordinates = latitude !== null && longitude !== null;
+  const precision = normalizeLocationPrecision(merged.location_precision || merged.precision, hasCoordinates);
+  const location = {
+    ...(hasCoordinates ? { latitude, longitude } : {}),
+    location_precision: precision,
+    location_source: normalizeText(merged.location_source || merged.source) || (hasCoordinates ? "listing_json" : "fallback"),
+    address: normalizeText(merged.address || merged.address_text || merged.location_text) || null,
+    map_query: normalizeText(merged.map_query || merged.query) || (hasCoordinates ? `${latitude},${longitude}` : null),
+  };
+  if (!hasCoordinates && location.location_precision === "unknown" && location.address) {
+    location.location_precision = "address_geocoded";
+    location.location_source = location.location_source === "fallback" ? "address_text" : location.location_source;
+  }
+  return Object.fromEntries(Object.entries(location).filter(([, item]) => item !== null && item !== ""));
+}
+
+function locationMetadataFromDraft(draft = {}) {
+  return normalizeLocationMetadata(
+    draft.limited_evidence_snapshot_json?.location,
+    draft.sourceSnapshot?.location,
+    draft.location,
+    {
+      latitude: draft.latitude ?? draft.lat,
+      longitude: draft.longitude ?? draft.lng ?? draft.lon,
+      location_precision: draft.location_precision,
+      location_source: draft.location_source,
+      address: draft.address || draft.location_text,
+      map_query: draft.map_query,
+    },
+  );
+}
+
+function locationMetadataFromCandidate(candidate = {}) {
+  return normalizeLocationMetadata(
+    candidate.limited_evidence_snapshot_json?.location,
+    candidate.location,
+    {
+      latitude: candidate.latitude ?? candidate.lat,
+      longitude: candidate.longitude ?? candidate.lng ?? candidate.lon,
+      location_precision: candidate.location_precision,
+      location_source: candidate.location_source,
+      address: candidate.address || candidate.location_text,
+      map_query: candidate.map_query,
+    },
+  );
+}
+
+function locationMetadataFromOpportunity(opportunity = {}) {
+  return normalizeLocationMetadata(
+    opportunity.metadata_json?.location,
+    opportunity.result_json?.location,
+    {
+      latitude: opportunity.metadata_json?.latitude ?? opportunity.metadata_json?.lat ?? opportunity.result_json?.latitude ?? opportunity.result_json?.lat,
+      longitude: opportunity.metadata_json?.longitude ?? opportunity.metadata_json?.lng ?? opportunity.metadata_json?.lon ?? opportunity.result_json?.longitude ?? opportunity.result_json?.lng ?? opportunity.result_json?.lon,
+      location_precision: opportunity.metadata_json?.location_precision ?? opportunity.result_json?.location_precision,
+      location_source: opportunity.metadata_json?.location_source ?? opportunity.result_json?.location_source,
+      address: opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address,
+      map_query: opportunity.metadata_json?.map_query || opportunity.result_json?.map_query,
+    },
+  );
+}
+
 function normalizeComparable(value) {
   return normalizeText(value)
     .toLowerCase()
@@ -908,6 +989,7 @@ async function createCandidateDiligenceRows(supabase, candidate, screeningOutput
 }
 
 async function upsertCandidateSource(supabase, candidate, sourceDraft, searchRunId) {
+  const location = locationMetadataFromDraft(sourceDraft);
   await supabase.from("acquisition_candidate_sources").upsert({
     candidate_id: candidate.id,
     search_run_id: searchRunId || candidate.search_run_id || null,
@@ -920,6 +1002,7 @@ async function upsertCandidateSource(supabase, candidate, sourceDraft, searchRun
       title: candidate.title,
       source: candidate.source,
       contact_access: (sourceDraft.limited_evidence_snapshot_json || sourceDraft.sourceSnapshot || {}).contact_access || null,
+      location: Object.keys(location).length ? location : null,
     },
   }, { onConflict: "candidate_id,source,source_fingerprint" });
 }
@@ -929,6 +1012,11 @@ export async function upsertCandidateDraft(supabase, draft, context = {}) {
   if (!source) throw new Error("Candidate source is required");
   const fingerprint = normalizeText(draft.source_fingerprint) || buildSourceFingerprint(draft);
   const workspaceId = context.workspaceId || draft.workspace_id || null;
+  const location = locationMetadataFromDraft(draft);
+  const evidenceSnapshot = {
+    ...(draft.limited_evidence_snapshot_json || draft.sourceSnapshot || {}),
+    ...(Object.keys(location).length ? { location } : {}),
+  };
   if (workspaceId && fingerprint) {
     const { data: existing, error: existingError } = await supabase
       .from("acquisition_candidate_opportunities")
@@ -952,7 +1040,7 @@ export async function upsertCandidateDraft(supabase, draft, context = {}) {
     source,
     source_url: draft.source_url || draft.sourceUrl || null,
     source_fingerprint: fingerprint,
-    limited_evidence_snapshot_json: draft.limited_evidence_snapshot_json || draft.sourceSnapshot || {},
+    limited_evidence_snapshot_json: evidenceSnapshot,
     captured_at: draft.captured_at || draft.capturedAt || new Date().toISOString(),
     title: draft.title || null,
     asking_price: draft.asking_price ?? draft.askingPrice ?? null,
@@ -1010,6 +1098,7 @@ async function screenCandidate(supabase, candidateId, options = {}) {
 async function promoteCandidate(supabase, candidateId) {
   const candidate = await fetchCandidate(supabase, candidateId);
   const mandate = await fetchMandate(supabase, candidate.mandate_id).catch(() => null);
+  const location = locationMetadataFromCandidate(candidate);
   const screening = candidate.screening_output_json && Object.keys(candidate.screening_output_json).length
     ? candidate.screening_output_json
     : buildScreeningOutput(candidate, mandate);
@@ -1055,6 +1144,13 @@ async function promoteCandidate(supabase, candidateId) {
         property_type: candidate.property_type,
         city: candidate.city,
         district: candidate.district,
+        location: Object.keys(location).length ? location : null,
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
+        location_precision: location.location_precision || null,
+        location_source: location.location_source || null,
+        address: location.address || null,
+        map_query: location.map_query || null,
         confidence: screening.confidence,
         decision: screening.decision,
         contact_access: candidate.limited_evidence_snapshot_json?.contact_access || null,
@@ -2333,18 +2429,21 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       { ...candidate, fit_score: fit.score },
     );
     const investmentScore = investmentScoreFor(candidate);
+    const location = locationMetadataFromCandidate(candidate);
     return {
       candidate_id: candidate.id,
       opportunity_id: candidate.promoted_opportunity_id || null,
       title: normalizeText(candidate.title) || normalizeText(candidate.source_url) || "Candidate opportunity",
       source_channel: candidate.source || null,
       source_url: candidate.source_url || null,
-      address: normalizeText(candidate.address || candidate.location_text || candidate.title) || null,
+      address: normalizeText(location.address || candidate.address || candidate.location_text || candidate.title) || null,
       city: candidate.city || null,
       district: candidate.district || null,
       region: candidate.region || candidate.province || null,
-      latitude: candidate.latitude ?? candidate.lat ?? null,
-      longitude: candidate.longitude ?? candidate.lng ?? candidate.lon ?? null,
+      latitude: location.latitude ?? null,
+      longitude: location.longitude ?? null,
+      location_precision: location.location_precision || null,
+      location_source: location.location_source || null,
       property_type: candidate.property_type || null,
       asking_price: candidate.asking_price ?? null,
       area_sqm: candidate.area_sqm ?? null,
@@ -2356,10 +2455,10 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       basis: candidate.terms_policy === "allowed" ? "market_signal" : "uncertain_needs_diligence",
       evidence_id: candidate.source_fingerprint || candidate.id,
       map_query: [
-        normalizeText(candidate.address || candidate.location_text || candidate.title),
-        normalizeText(candidate.district),
-        normalizeText(candidate.city),
-        normalizeText(candidate.region || candidate.province),
+        normalizeText(location.map_query || location.address || candidate.address || candidate.location_text || candidate.title),
+        location.location_precision === "exact" ? "" : normalizeText(candidate.district),
+        location.location_precision === "exact" ? "" : normalizeText(candidate.city),
+        location.location_precision === "exact" ? "" : normalizeText(candidate.region || candidate.province),
       ].filter(Boolean).join(", "),
       summary: normalizeText(candidate.short_description) ||
         normalizeText(candidate.screening_output_json?.summary) ||
@@ -2372,11 +2471,17 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     const capexEvent = capexByOpportunity.get(opportunity.id);
     const underwriting = underwritingByOpportunity.get(opportunity.id) || null;
     const capexJson = compactJson(opportunity.renovation_capex_json || capexEvent?.estimate_json, {});
-    const modeledYield = Number(opportunity.metadata_json?.modeled_yield_pct || opportunity.result_json?.modeled_yield_pct);
+    const underwritingMedianIrr = Number(underwriting?.summary?.median_irr);
+    const modeledYield = Number(
+      opportunity.metadata_json?.modeled_yield_pct ??
+        opportunity.result_json?.modeled_yield_pct ??
+        (Number.isFinite(underwritingMedianIrr) ? underwritingMedianIrr * 100 : null),
+    );
     const askingPrice = Number(opportunity.asking_price || opportunity.metadata_json?.asking_price || opportunity.result_json?.asking_price);
     const capexBase = Number(capexJson.base || capexJson.base_total || capexJson.total_base);
     const photoRefs = normalizePhotoRefs(opportunity.metadata_json?.photo_refs || opportunity.metadata_json?.photoRefs || []);
     const investmentScore = investmentScoreFor(opportunity);
+    const location = locationMetadataFromOpportunity(opportunity);
     const evidenceId =
       claimRows.flatMap((claim) => Array.isArray(claim.evidence_refs_json) ? claim.evidence_refs_json : [])[0] ||
       opportunity.id;
@@ -2385,12 +2490,14 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       title: normalizeText(opportunity.title || opportunity.name || opportunity.address) || "Opportunity",
       source_channel: opportunity.source_channel || null,
       source_url: opportunity.metadata_json?.source_url || opportunity.result_json?.source_url || null,
-      address: normalizeText(opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address || opportunity.title) || null,
+      address: normalizeText(location.address || opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address || opportunity.title) || null,
       city: opportunity.metadata_json?.city || opportunity.result_json?.city || null,
       district: opportunity.metadata_json?.district || opportunity.result_json?.district || null,
       region: opportunity.metadata_json?.region || opportunity.result_json?.region || null,
-      latitude: opportunity.metadata_json?.latitude ?? opportunity.metadata_json?.lat ?? opportunity.result_json?.latitude ?? opportunity.result_json?.lat ?? null,
-      longitude: opportunity.metadata_json?.longitude ?? opportunity.metadata_json?.lng ?? opportunity.metadata_json?.lon ?? opportunity.result_json?.longitude ?? opportunity.result_json?.lng ?? opportunity.result_json?.lon ?? null,
+      latitude: location.latitude ?? null,
+      longitude: location.longitude ?? null,
+      location_precision: location.location_precision || null,
+      location_source: location.location_source || null,
       stage: opportunity.stage || null,
       recommendation_state: normalizeDealDeskRecommendation(opportunity.stage, {
         fit_score: opportunity.metadata_json?.fit_score || opportunity.result_json?.fit_score,
@@ -2409,10 +2516,10 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       evidence_id: typeof evidenceId === "string" ? evidenceId : evidenceId?.evidence_id || opportunity.id,
       claim_count: claimRows.length,
       map_query: [
-        normalizeText(opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address || opportunity.title),
-        normalizeText(opportunity.metadata_json?.district || opportunity.result_json?.district),
-        normalizeText(opportunity.metadata_json?.city || opportunity.result_json?.city),
-        normalizeText(opportunity.metadata_json?.region || opportunity.result_json?.region),
+        normalizeText(location.map_query || location.address || opportunity.address || opportunity.metadata_json?.address || opportunity.result_json?.address || opportunity.title),
+        location.location_precision === "exact" ? "" : normalizeText(opportunity.metadata_json?.district || opportunity.result_json?.district),
+        location.location_precision === "exact" ? "" : normalizeText(opportunity.metadata_json?.city || opportunity.result_json?.city),
+        location.location_precision === "exact" ? "" : normalizeText(opportunity.metadata_json?.region || opportunity.result_json?.region),
       ].filter(Boolean).join(", "),
     };
   });
@@ -2444,7 +2551,7 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
       title: normalizeText(body.title) || `${mandate.title || "Acquisition mandate"} Acquisition Report`,
       report_period: reportPeriod,
       summary: normalizeText(body.presentation_instruction) ||
-        "Weekly ranked acquisition report with deal highlights, ratings, AI analysis, simple comparison charts, and proof.",
+        "Weekly ranked acquisition report with deal highlights, ratings, AI analysis, simple comparison charts, and source traceability.",
       language: normalizeText(body.language) || "en",
       currency: normalizeText(body.currency) || "SAR",
       presentation,
@@ -2547,6 +2654,95 @@ async function buildDealDeskPayload(supabase, workspaceId, body = {}) {
     _internal: {
       scenario_count: scenarios.length,
     },
+  };
+}
+
+async function refreshReportComputedOutputs(supabase, payload, body = {}) {
+  if (body.refresh_computed_outputs === false) {
+    return { skipped: true, reason: "disabled_by_request" };
+  }
+  const opportunityIds = [...new Set((Array.isArray(payload?.ranked_candidates) ? payload.ranked_candidates : [])
+    .map((row) => normalizeUuid(row.opportunity_id))
+    .filter(Boolean))];
+  if (!opportunityIds.length) {
+    return { skipped: true, reason: "no_ranked_opportunities" };
+  }
+  const opportunities = await selectRows(
+    supabase.from("acquisition_opportunities").select("*").in("id", opportunityIds),
+    "acquisition_opportunities",
+  );
+  const mandate = payload?.mandate?.id ? await fetchMandate(supabase, payload.mandate.id).catch(() => null) : null;
+  let underwritingRuns = 0;
+  let locationScores = 0;
+  const errors = [];
+  for (const opportunity of opportunities) {
+    const metadata = compactJson(opportunity.metadata_json, {});
+    const nextMetadata = { ...metadata };
+
+    try {
+      const underwritingResult = await runAndPersistUnderwriting({
+        supabase,
+        opportunityId: opportunity.id,
+        input: {
+          mode: "quick",
+          ...(body.underwriting_assumptions && typeof body.underwriting_assumptions === "object" ? body.underwriting_assumptions : {}),
+        },
+        allowInternal: true,
+        userId: normalizeUuid(body.user_id || body.created_by),
+      });
+      underwritingRuns += 1;
+      const summary = underwritingResult?.underwriting?.summary || {};
+      const medianIrr = Number(summary.median_irr);
+      if (Number.isFinite(medianIrr)) {
+        nextMetadata.modeled_yield_pct = Math.round(medianIrr * 1000) / 10;
+      }
+      nextMetadata.underwriting_status = underwritingResult?.underwriting?.status || null;
+      nextMetadata.underwriting_summary = summary;
+    } catch (error) {
+      errors.push({ opportunity_id: opportunity.id, stage: "underwriting", message: error instanceof Error ? error.message : String(error) });
+    }
+
+    try {
+      const scoreInput = {
+        ...opportunity,
+        ...metadata,
+        asking_price: opportunity.asking_price || metadata.asking_price || metadata.price,
+        area_sqm: metadata.area_sqm || metadata.land_area_sqm || metadata.built_up_area_sqm,
+        property_type: metadata.property_type,
+        city: metadata.city,
+        district: metadata.district,
+        latitude: metadata.latitude,
+        longitude: metadata.longitude,
+        location_precision: metadata.location_precision,
+        location_source: metadata.location_source,
+        map_query: metadata.map_query,
+        photo_refs_json: metadata.photo_refs || metadata.photoRefs || [],
+        metadata_json: nextMetadata,
+      };
+      const investmentScore = await computeInvestmentScore({ candidate: scoreInput, mandate, supabase });
+      if (Number.isFinite(Number(investmentScore?.total))) {
+        nextMetadata.investment_score = investmentScore.total;
+        nextMetadata.investment_score_breakdown = investmentScore;
+        nextMetadata.location_analysis = investmentScore.breakdown?.p6_location_quality || null;
+        if (investmentScore.breakdown?.p6_location_quality) locationScores += 1;
+      }
+    } catch (error) {
+      errors.push({ opportunity_id: opportunity.id, stage: "investment_score", message: error instanceof Error ? error.message : String(error) });
+    }
+
+    if (JSON.stringify(nextMetadata) !== JSON.stringify(metadata)) {
+      await supabase
+        .from("acquisition_opportunities")
+        .update({ metadata_json: nextMetadata })
+        .eq("id", opportunity.id);
+    }
+  }
+  return {
+    skipped: false,
+    opportunities_seen: opportunities.length,
+    underwriting_runs: underwritingRuns,
+    location_scores: locationScores,
+    errors,
   };
 }
 
@@ -2750,7 +2946,7 @@ async function createAcquisitionReport(supabase, workspaceId, body = {}, { reque
     error.statusCode = 400;
     throw error;
   }
-  const payload = await buildDealDeskPayload(supabase, normalizedWorkspaceId, body);
+  let payload = await buildDealDeskPayload(supabase, normalizedWorkspaceId, body);
   const reportPeriod = payload.report.report_period;
   const scheduleKind = normalizeText(body.schedule_kind || body.trigger_kind);
   if (idempotent || scheduleKind === "weekly") {
@@ -2777,6 +2973,14 @@ async function createAcquisitionReport(supabase, workspaceId, body = {}, { reque
       };
     }
   }
+  const computedOutputs = await refreshReportComputedOutputs(supabase, payload, body).catch((error) => ({
+    skipped: false,
+    error: error instanceof Error ? error.message : String(error),
+  }));
+  if (!computedOutputs.skipped && !computedOutputs.error) {
+    payload = await buildDealDeskPayload(supabase, normalizedWorkspaceId, body);
+  }
+  payload.computed_outputs = computedOutputs;
   const surfaceKey = buildDealDeskSurfaceKey(normalizedWorkspaceId, reportPeriod);
   const experienceId = `exp_${surfaceKey}`;
   const notesEndpoint = `/api/acquisition/v1/acquisition-reports/{report_id}/notes`;

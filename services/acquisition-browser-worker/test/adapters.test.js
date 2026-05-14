@@ -20,6 +20,7 @@ test("Aqar adapter parses search cards and detail page into candidate", () => {
   const detail = AqarBrowsingAdapter.parseListingDetail(`
     <h1>Villa district Al Arid Riyadh</h1>
     <p>Villa for sale SAR 3,200,000 area 360 sqm 5 beds 4 baths</p>
+    <script type="application/ld+json">{"@type":"Residence","geo":{"latitude":24.81321,"longitude":46.63842}}</script>
     <img src="/icons/v2/aqar-logo.svg" />
     <img src="/photo.jpg" />
     <img data-src="https://images.aqar.fm/webp/750x0/props/photo-2.webp" />
@@ -28,6 +29,10 @@ test("Aqar adapter parses search cards and detail page into candidate", () => {
 
   assert.equal(detail.source, "aqar");
   assert.equal(detail.asking_price, 3200000);
+  assert.equal(detail.latitude, 24.81321);
+  assert.equal(detail.longitude, 46.63842);
+  assert.equal(detail.location_precision, "exact");
+  assert.equal(detail.location_source, "listing_json");
   assert.equal(detail.area_sqm, 360);
   assert.equal(detail.bedroom_count, 5);
   assert.deepEqual(detail.photo_refs_json, [
@@ -37,6 +42,96 @@ test("Aqar adapter parses search cards and detail page into candidate", () => {
     "https://sa.aqar.fm/photo-3-large.jpg",
   ]);
   assert.ok(detail.source_fingerprint);
+});
+
+test("adapter uses district location only as fallback when exact coordinates are absent", () => {
+  const detail = BayutBrowsingAdapter.parseListingDetail(`
+    <h1>Villa district Hittin Riyadh</h1>
+    <section>Price SAR 4m area 420 sqm 6 bedrooms 5 bathrooms</section>
+  `, "https://www.bayut.sa/en/property/details-1.html");
+
+  assert.equal(detail.latitude, undefined);
+  assert.equal(detail.longitude, undefined);
+  assert.equal(detail.location_precision, "district");
+  assert.equal(detail.location_source, "district_fallback");
+  assert.match(detail.map_query, /Hittin, Riyadh/);
+});
+
+test("runAdapter passes network coordinate hints into detail parsing", async () => {
+  const artifactDir = await mkdtemp(join(tmpdir(), "zohal-browser-artifacts-"));
+  process.env.ACQUISITION_BROWSER_ARTIFACT_DIR = artifactDir;
+  const responseHandlers = new Set();
+  const page = {
+    on(event, handler) {
+      if (event === "response") responseHandlers.add(handler);
+    },
+    off(event, handler) {
+      if (event === "response") responseHandlers.delete(handler);
+    },
+    async goto(url) {
+      this.url = url;
+      for (const handler of responseHandlers) {
+        handler({
+          url: () => `${url}/api`,
+          headers: () => ({ "content-type": "application/json" }),
+          request: () => ({ resourceType: () => "xhr" }),
+          text: async () => JSON.stringify({ lat: 24.721111, lng: 46.671222 }),
+        });
+      }
+    },
+    async waitForTimeout() {},
+    async content() {
+      return this.url.includes("detail")
+        ? "<html><h1>Villa district Al Arid Riyadh</h1><p>SAR 3,200,000 area 360 sqm</p></html>"
+        : "<html><a href='https://example.test/detail'>listing</a></html>";
+    },
+    async screenshot() {},
+    async close() {},
+  };
+  const browser = {
+    async newContext() {
+      return {
+        async newPage() {
+          return page;
+        },
+        async close() {},
+      };
+    },
+  };
+  const adapter = {
+    source: "fixture",
+    buildSearchUrl() {
+      return "https://example.test/search";
+    },
+    parseSearchResults() {
+      return [{ source_url: "https://example.test/detail", title: "Fixture" }];
+    },
+    parseListingDetail(html, sourceUrl, context = {}) {
+      assert.equal(context.location_hints.length, 1);
+      return {
+        source: "fixture",
+        source_url: sourceUrl,
+        source_fingerprint: "fixture_location",
+        title: "Fixture",
+        latitude: context.location_hints[0].latitude,
+        longitude: context.location_hints[0].longitude,
+        location_precision: context.location_hints[0].location_precision,
+        location_source: context.location_hints[0].location_source,
+      };
+    },
+  };
+
+  const result = await runAdapter({
+    adapter,
+    mandate: {},
+    searchRun: { id: "search_run_location", limits_json: {} },
+    limits: workerTest.normalizeLimits({}),
+    browser,
+  });
+
+  assert.equal(result.candidates[0].latitude, 24.721111);
+  assert.equal(result.candidates[0].longitude, 46.671222);
+  assert.equal(result.candidates[0].location_source, "network_api");
 });
 
 test("Aqar adapter recognizes Arabic sale villa cards", () => {

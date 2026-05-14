@@ -332,6 +332,10 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
     property_type: "villa",
     area_sqm: 420,
     photo_refs_json: ["https://example.com/photo-1.jpg"],
+    latitude: 24.81321,
+    longitude: 46.63842,
+    location_precision: "exact",
+    location_source: "listing_json",
   });
 
   const promoted = await __test.promoteCandidate(supabase, result.candidate.id);
@@ -340,6 +344,10 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   assert.equal(promoted.opportunity.stage, "workspace_created");
   assert.equal(promoted.opportunity.source_channel, "user_provided_listing");
   assert.deepEqual(promoted.opportunity.metadata_json.photo_refs, ["https://example.com/photo-1.jpg"]);
+  assert.equal(promoted.opportunity.metadata_json.latitude, 24.81321);
+  assert.equal(promoted.opportunity.metadata_json.longitude, 46.63842);
+  assert.equal(promoted.opportunity.metadata_json.location_precision, "exact");
+  assert.equal(promoted.opportunity.metadata_json.location_source, "listing_json");
   assert.equal(supabase.db.acquisition_opportunities.length, 1);
   assert.equal(supabase.db.properties?.length || 0, 0);
   assert.equal(supabase.db.acquisition_scenarios.length, 1);
@@ -374,7 +382,17 @@ test("acquisition report payload ranks by investment score and structured top_n"
         workspace_id: "ws_1",
         title: "Best investment score",
         stage: "watch",
-        metadata_json: { fit_score: 70, investment_score: 93, asking_price: 3000000 },
+        metadata_json: {
+          fit_score: 70,
+          investment_score: 93,
+          asking_price: 3000000,
+          location: {
+            latitude: 24.721111,
+            longitude: 46.671222,
+            location_precision: "exact",
+            location_source: "network_api",
+          },
+        },
       },
       {
         id: "opp_tail",
@@ -404,6 +422,11 @@ test("acquisition report payload ranks by investment score and structured top_n"
     "Best investment score",
     "High fit, lower IQS",
   ]);
+  assert.equal(payload.ranked_candidates[0].latitude, 24.721111);
+  assert.equal(payload.ranked_candidates[0].longitude, 46.671222);
+  assert.equal(payload.ranked_candidates[0].location_precision, "exact");
+  assert.equal(payload.ranked_candidates[0].location_source, "network_api");
+  assert.doesNotMatch(payload.ranked_candidates[0].map_query, /Riyadh/);
 });
 
 test("weekly acquisition report creation is idempotent by mandate period", async () => {
@@ -423,7 +446,21 @@ test("weekly acquisition report creation is idempotent by mandate period", async
       workspace_id: "ws_1",
       title: "Weekly candidate",
       stage: "workspace_created",
-      metadata_json: { investment_score: 88, asking_price: 3000000 },
+      metadata_json: {
+        investment_score: 88,
+        asking_price: 3000000,
+        acquisition_price: 2950000,
+        monthly_rent: 14000,
+        area_sqm: 360,
+        property_type: "villa",
+        city: "Riyadh",
+        district: "Al Arid",
+        latitude: 24.81321,
+        longitude: 46.63842,
+        location_precision: "exact",
+        location_source: "listing_json",
+      },
+      renovation_capex_json: { base_total: 180000, low_total: 130000, high_total: 260000 },
     }],
     acquisition_candidate_opportunities: [],
     acquisition_claims: [],
@@ -449,6 +486,12 @@ test("weekly acquisition report creation is idempotent by mandate period", async
   assert.equal(supabase.db.acquisition_deal_desk_reports.length, 1);
   assert.equal(supabase.db.acquisition_deal_desk_reports[0].artifact_kind, "acquisition_report");
   assert.equal(supabase.db.acquisition_deal_desk_reports[0].presentation_json.top_n, 5);
+  assert.equal(supabase.db.acquisition_scenarios.length, 1);
+  const reportPayload = supabase.db.acquisition_deal_desk_reports[0].payload_json;
+  assert.equal(reportPayload.computed_outputs.underwriting_runs, 1);
+  assert(reportPayload.ranked_candidates[0].modeled_yield_pct > 0);
+  assert.equal(reportPayload.ranked_candidates[0].location_source, "listing_json");
+  assert.equal(supabase.db.acquisition_opportunities[0].metadata_json.location_analysis.max, 15);
 });
 
 test("manual listing intake records manual source metadata", async () => {

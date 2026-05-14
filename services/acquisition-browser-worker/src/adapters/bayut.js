@@ -1,8 +1,11 @@
 import {
   absoluteUrl,
+  applyLocationMetadata,
   candidateFromText,
+  chooseBestLocationMetadata,
   detectContactGate,
   detectVisibleContact,
+  extractLocationMetadata,
   extractLinks,
   extractPhotoRefs,
   normalizeText,
@@ -157,7 +160,7 @@ export const BayutBrowsingAdapter = {
         title: link.text || "Bayut listing",
       }));
   },
-  parseListingDetail(html, url) {
+  parseListingDetail(html, url, context = {}) {
     const titleMatch = String(html || "").match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
     const title = stripTags(titleMatch ? titleMatch[1] : "") || "Bayut listing";
     const text = stripTags(html);
@@ -167,6 +170,15 @@ export const BayutBrowsingAdapter = {
       title,
       text,
     });
+    applyLocationMetadata(candidate, chooseBestLocationMetadata([
+      ...(Array.isArray(context.location_hints) ? context.location_hints : []),
+      extractLocationMetadata(html, {
+        source: "listing_json",
+        district: candidate.district,
+        city: candidate.city,
+        address: candidate.address,
+      }),
+    ]));
     candidate.photo_refs_json = extractPhotoRefs(html, BASE_URL, 8);
     if (detectContactGate(html)) {
       candidate.limited_evidence_snapshot_json = {
