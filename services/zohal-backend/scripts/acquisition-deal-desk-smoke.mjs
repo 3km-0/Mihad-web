@@ -29,6 +29,7 @@ const publicationBaseUrl = String(
 const reportEndpoint = String(process.env.ACQUISITION_SMOKE_REPORT_ENDPOINT || "acquisition-reports").trim() === "deal-desk"
   ? "deal-desk"
   : "acquisition-reports";
+const reportLanguage = String(process.env.ACQUISITION_SMOKE_LANGUAGE || "en").trim() || "en";
 
 function fail(message) {
   process.stderr.write(`[acquisition-report-smoke] FAIL - ${message}\n`);
@@ -141,7 +142,7 @@ process.stdout.write(`[acquisition-report-smoke] creating Acquisition Report for
 const created = await request(`/api/acquisition/v1/workspaces/${encodeURIComponent(workspaceId)}/${reportEndpoint}`, {
   ...(mandateId ? { mandate_id: mandateId } : {}),
   ...(opportunityIds.length ? { opportunity_ids: opportunityIds } : {}),
-  language: "en",
+  language: reportLanguage,
   top_n: 5,
   presentation_instruction: "Smoke proof: weekly acquisition report with ranked deal highlights, ratings, AI analysis, simple charts, notes, and proof.",
   delivery_hint: "smoke",
