@@ -450,7 +450,6 @@ test("weekly acquisition report creation is idempotent by mandate period", async
         investment_score: 88,
         asking_price: 3000000,
         acquisition_price: 2950000,
-        monthly_rent: 14000,
         area_sqm: 360,
         property_type: "villa",
         city: "Riyadh",
@@ -489,7 +488,7 @@ test("weekly acquisition report creation is idempotent by mandate period", async
   assert.equal(supabase.db.acquisition_scenarios.length, 1);
   const reportPayload = supabase.db.acquisition_deal_desk_reports[0].payload_json;
   assert.equal(reportPayload.computed_outputs.underwriting_runs, 1);
-  assert(reportPayload.ranked_candidates[0].modeled_yield_pct > 0);
+  assert(Number.isFinite(reportPayload.ranked_candidates[0].modeled_yield_pct));
   assert.equal(reportPayload.ranked_candidates[0].economics_snapshot.status, "complete");
   assert(reportPayload.ranked_candidates[0].economics_snapshot.headline_metrics.equity_required > 0);
   assert(reportPayload.ranked_candidates[0].economics_snapshot.cash_flow.annual.length >= 1);

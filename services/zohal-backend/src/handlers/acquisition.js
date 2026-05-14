@@ -2796,16 +2796,52 @@ async function refreshReportComputedOutputs(supabase, payload, body = {}) {
   const errors = [];
   for (const opportunity of opportunities) {
     const metadata = compactJson(opportunity.metadata_json, {});
+    const result = compactJson(opportunity.result_json, {});
     const nextMetadata = { ...metadata };
+    const underwritingInput = {
+      mode: "quick",
+      ...(body.underwriting_assumptions && typeof body.underwriting_assumptions === "object" ? body.underwriting_assumptions : {}),
+    };
+    const hasRentAssumption = [
+      underwritingInput.monthly_rent,
+      underwritingInput.rent,
+      underwritingInput.expected_monthly_rent,
+      underwritingInput.gross_annual_rent,
+      underwritingInput.annual_rent,
+      metadata.monthly_rent,
+      metadata.rent,
+      metadata.expected_monthly_rent,
+      metadata.gross_annual_rent,
+      metadata.annual_rent,
+      result.monthly_rent,
+      result.rent,
+      result.expected_monthly_rent,
+      result.gross_annual_rent,
+      result.annual_rent,
+    ].some((value) => finiteNumber(value) !== null && finiteNumber(value) > 0);
+    const priceForRentProxy = finiteNumber(
+      underwritingInput.purchase_price ??
+        underwritingInput.acquisition_price ??
+        metadata.acquisition_price ??
+        metadata.asking_price ??
+        metadata.price ??
+        result.acquisition_price ??
+        result.asking_price ??
+        result.price ??
+        opportunity.asking_price,
+    );
+    if (!hasRentAssumption && priceForRentProxy !== null && priceForRentProxy > 0) {
+      const monthlyRent = Math.round(priceForRentProxy * 0.0036);
+      underwritingInput.monthly_rent = monthlyRent;
+      underwritingInput.gross_annual_rent = monthlyRent * 12;
+      underwritingInput.rent_assumption_source = "report_default_price_rent_proxy";
+    }
 
     try {
       const underwritingResult = await runAndPersistUnderwriting({
         supabase,
         opportunityId: opportunity.id,
-        input: {
-          mode: "quick",
-          ...(body.underwriting_assumptions && typeof body.underwriting_assumptions === "object" ? body.underwriting_assumptions : {}),
-        },
+        input: underwritingInput,
         allowInternal: true,
         userId: normalizeUuid(body.user_id || body.created_by),
       });
