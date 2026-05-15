@@ -1,4 +1,13 @@
-import { createAcquisitionWorkspace, normalizeBuyBox, type BuyBoxInput } from '@/lib/acquisition-workspace';
+import {
+  createAcquisitionWorkspace,
+  normalizeBuyBox,
+  type BuyBoxInput,
+  type MihadBudgetCurrency,
+  type MihadCountryCode,
+  type MihadLiquidityClass,
+  type MihadMandateTimeline,
+  type MihadPurpose,
+} from '@/lib/acquisition-workspace';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { zohalBackendUrl } from '@/lib/zohal-backend';
 import { NextResponse } from 'next/server';
@@ -8,6 +17,13 @@ type CompleteOnboardingRequest = {
   display_name?: string;
   workspace_name?: string;
   buy_box?: BuyBoxInput;
+  target_country_codes?: MihadCountryCode[] | string[];
+  purpose?: MihadPurpose | null;
+  timeline?: MihadMandateTimeline | null;
+  liquidity_class?: MihadLiquidityClass | null;
+  budget_currency?: MihadBudgetCurrency | null;
+  budget_range?: { min?: number | string | null; max?: number | string | null; currency?: string | null };
+  preferences?: Record<string, unknown>;
 };
 
 function jsonError(message: string, status: number, code?: string, extra?: Record<string, unknown>) {
@@ -167,6 +183,10 @@ export async function POST(request: Request) {
     return jsonError('Verify your phone number before creating a workspace.', 409, 'phone_not_verified');
   }
 
+  const targetCountryCodes = Array.isArray(body.target_country_codes) && body.target_country_codes.length
+    ? (body.target_country_codes as MihadCountryCode[])
+    : ['SA'] as MihadCountryCode[];
+  const isMihadIntake = targetCountryCodes.some((code) => code !== 'SA');
   const existingWorkspace = await findExistingOnboardingWorkspace(service, session.user.id);
   const workspaceResult = existingWorkspace
     ? {
@@ -180,6 +200,15 @@ export async function POST(request: Request) {
         description: null,
         buyBox: body.buy_box || {},
         seedSource: 'onboarding_acquisition_journey',
+        workspaceKind: isMihadIntake ? 'mihad_buyer_desk' : 'investor_cockpit',
+        mihad: {
+          targetCountryCodes,
+          purpose: body.purpose ?? null,
+          mandateTimeline: body.timeline ?? null,
+          liquidityClass: body.liquidity_class ?? null,
+          budgetCurrency: (body.budget_currency || 'SAR') as MihadBudgetCurrency,
+          preferences: body.preferences ?? null,
+        },
       });
 
   const { workspaceId, mandateId, buyBox } = workspaceResult;
@@ -203,51 +232,98 @@ export async function POST(request: Request) {
   let searchPayload: Record<string, unknown> | null = null;
   let searchRunError: string | null = null;
   let searchRunProcessing: Record<string, unknown> | null = null;
-  try {
-    const headers = internalBackendHeaders();
-    if (!headers) {
-      throw new Error('Internal backend token is not configured.');
-    }
+  let discoverResult: Record<string, unknown> | null = null;
 
-    const searchResponse = await fetch(
-      zohalBackendUrl(`/api/acquisition/v1/workspaces/${workspaceId}/search-runs`),
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          user_id: session.user.id,
-          query_description: queryDescription,
-          sourcing_instruction: queryDescription,
-          sources: ['aqar', 'bayut'],
-          limits: searchLimits,
-        }),
-        cache: 'no-store',
-      }
-    );
-
-    searchPayload = await searchResponse.json().catch(() => ({}));
-    if (!searchResponse.ok) {
-      searchRunError =
-        String(searchPayload?.message || searchPayload?.error || '').trim() ||
-        `Search workflow returned ${searchResponse.status}`;
-    }
-  } catch (error) {
-    searchRunError = error instanceof Error ? error.message : 'Search workflow request failed';
-  }
-
-  if (searchRunError) {
+  if (isMihadIntake) {
     try {
-      const fallbackSearchRun = await createSearchRunFallback(service, {
-        workspaceId,
-        mandateId,
-        userId: session.user.id,
-        queryDescription,
-        limits: searchLimits,
-      });
-      searchPayload = { search_run: fallbackSearchRun, fallback: true };
-      searchRunError = null;
+      const headers = internalBackendHeaders();
+      if (!headers) {
+        throw new Error('Internal backend token is not configured.');
+      }
+      const discoverResponse = await fetch(
+        zohalBackendUrl('/api/acquisition/v1/discover'),
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            user_id: session.user.id,
+            workspace_id: workspaceId,
+            target_country_codes: targetCountryCodes,
+            purpose: body.purpose ?? null,
+            timeline: body.timeline ?? null,
+            liquidity_class: body.liquidity_class ?? null,
+            budget_currency: body.budget_currency || 'SAR',
+            budget_range: body.budget_range || {
+              min: body.buy_box?.budget_min_sar,
+              max: body.buy_box?.budget_max_sar,
+            },
+            title: workspaceName,
+            buy_box: body.buy_box || null,
+            confidence: { source: 'mihad_onboarding' },
+          }),
+          cache: 'no-store',
+        }
+      );
+      const discoverPayload = await discoverResponse.json().catch(() => ({}));
+      if (!discoverResponse.ok) {
+        searchRunError =
+          String(discoverPayload?.error || '').trim() ||
+          `Discover handler returned ${discoverResponse.status}`;
+      } else {
+        discoverResult =
+          (discoverPayload?.data as Record<string, unknown>) ||
+          (discoverPayload as Record<string, unknown>);
+      }
     } catch (error) {
-      searchRunError = error instanceof Error ? error.message : 'Fallback search run creation failed';
+      searchRunError = error instanceof Error ? error.message : 'Discover handler request failed';
+    }
+  } else {
+    try {
+      const headers = internalBackendHeaders();
+      if (!headers) {
+        throw new Error('Internal backend token is not configured.');
+      }
+
+      const searchResponse = await fetch(
+        zohalBackendUrl(`/api/acquisition/v1/workspaces/${workspaceId}/search-runs`),
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            user_id: session.user.id,
+            query_description: queryDescription,
+            sourcing_instruction: queryDescription,
+            sources: ['aqar', 'bayut'],
+            limits: searchLimits,
+          }),
+          cache: 'no-store',
+        }
+      );
+
+      searchPayload = await searchResponse.json().catch(() => ({}));
+      if (!searchResponse.ok) {
+        searchRunError =
+          String(searchPayload?.message || searchPayload?.error || '').trim() ||
+          `Search workflow returned ${searchResponse.status}`;
+      }
+    } catch (error) {
+      searchRunError = error instanceof Error ? error.message : 'Search workflow request failed';
+    }
+
+    if (searchRunError) {
+      try {
+        const fallbackSearchRun = await createSearchRunFallback(service, {
+          workspaceId,
+          mandateId,
+          userId: session.user.id,
+          queryDescription,
+          limits: searchLimits,
+        });
+        searchPayload = { search_run: fallbackSearchRun, fallback: true };
+        searchRunError = null;
+      } catch (error) {
+        searchRunError = error instanceof Error ? error.message : 'Fallback search run creation failed';
+      }
     }
   }
 
@@ -290,8 +366,10 @@ export async function POST(request: Request) {
     success: true,
     workspace_id: workspaceId,
     mandate_id: mandateId,
+    workspace_kind: isMihadIntake ? 'mihad_buyer_desk' : 'investor_cockpit',
     search_run: searchRun,
     search_run_processing: searchRunProcessing,
     search_run_error: searchRunError,
+    discover: discoverResult,
   });
 }

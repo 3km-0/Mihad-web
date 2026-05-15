@@ -62,6 +62,8 @@ const OPPORTUNITY_STAGES = new Set([
   "workspace_created",
   "watch",
   "pursue",
+  "intro_in_progress",
+  "broker_introduced",
   "visit_requested",
   "quote_requested",
   "negotiation",
@@ -73,6 +75,52 @@ const OPPORTUNITY_STAGES = new Set([
   "closed",
   "archived",
 ]);
+
+const SUPPORTED_TARGET_COUNTRIES = new Set(["SA", "AE", "TR", "GR", "ES"]);
+const SUPPORTED_BUDGET_CURRENCIES = new Set(["SAR", "AED", "TRY", "EUR", "USD", "GBP"]);
+const MANDATE_PURPOSES = new Set([
+  "investment",
+  "family_use",
+  "residency",
+  "education",
+  "relocation",
+  "wealth_preservation",
+]);
+const MANDATE_TIMELINES = new Set([
+  "immediate",
+  "1_to_3_months",
+  "3_to_6_months",
+  "6_to_12_months",
+  "exploratory",
+]);
+const MANDATE_LIQUIDITY_CLASSES = new Set([
+  "cash_ready",
+  "financing_ready",
+  "mixed",
+  "needs_financing_guidance",
+]);
+const BROKER_PARTNER_STATUSES = new Set([
+  "candidate",
+  "onboarding",
+  "active",
+  "suspended",
+  "removed",
+]);
+const BROKER_EVENT_TYPES = new Set([
+  "intro_sent",
+  "first_response",
+  "shortlist_provided",
+  "shortlist_accepted",
+  "shortlist_rejected",
+  "visit_scheduled",
+  "offer_drafted",
+  "offer_submitted",
+  "closing_completed",
+  "buyer_complaint",
+  "compliance_incident",
+  "consent_revoked",
+]);
+const BUYER_PACKET_TTL_DAYS = 90;
 const READINESS_LEVEL_MIN = 0;
 const READINESS_LEVEL_MAX = 5;
 const REQUIRED_BROKERAGE_READINESS_LEVEL = 4;
@@ -1421,6 +1469,35 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
   }
 }
 
+function normalizeTargetCountryCodes(value) {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  const set = new Set();
+  for (const entry of raw) {
+    const code = String(entry || "").trim().toUpperCase();
+    if (!code) continue;
+    if (!SUPPORTED_TARGET_COUNTRIES.has(code)) continue;
+    set.add(code);
+  }
+  if (set.size === 0) set.add("SA");
+  return [...set];
+}
+
+function normalizeEnum(value, allowed, fallback = null) {
+  const v = normalizeText(value);
+  if (!v) return fallback;
+  return allowed.has(v) ? v : fallback;
+}
+
+function normalizeBudgetCurrency(value) {
+  const v = String(value || "").trim().toUpperCase();
+  if (!v) return "SAR";
+  return SUPPORTED_BUDGET_CURRENCIES.has(v) ? v : "SAR";
+}
+
 async function createMandate(supabase, body) {
   await assertMandateCreationAllowed(supabase, body);
   const payload = {
@@ -1435,6 +1512,11 @@ async function createMandate(supabase, body) {
     risk_appetite: body.risk_appetite || null,
     excluded_criteria_json: body.excluded_criteria || body.excluded_criteria_json || [],
     confidence_json: body.confidence || body.confidence_json || {},
+    target_country_codes: normalizeTargetCountryCodes(body.target_country_codes ?? body.target_countries),
+    purpose: normalizeEnum(body.purpose, MANDATE_PURPOSES),
+    timeline: normalizeEnum(body.timeline, MANDATE_TIMELINES),
+    liquidity_class: normalizeEnum(body.liquidity_class, MANDATE_LIQUIDITY_CLASSES),
+    budget_currency: normalizeBudgetCurrency(body.budget_currency),
   };
   const { data, error } = await supabase
     .from("acquisition_mandates")
@@ -3681,6 +3763,688 @@ async function addDealDeskReportNote(supabase, reportId, body = {}) {
   return { report_id: report.id, note };
 }
 
+// ---------------------------------------------------------------------------
+// Mihad cross-border handlers: Discover intake, buyer packets, broker partners,
+// broker events, scorecard recompute, verification expiry.
+// ---------------------------------------------------------------------------
+
+function deriveBudgetBand(budgetMin, budgetMax, currency = "SAR") {
+  const cur = String(currency || "SAR").toUpperCase();
+  const min = Number(budgetMin || 0);
+  const max = Number(budgetMax || 0);
+  if (!max || max <= 0) return null;
+  const fmt = (value) => {
+    if (value >= 1_000_000) return `${Math.round((value / 1_000_000) * 10) / 10}M`;
+    if (value >= 1000) return `${Math.round(value / 1000)}K`;
+    return String(Math.round(value));
+  };
+  if (min > 0 && max > min) return `${fmt(min)}-${fmt(max)} ${cur}`;
+  return `<${fmt(max)} ${cur}`;
+}
+
+async function createDiscoverIntake(supabase, body = {}) {
+  const userId = normalizeUuid(body.user_id);
+  if (!userId) {
+    const error = new Error("user_id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const targetCountryCodes = normalizeTargetCountryCodes(
+    body.target_country_codes ?? body.target_countries,
+  );
+  const purpose = normalizeEnum(body.purpose, MANDATE_PURPOSES);
+  const timeline = normalizeEnum(body.timeline, MANDATE_TIMELINES);
+  const liquidityClass = normalizeEnum(body.liquidity_class, MANDATE_LIQUIDITY_CLASSES);
+  const budgetCurrency = normalizeBudgetCurrency(body.budget_currency);
+  const budgetRange = body.budget_range || body.budget_range_json || {};
+  const budgetBand = deriveBudgetBand(
+    Number(budgetRange.min || budgetRange.minimum || 0),
+    Number(budgetRange.max || budgetRange.maximum || 0),
+    budgetCurrency,
+  );
+
+  const mandateTitle =
+    normalizeText(body.title) ||
+    `Mihad Discover — ${targetCountryCodes.join(", ")}`;
+
+  const mandate = await createMandate(supabase, {
+    user_id: userId,
+    organization_id: normalizeUuid(body.organization_id),
+    workspace_id: normalizeUuid(body.workspace_id),
+    title: mandateTitle,
+    status: "active",
+    buy_box_json: body.buy_box || body.buy_box_json || {},
+    target_locations_json: body.target_locations || body.target_locations_json || [],
+    budget_range_json: budgetRange,
+    target_country_codes: targetCountryCodes,
+    purpose,
+    timeline,
+    liquidity_class: liquidityClass,
+    budget_currency: budgetCurrency,
+    confidence_json: { source: "mihad_discover_intake", ...(body.confidence || {}) },
+  });
+
+  const profilePayload = {
+    workspace_id: mandate.workspace_id,
+    mandate_id: mandate.id,
+    buyer_user_id: userId,
+    organization_id: mandate.organization_id,
+    buyer_type: body.buyer_type || "individual",
+    mandate_summary: body.mandate_summary || mandateTitle,
+    funding_path: body.funding_path || liquidityClass,
+    sharing_mode: "private",
+    metadata_json: {
+      source: "mihad_discover_intake",
+      target_country_codes: targetCountryCodes,
+      purpose,
+      timeline,
+      liquidity_class: liquidityClass,
+      budget_currency: budgetCurrency,
+    },
+    created_by: userId,
+  };
+  const profile = await createReadinessProfile(supabase, profilePayload);
+
+  if (budgetBand) {
+    await supabase
+      .from("buyer_readiness_profiles")
+      .update({ budget_band: budgetBand })
+      .eq("id", profile.id);
+    profile.budget_band = budgetBand;
+  }
+
+  return {
+    mandate,
+    readiness_profile: profile,
+    target_country_codes: targetCountryCodes,
+    purpose,
+    timeline,
+    liquidity_class: liquidityClass,
+    budget_currency: budgetCurrency,
+    budget_band: budgetBand,
+  };
+}
+
+async function clarifyMandate(supabase, mandateId, body = {}) {
+  const mandate = await fetchMandate(supabase, mandateId);
+  if (!mandate) {
+    const error = new Error("mandate_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const patch = {};
+  if (body.purpose !== undefined) patch.purpose = normalizeEnum(body.purpose, MANDATE_PURPOSES);
+  if (body.timeline !== undefined) patch.timeline = normalizeEnum(body.timeline, MANDATE_TIMELINES);
+  if (body.liquidity_class !== undefined) {
+    patch.liquidity_class = normalizeEnum(body.liquidity_class, MANDATE_LIQUIDITY_CLASSES);
+  }
+  if (body.budget_currency !== undefined) {
+    patch.budget_currency = normalizeBudgetCurrency(body.budget_currency);
+  }
+  if (body.budget_range !== undefined || body.budget_range_json !== undefined) {
+    patch.budget_range_json = body.budget_range || body.budget_range_json || {};
+  }
+  if (body.buy_box !== undefined || body.buy_box_json !== undefined) {
+    patch.buy_box_json = body.buy_box || body.buy_box_json || {};
+  }
+  if (body.target_country_codes !== undefined || body.target_countries !== undefined) {
+    patch.target_country_codes = normalizeTargetCountryCodes(
+      body.target_country_codes ?? body.target_countries,
+    );
+  }
+  if (body.target_locations !== undefined || body.target_locations_json !== undefined) {
+    patch.target_locations_json = body.target_locations || body.target_locations_json || [];
+  }
+  if (body.confidence !== undefined || body.confidence_json !== undefined) {
+    patch.confidence_json = body.confidence || body.confidence_json || mandate.confidence_json || {};
+  }
+  if (body.excluded_criteria !== undefined || body.excluded_criteria_json !== undefined) {
+    patch.excluded_criteria_json = body.excluded_criteria || body.excluded_criteria_json || [];
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return { mandate, gaps: detectMandateGaps(mandate) };
+  }
+
+  const { data, error } = await supabase
+    .from("acquisition_mandates")
+    .update(patch)
+    .eq("id", mandate.id)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to clarify mandate: ${error?.message || "unknown"}`);
+
+  return { mandate: data, gaps: detectMandateGaps(data) };
+}
+
+function detectMandateGaps(mandate) {
+  const gaps = [];
+  if (!mandate.purpose) gaps.push("purpose");
+  if (!mandate.timeline) gaps.push("timeline");
+  if (!mandate.liquidity_class) gaps.push("liquidity_class");
+  const codes = Array.isArray(mandate.target_country_codes) ? mandate.target_country_codes : [];
+  if (codes.length === 0) gaps.push("target_country_codes");
+  const budget = mandate.budget_range_json || {};
+  if (!budget.max && !budget.maximum) gaps.push("budget_max");
+  return gaps;
+}
+
+const BUYER_PACKET_ALLOWED_FIELDS = [
+  "target_country_codes",
+  "purpose",
+  "timeline",
+  "liquidity_class",
+  "budget_currency",
+  "budget_band",
+  "buyer_type",
+  "preferences",
+  "verification_confidence",
+  "verification_expires_at",
+  "readiness_level",
+  "evidence_status",
+];
+
+function pickPacketFields(source = {}) {
+  const out = {};
+  for (const key of BUYER_PACKET_ALLOWED_FIELDS) {
+    if (source[key] !== undefined && source[key] !== null) {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+
+async function createBuyerPacket(supabase, body = {}) {
+  const profileId = normalizeUuid(body.buyer_profile_id);
+  if (!profileId) {
+    const error = new Error("buyer_profile_id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const profile = await fetchReadinessProfile(supabase, profileId);
+  const mandate = profile.mandate_id ? await fetchMandate(supabase, profile.mandate_id) : null;
+
+  const { count: versionCount } = await supabase
+    .from("buyer_packets")
+    .select("id", { count: "exact", head: true })
+    .eq("buyer_profile_id", profile.id);
+  const nextVersion = (versionCount || 0) + 1;
+
+  const ttlDays = Number.isFinite(Number(body.ttl_days)) && Number(body.ttl_days) > 0
+    ? Math.min(365, Number(body.ttl_days))
+    : BUYER_PACKET_TTL_DAYS;
+  const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
+
+  const snapshot = pickPacketFields({
+    target_country_codes: mandate?.target_country_codes,
+    purpose: mandate?.purpose,
+    timeline: mandate?.timeline,
+    liquidity_class: mandate?.liquidity_class,
+    budget_currency: mandate?.budget_currency,
+    budget_band: profile.budget_band,
+    buyer_type: profile.buyer_type,
+    preferences: body.preferences || null,
+    verification_confidence: profile.verification_confidence,
+    verification_expires_at: profile.verification_expires_at,
+    readiness_level: profile.readiness_level,
+    evidence_status: profile.evidence_status,
+  });
+
+  const consentScope = body.consent_scope_json || body.consent_scope || {
+    broker_partner_ids: [],
+    markets: snapshot.target_country_codes || [],
+    until: expiresAt,
+  };
+
+  const payload = {
+    buyer_profile_id: profile.id,
+    workspace_id: profile.workspace_id,
+    mandate_id: mandate?.id || null,
+    version: nextVersion,
+    snapshot_json: snapshot,
+    consent_scope_json: consentScope,
+    status: "active",
+    expires_at: expiresAt,
+    created_by: normalizeUuid(body.user_id || body.created_by),
+  };
+  const { data, error } = await supabase
+    .from("buyer_packets")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create buyer packet: ${error?.message || "unknown"}`);
+  return { packet: data };
+}
+
+async function grantBuyerPacketToBroker(supabase, packetId, body = {}) {
+  const { data: packet, error: fetchError } = await supabase
+    .from("buyer_packets")
+    .select("*")
+    .eq("id", packetId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!packet) {
+    const error = new Error("buyer_packet_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (packet.status !== "active") {
+    const error = new Error("buyer_packet_not_active");
+    error.statusCode = 409;
+    throw error;
+  }
+  const brokerPartnerId = normalizeUuid(body.broker_partner_id);
+  if (!brokerPartnerId) {
+    const error = new Error("broker_partner_id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const purpose = normalizeText(body.purpose) || "share_buyer_readiness_with_broker";
+  const ttlDays = Number.isFinite(Number(body.ttl_days)) && Number(body.ttl_days) > 0
+    ? Math.min(60, Number(body.ttl_days))
+    : 30;
+  const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
+  const cappedExpiry = packet.expires_at && new Date(packet.expires_at) < new Date(expiresAt)
+    ? packet.expires_at
+    : expiresAt;
+
+  const grantPayload = {
+    workspace_id: packet.workspace_id,
+    buyer_profile_id: packet.buyer_profile_id,
+    opportunity_id: normalizeUuid(body.opportunity_id),
+    granted_by: normalizeUuid(body.user_id || body.granted_by),
+    granted_to_kind: "broker",
+    granted_to_identifier: brokerPartnerId,
+    purpose,
+    allowed_action: "share_status",
+    share_mode: "status_only",
+    expires_at: cappedExpiry,
+    metadata_json: {
+      buyer_packet_id: packet.id,
+      packet_version: packet.version,
+      consent_scope: packet.consent_scope_json,
+    },
+  };
+
+  const { data, error } = await supabase
+    .from("document_sharing_grants")
+    .insert(grantPayload)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to grant buyer packet: ${error?.message || "unknown"}`);
+  }
+
+  const existingScope = packet.consent_scope_json && typeof packet.consent_scope_json === "object"
+    ? packet.consent_scope_json
+    : {};
+  const brokerIds = new Set(
+    Array.isArray(existingScope.broker_partner_ids) ? existingScope.broker_partner_ids : [],
+  );
+  brokerIds.add(brokerPartnerId);
+  await supabase
+    .from("buyer_packets")
+    .update({
+      consent_scope_json: {
+        ...existingScope,
+        broker_partner_ids: [...brokerIds],
+        last_granted_at: new Date().toISOString(),
+      },
+    })
+    .eq("id", packet.id);
+
+  return { grant: data, packet_id: packet.id };
+}
+
+async function revokeBuyerPacketGrant(supabase, grantId, body = {}) {
+  const id = normalizeUuid(grantId);
+  if (!id) {
+    const error = new Error("grant_id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const { data: existing, error: fetchError } = await supabase
+    .from("document_sharing_grants")
+    .select("id, workspace_id, granted_to_identifier, revoked_at, expires_at, metadata_json")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) {
+    const error = new Error("sharing_grant_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (existing.revoked_at) {
+    return { grant: existing, already_revoked: true };
+  }
+  const reason = normalizeText(body.reason) || "revoked_by_buyer";
+  const { data: updated, error: updateError } = await supabase
+    .from("document_sharing_grants")
+    .update({
+      revoked_at: new Date().toISOString(),
+      revoked_reason: reason,
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (updateError || !updated) {
+    throw new Error(`Failed to revoke sharing grant: ${updateError?.message || "unknown"}`);
+  }
+
+  const brokerPartnerId = normalizeUuid(existing.granted_to_identifier);
+  if (brokerPartnerId) {
+    try {
+      await supabase.from("broker_events").insert({
+        broker_partner_id: brokerPartnerId,
+        workspace_id: existing.workspace_id,
+        event_type: "consent_revoked",
+        outcome: reason,
+        metadata_json: {
+          sharing_grant_id: id,
+          reason,
+          buyer_packet_id: existing.metadata_json?.buyer_packet_id ?? null,
+        },
+      });
+    } catch (_) {
+      // Non-fatal: revocation itself already succeeded; scorecard recompute
+      // will pick this up on the next cron tick once the enum is extended.
+    }
+  }
+
+  return { grant: updated, already_revoked: false };
+}
+
+async function listBrokerPartners(supabase, query = {}) {
+  let req = supabase
+    .from("broker_partners")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (query.country_code) {
+    req = req.eq("country_code", String(query.country_code).toUpperCase());
+  }
+  if (query.status) {
+    req = req.eq("status", String(query.status));
+  }
+  const { data, error } = await req;
+  if (error) throw error;
+  return { broker_partners: data || [] };
+}
+
+async function createBrokerPartner(supabase, body = {}) {
+  const displayName = normalizeText(body.display_name || body.name);
+  if (!displayName) {
+    const error = new Error("display_name is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  const countryCode = String(body.country_code || "").trim().toUpperCase();
+  if (!SUPPORTED_TARGET_COUNTRIES.has(countryCode)) {
+    const error = new Error("country_code must be one of SA, AE, TR, GR, ES");
+    error.statusCode = 400;
+    throw error;
+  }
+  const status = BROKER_PARTNER_STATUSES.has(body.status) ? body.status : "candidate";
+  const licensing = body.licensing_json || body.licensing || {};
+  const languages = Array.isArray(body.languages) ? body.languages : [];
+  const responseSla = Number.isFinite(Number(body.response_sla_minutes))
+    ? Math.max(0, Math.round(Number(body.response_sla_minutes)))
+    : null;
+
+  if (status === "active") {
+    if (!licensing || Object.keys(licensing).length === 0) {
+      const error = new Error("active brokers require licensing_json");
+      error.statusCode = 422;
+      throw error;
+    }
+    if (!body.privacy_agreement_signed_at) {
+      const error = new Error("active brokers require privacy_agreement_signed_at");
+      error.statusCode = 422;
+      throw error;
+    }
+  }
+
+  const payload = {
+    display_name: displayName,
+    legal_name: normalizeText(body.legal_name) || null,
+    country_code: countryCode,
+    city: normalizeText(body.city) || null,
+    languages,
+    licensing_json: licensing,
+    markets_covered_json: body.markets_covered_json || body.markets_covered || {},
+    contact_email: normalizeText(body.contact_email) || null,
+    contact_phone: normalizeText(body.contact_phone) || null,
+    status,
+    privacy_agreement_signed_at: body.privacy_agreement_signed_at || null,
+    response_sla_minutes: responseSla,
+    co_brokerage_terms_json: body.co_brokerage_terms_json || body.co_brokerage_terms || {},
+    notes: normalizeText(body.notes) || null,
+    metadata_json: body.metadata_json || body.metadata || {},
+    organization_id: normalizeUuid(body.organization_id),
+    created_by: normalizeUuid(body.created_by || body.user_id),
+  };
+
+  const { data, error } = await supabase
+    .from("broker_partners")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to create broker partner: ${error?.message || "unknown"}`);
+  }
+  return { broker_partner: data };
+}
+
+async function logBrokerEvent(supabase, brokerPartnerId, body = {}) {
+  const { data: broker, error: fetchError } = await supabase
+    .from("broker_partners")
+    .select("id")
+    .eq("id", brokerPartnerId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!broker) {
+    const error = new Error("broker_partner_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const eventType = normalizeText(body.event_type);
+  if (!BROKER_EVENT_TYPES.has(eventType)) {
+    const error = new Error("invalid event_type");
+    error.statusCode = 400;
+    throw error;
+  }
+  const latency = Number.isFinite(Number(body.response_latency_seconds))
+    ? Math.max(0, Math.round(Number(body.response_latency_seconds)))
+    : null;
+  const payload = {
+    broker_partner_id: broker.id,
+    workspace_id: normalizeUuid(body.workspace_id),
+    opportunity_id: normalizeUuid(body.opportunity_id),
+    buyer_profile_id: normalizeUuid(body.buyer_profile_id),
+    event_type: eventType,
+    response_latency_seconds: latency,
+    outcome: normalizeText(body.outcome) || null,
+    metadata_json: body.metadata_json || body.metadata || {},
+    recorded_by: normalizeUuid(body.recorded_by || body.user_id),
+    occurred_at: body.occurred_at || new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("broker_events")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw new Error(`Failed to log broker event: ${error?.message || "unknown"}`);
+  }
+  return { broker_event: data };
+}
+
+async function getBrokerScorecard(supabase, brokerPartnerId) {
+  const { data, error } = await supabase
+    .from("broker_scorecards")
+    .select("*")
+    .eq("broker_partner_id", brokerPartnerId)
+    .maybeSingle();
+  if (error) throw error;
+  return { scorecard: data || null };
+}
+
+function median(values = []) {
+  const cleaned = values.filter((v) => Number.isFinite(v));
+  if (!cleaned.length) return null;
+  const sorted = [...cleaned].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function computeScorecardFromEvents(events = [], { responseSlaMinutes } = {}) {
+  const intros = events.filter((e) => e.event_type === "intro_sent");
+  const firstResponses = events.filter((e) => e.event_type === "first_response");
+  const shortlistsProvided = events.filter((e) => e.event_type === "shortlist_provided");
+  const shortlistsAccepted = events.filter((e) => e.event_type === "shortlist_accepted");
+  const offerSubmitted = events.filter((e) => e.event_type === "offer_submitted");
+  const closings = events.filter((e) => e.event_type === "closing_completed");
+  const complaints = events.filter((e) => e.event_type === "buyer_complaint");
+  const compliance = events.filter((e) => e.event_type === "compliance_incident");
+  const consentRevocations = events.filter((e) => e.event_type === "consent_revoked");
+
+  const slaSeconds = Number.isFinite(Number(responseSlaMinutes))
+    ? Math.max(60, Number(responseSlaMinutes) * 60)
+    : 60 * 60 * 24;
+  const responseLatencies = firstResponses
+    .map((e) => Number(e.response_latency_seconds))
+    .filter((v) => Number.isFinite(v));
+  const medianLatency = median(responseLatencies);
+  const responseSpeedPts = (() => {
+    if (medianLatency == null) return 12;
+    if (medianLatency <= slaSeconds * 0.25) return 25;
+    if (medianLatency <= slaSeconds * 0.5) return 22;
+    if (medianLatency <= slaSeconds) return 18;
+    if (medianLatency <= slaSeconds * 2) return 12;
+    if (medianLatency <= slaSeconds * 4) return 6;
+    return 2;
+  })();
+
+  const shortlistQualityPts = (() => {
+    if (shortlistsProvided.length === 0) return 10;
+    const ratio = shortlistsAccepted.length / shortlistsProvided.length;
+    return Math.round(Math.max(0, Math.min(1, ratio)) * 20);
+  })();
+
+  const buyerSatisfactionPts = 12;
+
+  const offerToClosePts = (() => {
+    if (offerSubmitted.length === 0) return 10;
+    const ratio = closings.length / offerSubmitted.length;
+    return Math.round(Math.max(0, Math.min(1, ratio)) * 20);
+  })();
+
+  const compliancePts = (() => {
+    // Each consent revocation costs 3 pts (less than a complaint, more than
+    // a neutral signal); a buyer may legitimately revoke for non-broker
+    // reasons, so we don't treat it as severely as a complaint.
+    const demerits = complaints.length * 5 + compliance.length * 8 + consentRevocations.length * 3;
+    return Math.max(0, 15 - demerits);
+  })();
+
+  const composite =
+    responseSpeedPts +
+    shortlistQualityPts +
+    buyerSatisfactionPts +
+    offerToClosePts +
+    compliancePts;
+
+  return {
+    response_speed_pts: Math.max(0, Math.min(25, responseSpeedPts)),
+    shortlist_quality_pts: Math.max(0, Math.min(20, shortlistQualityPts)),
+    buyer_satisfaction_pts: Math.max(0, Math.min(20, buyerSatisfactionPts)),
+    offer_to_close_pts: Math.max(0, Math.min(20, offerToClosePts)),
+    compliance_pts: Math.max(0, Math.min(15, compliancePts)),
+    composite_score: Math.max(0, Math.min(100, composite)),
+    inputs_json: {
+      intros_sent: intros.length,
+      first_responses: firstResponses.length,
+      median_response_latency_seconds: medianLatency,
+      response_sla_seconds: slaSeconds,
+      shortlists_provided: shortlistsProvided.length,
+      shortlists_accepted: shortlistsAccepted.length,
+      offers_submitted: offerSubmitted.length,
+      closings_completed: closings.length,
+      buyer_complaints: complaints.length,
+      compliance_incidents: compliance.length,
+      consent_revocations: consentRevocations.length,
+      total_events: events.length,
+    },
+  };
+}
+
+async function recomputeBrokerScorecards(supabase, { brokerPartnerId } = {}) {
+  let partnersQuery = supabase
+    .from("broker_partners")
+    .select("id, response_sla_minutes, status")
+    .neq("status", "removed");
+  if (brokerPartnerId) partnersQuery = partnersQuery.eq("id", brokerPartnerId);
+  const { data: partners, error: partnersError } = await partnersQuery;
+  if (partnersError) throw partnersError;
+
+  const results = [];
+  for (const partner of partners || []) {
+    const { data: events, error: eventsError } = await supabase
+      .from("broker_events")
+      .select("event_type, response_latency_seconds, outcome, occurred_at")
+      .eq("broker_partner_id", partner.id)
+      .order("occurred_at", { ascending: true });
+    if (eventsError) throw eventsError;
+    const pillars = computeScorecardFromEvents(events || [], {
+      responseSlaMinutes: partner.response_sla_minutes,
+    });
+    const upsertPayload = {
+      broker_partner_id: partner.id,
+      ...pillars,
+      computed_at: new Date().toISOString(),
+    };
+    const { error: upsertError } = await supabase
+      .from("broker_scorecards")
+      .upsert(upsertPayload, { onConflict: "broker_partner_id" });
+    if (upsertError) throw upsertError;
+    results.push({ broker_partner_id: partner.id, composite_score: pillars.composite_score });
+  }
+  return { recomputed: results.length, results };
+}
+
+async function expireVerifications(supabase) {
+  const now = new Date().toISOString();
+  const expired = { profiles: 0, packets: 0, grants: 0 };
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("buyer_readiness_profiles")
+    .update({ verification_confidence: "expired", evidence_status: "expired" })
+    .lt("verification_expires_at", now)
+    .neq("verification_confidence", "expired")
+    .select("id");
+  if (profilesError) throw profilesError;
+  expired.profiles = profiles?.length || 0;
+
+  const { data: packets, error: packetsError } = await supabase
+    .from("buyer_packets")
+    .update({ status: "expired" })
+    .lt("expires_at", now)
+    .eq("status", "active")
+    .select("id");
+  if (packetsError) throw packetsError;
+  expired.packets = packets?.length || 0;
+
+  const { data: grants, error: grantsError } = await supabase
+    .from("document_sharing_grants")
+    .update({ revoked_at: now, revoked_reason: "expired" })
+    .lt("expires_at", now)
+    .is("revoked_at", null)
+    .select("id");
+  if (grantsError) throw grantsError;
+  expired.grants = grants?.length || 0;
+
+  return { expired };
+}
+
 function matchRoute(method, pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "api" || parts[1] !== "acquisition" || parts[2] !== "v1") return null;
@@ -3717,6 +4481,15 @@ function matchRoute(method, pathname) {
   if (method === "POST" && parts[3] === "approvals" && parts.length === 4) return { name: "createExternalActionApproval" };
   if (method === "POST" && parts[3] === "approvals" && parts[5] === "approve") return { name: "approveExternalAction", approvalId: parts[4] };
   if (method === "POST" && parts[3] === "approvals" && parts[5] === "execute") return { name: "executeExternalAction", approvalId: parts[4] };
+  if (method === "POST" && parts[3] === "discover" && parts.length === 4) return { name: "createDiscoverIntake" };
+  if (method === "POST" && parts[3] === "mandates" && parts[5] === "clarify" && parts.length === 6) return { name: "clarifyMandate", mandateId: parts[4] };
+  if (method === "POST" && parts[3] === "buyer-packets" && parts.length === 4) return { name: "createBuyerPacket" };
+  if (method === "POST" && parts[3] === "buyer-packets" && parts[5] === "grant" && parts.length === 6) return { name: "grantBuyerPacketToBroker", packetId: parts[4] };
+  if (method === "POST" && parts[3] === "sharing-grants" && parts[5] === "revoke" && parts.length === 6) return { name: "revokeBuyerPacketGrant", grantId: parts[4] };
+  if (method === "GET" && parts[3] === "broker-partners" && parts.length === 4) return { name: "listBrokerPartners" };
+  if (method === "POST" && parts[3] === "broker-partners" && parts.length === 4) return { name: "createBrokerPartner" };
+  if (method === "POST" && parts[3] === "broker-partners" && parts[5] === "events" && parts.length === 6) return { name: "logBrokerEvent", brokerPartnerId: parts[4] };
+  if (method === "GET" && parts[3] === "broker-partners" && parts[5] === "scorecard" && parts.length === 6) return { name: "getBrokerScorecard", brokerPartnerId: parts[4] };
   return null;
 }
 
@@ -3869,6 +4642,102 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
       });
       return sendJson(res, 202, buildEnvelope(requestId, result));
     }
+    if ([
+      "createDiscoverIntake",
+      "clarifyMandate",
+      "createBuyerPacket",
+      "grantBuyerPacketToBroker",
+      "revokeBuyerPacketGrant",
+      "listBrokerPartners",
+      "getBrokerScorecard",
+    ].includes(route.name)) {
+      const allowInternal = isInternalCaller(req.headers);
+      const body = req.method === "GET" ? {} : await readJsonBody(req);
+      let userId = normalizeUuid(body.user_id);
+      if (!allowInternal) {
+        const token = bearerToken(req.headers);
+        if (!token) {
+          const error = new Error("not_authenticated");
+          error.statusCode = 401;
+          throw error;
+        }
+        const verified = await verifySupabaseJwt(token);
+        if (!verified.payload?.sub) {
+          const error = new Error("invalid_user_token");
+          error.statusCode = 401;
+          throw error;
+        }
+        userId = normalizeUuid(verified.payload.sub);
+        body.user_id ||= userId;
+      }
+
+      if (route.name === "createDiscoverIntake") {
+        const result = await createDiscoverIntake(supabase, body);
+        return sendJson(res, 201, buildEnvelope(requestId, result));
+      }
+      if (route.name === "clarifyMandate") {
+        const mandate = await fetchMandate(supabase, route.mandateId);
+        if (!mandate) {
+          const error = new Error("mandate_not_found");
+          error.statusCode = 404;
+          throw error;
+        }
+        if (!allowInternal && mandate.user_id && mandate.user_id !== userId) {
+          const error = new Error("mandate_not_accessible");
+          error.statusCode = 403;
+          throw error;
+        }
+        const result = await clarifyMandate(supabase, route.mandateId, body);
+        return sendJson(res, 200, buildEnvelope(requestId, result));
+      }
+      if (route.name === "createBuyerPacket") {
+        if (!allowInternal) {
+          const profile = await fetchReadinessProfile(supabase, normalizeUuid(body.buyer_profile_id));
+          await assertWorkspaceWriteAccess(supabase, profile?.workspace_id, userId);
+        }
+        const result = await createBuyerPacket(supabase, body);
+        return sendJson(res, 201, buildEnvelope(requestId, result));
+      }
+      if (route.name === "grantBuyerPacketToBroker") {
+        if (!allowInternal) {
+          const { data: packet, error: packetError } = await supabase
+            .from("buyer_packets")
+            .select("workspace_id")
+            .eq("id", route.packetId)
+            .maybeSingle();
+          if (packetError) throw packetError;
+          await assertWorkspaceWriteAccess(supabase, packet?.workspace_id, userId);
+        }
+        const result = await grantBuyerPacketToBroker(supabase, route.packetId, body);
+        return sendJson(res, 201, buildEnvelope(requestId, result));
+      }
+      if (route.name === "revokeBuyerPacketGrant") {
+        if (!allowInternal) {
+          const { data: grant, error: grantError } = await supabase
+            .from("document_sharing_grants")
+            .select("workspace_id")
+            .eq("id", route.grantId)
+            .maybeSingle();
+          if (grantError) throw grantError;
+          await assertWorkspaceWriteAccess(supabase, grant?.workspace_id, userId);
+        }
+        const result = await revokeBuyerPacketGrant(supabase, route.grantId, body);
+        return sendJson(res, 200, buildEnvelope(requestId, result));
+      }
+      if (route.name === "listBrokerPartners") {
+        const url = new URL(req.url || "/", "http://localhost");
+        const query = {
+          country_code: url.searchParams.get("country_code"),
+          status: url.searchParams.get("status") || "active",
+        };
+        const result = await listBrokerPartners(supabase, query);
+        return sendJson(res, 200, buildEnvelope(requestId, result));
+      }
+      if (route.name === "getBrokerScorecard") {
+        const result = await getBrokerScorecard(supabase, route.brokerPartnerId);
+        return sendJson(res, 200, buildEnvelope(requestId, result));
+      }
+    }
     requireInternalCaller(req.headers);
     const body = req.method === "GET" ? {} : await readJsonBody(req);
     if (route.name === "createMandate") {
@@ -3970,6 +4839,14 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
     if (route.name === "executeExternalAction") {
       return sendJson(res, 200, buildEnvelope(requestId, { approval: await executeExternalAction(supabase, route.approvalId, body) }));
     }
+    if (route.name === "createBrokerPartner") {
+      const result = await createBrokerPartner(supabase, body);
+      return sendJson(res, 201, buildEnvelope(requestId, result));
+    }
+    if (route.name === "logBrokerEvent") {
+      const result = await logBrokerEvent(supabase, route.brokerPartnerId, body);
+      return sendJson(res, 201, buildEnvelope(requestId, result));
+    }
   } catch (error) {
     log?.error?.("Acquisition API error", { error: error instanceof Error ? error.message : String(error) });
     return sendJson(res, error.statusCode || 500, buildEnvelope(requestId, { error: error.message || "Acquisition API error" }));
@@ -4006,6 +4883,16 @@ export async function handleAcquisitionInternal(req, res, { requestId, log, read
     }
     if (pathname === "/internal/acquisition/enrich-opportunity") {
       return sendJson(res, 200, buildEnvelope(requestId, await enrichOpportunity(supabase, normalizeUuid(body.opportunity_id), body)));
+    }
+    if (pathname === "/internal/acquisition/recompute-broker-scorecards") {
+      const result = await recomputeBrokerScorecards(supabase, {
+        brokerPartnerId: normalizeUuid(body.broker_partner_id),
+      });
+      return sendJson(res, 200, buildEnvelope(requestId, result));
+    }
+    if (pathname === "/internal/acquisition/expire-verifications") {
+      const result = await expireVerifications(supabase);
+      return sendJson(res, 200, buildEnvelope(requestId, result));
     }
     return sendJson(res, 404, buildEnvelope(requestId, { error: "Not found" }));
   } catch (error) {
@@ -4048,4 +4935,7 @@ export const __test = {
   upsertCandidateDraft,
   updateReadinessProfile,
   verifyReadinessEvidence,
+  grantBuyerPacketToBroker,
+  revokeBuyerPacketGrant,
+  computeScorecardFromEvents,
 };

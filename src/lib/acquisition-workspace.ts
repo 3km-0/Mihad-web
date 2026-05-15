@@ -47,6 +47,38 @@ export interface BuyBox {
   notes: string | null;
 }
 
+export type MihadCountryCode = 'AE' | 'TR' | 'GR' | 'ES' | 'SA';
+
+export type MihadPurpose =
+  | 'investment'
+  | 'family_use'
+  | 'residency'
+  | 'education'
+  | 'relocation'
+  | 'wealth_preservation';
+
+export type MihadMandateTimeline =
+  | 'immediate'
+  | '1_to_3_months'
+  | '3_to_6_months'
+  | '6_to_12_months'
+  | 'exploratory';
+
+export type MihadLiquidityClass = 'cash_ready' | 'financing_ready' | 'mixed' | 'needs_financing_guidance';
+
+export type MihadBudgetCurrency = 'SAR' | 'AED' | 'TRY' | 'EUR' | 'USD' | 'GBP';
+
+export type WorkspaceKind = 'investor_cockpit' | 'mihad_buyer_desk' | 'operator' | 'other';
+
+export interface MihadMandateExtras {
+  targetCountryCodes?: MihadCountryCode[] | string[] | null;
+  purpose?: MihadPurpose | null;
+  mandateTimeline?: MihadMandateTimeline | null;
+  liquidityClass?: MihadLiquidityClass | null;
+  budgetCurrency?: MihadBudgetCurrency | null;
+  preferences?: Record<string, unknown> | null;
+}
+
 export interface CreateAcquisitionWorkspaceInput {
   userId: string;
   name: string;
@@ -55,6 +87,8 @@ export interface CreateAcquisitionWorkspaceInput {
   buyBox: BuyBoxInput;
   seedSource?: string;
   adminApprovedAdditionalMandate?: boolean;
+  workspaceKind?: WorkspaceKind;
+  mihad?: MihadMandateExtras;
 }
 
 export function splitList(value: string | string[] | null | undefined) {
@@ -144,6 +178,27 @@ async function assertAcquisitionWorkspaceAllowed(
   }
 }
 
+const SUPPORTED_MIHAD_COUNTRIES = new Set<MihadCountryCode>(['SA', 'AE', 'TR', 'GR', 'ES']);
+
+function normalizeMihadCountryCodes(codes: MihadMandateExtras['targetCountryCodes']): MihadCountryCode[] {
+  const list = Array.isArray(codes) ? codes : [];
+  const cleaned = new Set<MihadCountryCode>();
+  for (const raw of list) {
+    const code = String(raw || '').trim().toUpperCase() as MihadCountryCode;
+    if (SUPPORTED_MIHAD_COUNTRIES.has(code)) cleaned.add(code);
+  }
+  if (cleaned.size === 0) cleaned.add('SA');
+  return Array.from(cleaned);
+}
+
+function inferWorkspaceKind(input: CreateAcquisitionWorkspaceInput): WorkspaceKind {
+  if (input.workspaceKind) return input.workspaceKind;
+  const codes = normalizeMihadCountryCodes(input.mihad?.targetCountryCodes);
+  if (codes.some((code) => code !== 'SA')) return 'mihad_buyer_desk';
+  if (codes.length === 1 && codes[0] === 'SA' && !input.mihad?.purpose) return 'investor_cockpit';
+  return 'mihad_buyer_desk';
+}
+
 export async function createAcquisitionWorkspace(
   supabase: SupabaseClient,
   input: CreateAcquisitionWorkspaceInput
@@ -155,6 +210,10 @@ export async function createAcquisitionWorkspace(
   const summary = input.description?.trim() || buildAcquisitionBrief(name, buyBox);
   const createdAt = new Date().toISOString();
 
+  const workspaceKind = inferWorkspaceKind(input);
+  const targetCountryCodes = normalizeMihadCountryCodes(input.mihad?.targetCountryCodes);
+  const budgetCurrency: MihadBudgetCurrency = (input.mihad?.budgetCurrency || 'SAR') as MihadBudgetCurrency;
+
   const { data: createdWorkspace, error: workspaceError } = await supabase
     .from('workspaces')
     .insert({
@@ -162,6 +221,7 @@ export async function createAcquisitionWorkspace(
       description: summary || null,
       analysis_brief: buildAcquisitionBrief(name, buyBox) || summary || null,
       workspace_type: 'project',
+      workspace_kind: workspaceKind,
       icon: 'scope',
       color: '#B7F34A',
       parent_folder_id: input.parentFolderId || null,
@@ -174,6 +234,16 @@ export async function createAcquisitionWorkspace(
         product_model: 'Mandate -> Opportunity -> Screening -> Acquisition Workspace -> Coordination -> Decision',
         living_interface_state: 'pending_snapshot',
         buy_box: buyBox,
+        mihad: input.mihad
+          ? {
+              target_country_codes: targetCountryCodes,
+              purpose: input.mihad.purpose ?? null,
+              timeline: input.mihad.mandateTimeline ?? null,
+              liquidity_class: input.mihad.liquidityClass ?? null,
+              budget_currency: budgetCurrency,
+              preferences: input.mihad.preferences ?? null,
+            }
+          : null,
       },
     })
     .select('id')
@@ -191,11 +261,15 @@ export async function createAcquisitionWorkspace(
       title: name,
       status: 'active',
       buy_box_json: buyBox,
-      target_locations_json: buyBox.districts.length ? buyBox.districts : [buyBox.city || 'Riyadh'],
+      target_locations_json: buyBox.districts.length
+        ? buyBox.districts
+        : buyBox.city
+          ? [buyBox.city]
+          : targetCountryCodes,
       budget_range_json: {
         min: buyBox.budget_min_sar,
         max: buyBox.budget_max_sar,
-        currency: 'SAR',
+        currency: budgetCurrency,
       },
       risk_appetite: buyBox.risk_appetite,
       excluded_criteria_json: buyBox.avoid,
@@ -203,6 +277,11 @@ export async function createAcquisitionWorkspace(
         intake_source: input.seedSource || 'workspace_creation_form',
         basis_label: 'investor_provided',
       },
+      target_country_codes: targetCountryCodes,
+      purpose: input.mihad?.purpose ?? null,
+      timeline: input.mihad?.mandateTimeline ?? null,
+      liquidity_class: input.mihad?.liquidityClass ?? null,
+      budget_currency: budgetCurrency,
     })
     .select('id')
     .single();

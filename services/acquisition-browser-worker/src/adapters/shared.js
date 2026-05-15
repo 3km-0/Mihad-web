@@ -203,6 +203,89 @@ export function parsePrice(text) {
   return fallback ? Number(fallback[1]) : null;
 }
 
+// Currency-aware price parser for non-Saudi markets. Handles:
+//   AED (United Arab Emirates) — "AED 1,500,000" or "1,500,000 AED" or "د.إ 1.5m"
+//   EUR (Spain, Greece) — "650.000 €", "€650,000", "650,000 EUR"
+//   TRY (Türkiye) — "1.500.000 ₺", "1,500,000 TL"
+// Returns { amount, currency } where amount is a plain number in the source
+// currency. Returns { amount: null, currency: null } when nothing matches.
+export function parsePriceWithCurrency(text, { defaultCurrency = null } = {}) {
+  const rawMultiline = String(text || "");
+  const raw = normalizeText(rawMultiline);
+  // European thousand separator is '.' so we cannot blindly strip dots.
+  // Strategy: detect currency first, then normalize numerics in a
+  // currency-appropriate way.
+  const currencyHints = [
+    { code: "AED", patterns: [/(?:aed|د\.إ|درهم)\s*([\d.,\s]{4,})/i, /([\d.,\s]{4,})\s*(?:aed|د\.إ|درهم)/i] },
+    { code: "SAR", patterns: [/(?:sar|ريال|ر\.س)\s*([\d.,\s]{4,})/i, /([\d.,\s]{4,})\s*(?:sar|ريال|ر\.س)/i] },
+    { code: "EUR", patterns: [/(?:eur|€)\s*([\d.,\s]{4,})/i, /([\d.,\s]{4,})\s*(?:eur|€)/i] },
+    { code: "TRY", patterns: [/(?:try|tl|₺)\s*([\d.,\s]{4,})/i, /([\d.,\s]{4,})\s*(?:try|tl|₺)/i] },
+    { code: "USD", patterns: [/(?:usd|\$)\s*([\d.,\s]{4,})/i, /([\d.,\s]{4,})\s*(?:usd|\$)/i] },
+    { code: "GBP", patterns: [/(?:gbp|£)\s*([\d.,\s]{4,})/i, /([\d.,\s]{4,})\s*(?:gbp|£)/i] },
+  ];
+
+  function normalizeNumeric(rawValue, currency) {
+    const cleaned = String(rawValue).replace(/\s+/g, "");
+    // For EUR/TRY/SAR the convention is often '.' as thousand separator.
+    // For AED/USD/GBP the convention is ',' as thousand separator.
+    // We pick based on currency, with a fallback heuristic for ambiguity.
+    const europeanStyle = ["EUR", "TRY"].includes(currency);
+    let candidate = cleaned;
+    if (europeanStyle) {
+      // 650.000,50 → 650000.50; 650.000 → 650000
+      if (candidate.includes(",")) {
+        candidate = candidate.replace(/\./g, "").replace(",", ".");
+      } else {
+        candidate = candidate.replace(/\./g, "");
+      }
+    } else {
+      // 1,500,000.50 → 1500000.50; 1,500,000 → 1500000
+      candidate = candidate.replace(/,/g, "");
+    }
+    const num = Number(candidate);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  // Look for "1.5m" / "2 million" first. The (?![\dA-Za-z²³]) lookahead
+  // prevents matching "120 m²" (area) or "100 mb" (bedrooms/etc) — the
+  // multiplier suffix must be followed by whitespace, punctuation, or
+  // end-of-string, not another letter or superscript digit.
+  const millionMatch = raw.match(/(\d+(?:[.,]\d+)?)\s*(m|mn|million)(?![\dA-Za-z²³])/i);
+  if (millionMatch) {
+    const numeric = Number(String(millionMatch[1]).replace(",", "."));
+    if (Number.isFinite(numeric) && numeric > 0) {
+      for (const { code, patterns } of currencyHints) {
+        if (patterns.some((pat) => pat.test(raw))) {
+          return { amount: Math.round(numeric * 1_000_000), currency: code };
+        }
+      }
+      if (defaultCurrency) {
+        return { amount: Math.round(numeric * 1_000_000), currency: defaultCurrency };
+      }
+    }
+  }
+
+  for (const { code, patterns } of currencyHints) {
+    for (const pattern of patterns) {
+      const match = raw.match(pattern);
+      if (!match) continue;
+      const numeric = normalizeNumeric(match[1], code);
+      if (Number.isFinite(numeric) && numeric > 1_000) {
+        return { amount: numeric, currency: code };
+      }
+    }
+  }
+
+  if (defaultCurrency) {
+    const amount = parsePrice(raw);
+    if (Number.isFinite(amount) && amount > 0) {
+      return { amount, currency: defaultCurrency };
+    }
+  }
+
+  return { amount: null, currency: null };
+}
+
 export function sourceFingerprint({ source, sourceUrl, title, district, askingPrice }) {
   return createHash("sha256")
     .update([
@@ -352,6 +435,63 @@ export function candidateFromText({ source, sourceUrl, title, text, capturedAt =
     title: candidate.title,
     district: candidate.district,
     askingPrice,
+  });
+  return candidate;
+}
+
+// Country/currency-aware candidate builder for non-Saudi marketplaces.
+// Stamps country_code, currency, and the raw native price into the
+// limited_evidence_snapshot_json so downstream IQS scoring can convert to SAR.
+// Falls back to candidateFromText behavior when country/currency are unknown.
+export function candidateFromTextWithLocale({
+  source,
+  sourceUrl,
+  title,
+  text,
+  countryCode,
+  defaultCurrency = null,
+  cityHint = null,
+  districtHint = null,
+  capturedAt = new Date().toISOString(),
+}) {
+  const content = normalizeText(`${title || ""} ${text || ""}`);
+  const { amount, currency } = parsePriceWithCurrency(content, { defaultCurrency });
+  const area = content.match(/(\d+(?:[,.]\d+)*(?:\.\d+)?)\s*(sqm|sq\.?\s*m\.?|m2|m²|م2|م²|متر|metros?)/i);
+  const beds = content.match(/(\d+)\s*(bed|beds|bedroom|dorm|habitaciones|γκαρ|yatak|غرف|غرفة)/i);
+  const baths = content.match(/(\d+)\s*(bath|bathroom|baño|banyo|μπάν|دورات|حمام)/i);
+  const propertyType = detectPropertyType(content);
+  const districtFallback = detectDistrict(content);
+  const cityFallback = detectCity(content);
+  const areaValue = area ? Number(String(area[1]).replace(/,/g, "")) : null;
+  const candidate = {
+    source,
+    source_url: sourceUrl,
+    title: normalizeText(title) || normalizeText(content).slice(0, 80),
+    asking_price: amount,
+    city: cityHint || cityFallback,
+    district: districtHint || districtFallback,
+    property_type: propertyType,
+    area_sqm: Number.isFinite(areaValue) ? areaValue : null,
+    bedroom_count: beds ? Number(beds[1]) : null,
+    bathroom_count: baths ? Number(baths[1]) : null,
+    short_description: redactSensitiveText(text).slice(0, 500) || null,
+    terms_policy: "unknown",
+    captured_at: capturedAt,
+    limited_evidence_snapshot_json: {
+      text: redactSensitiveText(text).slice(0, 1200),
+      source_url: sourceUrl,
+      captured_at: capturedAt,
+      country_code: countryCode || null,
+      currency: currency || defaultCurrency || null,
+      asking_price_native: amount,
+    },
+  };
+  candidate.source_fingerprint = sourceFingerprint({
+    source,
+    sourceUrl,
+    title: candidate.title,
+    district: candidate.district,
+    askingPrice: amount,
   });
   return candidate;
 }

@@ -23,29 +23,53 @@ const TOKEN_PENDING_RETRY_DELAYS_MS = [0, 2500, 4000, 6000];
 
 const initialData: OnboardingData = {
   language: 'en',
-  persona: 'self_serve_buyer',
+  persona: 'saudi_buyer_abroad',
   displayName: '',
-  city: 'Riyadh',
+  city: '',
   entityType: 'Individual',
   phone: '+966',
   phoneVerified: false,
-  assetType: 'villa',
-  strategy: 'buy_renovate_rent',
+  assetType: 'apartment',
+  strategy: 'income_hold',
   budgetMin: '1500000',
   budgetMax: '5000000',
+  budgetCurrency: 'SAR',
   financing: '',
   districts: '',
   timeline: '90_days',
   riskAppetite: 'balanced',
-  renovationAppetite: 'medium',
+  renovationAppetite: 'light',
   mustHaves: '',
   avoid: '',
   workspaceName: '',
   trialActivated: false,
+  targetCountries: ['AE'],
+  purpose: 'investment',
+  liquidityClass: 'cash_ready',
 };
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function mapTimelineToMandateTimeline(value: string): string | null {
+  switch (value) {
+    case 'now':
+    case '30_days':
+      return 'immediate';
+    case '90_days':
+      return '1_to_3_months';
+    case 'six_months':
+      return '3_to_6_months';
+    case '12_months':
+    case '1_year':
+      return '6_to_12_months';
+    case 'watching':
+    case 'open':
+      return 'exploratory';
+    default:
+      return null;
+  }
 }
 
 const steps = [
@@ -205,9 +229,9 @@ export default function OnboardingPage() {
   }), [data]);
 
   const canContinue = useMemo(() => {
-    if (step === 0) return Boolean(data.displayName.trim() && data.city.trim());
+    if (step === 0) return Boolean(data.displayName.trim());
     if (step === 1) return data.phoneVerified;
-    if (step === 2) return true;
+    if (step === 2) return data.targetCountries.length > 0;
     if (step === 3) return Boolean(data.budgetMax.trim());
     if (step === 5) return Boolean(data.workspaceName.trim());
     if (step === 6) return data.trialActivated;
@@ -227,6 +251,24 @@ export default function OnboardingPage() {
           display_name: data.displayName,
           workspace_name: data.workspaceName,
           buy_box: buyBox,
+          target_country_codes: data.targetCountries,
+          purpose: data.purpose || null,
+          timeline: mapTimelineToMandateTimeline(data.timeline),
+          liquidity_class: data.liquidityClass || null,
+          budget_currency: data.budgetCurrency,
+          budget_range: {
+            min: data.budgetMin,
+            max: data.budgetMax,
+            currency: data.budgetCurrency,
+          },
+          preferences: {
+            asset_type: data.assetType,
+            risk_appetite: data.riskAppetite,
+            renovation_appetite: data.renovationAppetite,
+            must_haves: data.mustHaves,
+            avoid: data.avoid,
+            preferred_areas: data.districts,
+          },
         }),
       });
       const payload = await response.json();

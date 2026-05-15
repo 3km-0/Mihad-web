@@ -1,5 +1,7 @@
 import { AqarBrowsingAdapter } from "./adapters/aqar.js";
 import { BayutBrowsingAdapter } from "./adapters/bayut.js";
+import { IdealistaBrowsingAdapter } from "./adapters/idealista.js";
+import { PropertyFinderBrowsingAdapter } from "./adapters/property-finder.js";
 import { access } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -8,7 +10,45 @@ import { boundedTextSnapshot, extractLocationMetadata } from "./adapters/shared.
 const ADAPTERS = {
   aqar: AqarBrowsingAdapter,
   bayut: BayutBrowsingAdapter,
+  idealista: IdealistaBrowsingAdapter,
+  property_finder: PropertyFinderBrowsingAdapter,
 };
+
+// Map of ISO country codes to adapters known to cover those markets.
+// Used to pick sensible default sources when the mandate doesn't specify
+// sources_json. Saudi (SA) maps to the existing aqar/bayut/property_finder
+// trio; cross-border markets pick country-native sources.
+const DEFAULT_SOURCES_BY_COUNTRY = {
+  SA: ["aqar", "bayut", "property_finder"],
+  AE: ["property_finder"],
+  ES: ["idealista"],
+  // TR and GR have no native adapter yet; operator-CSV market-data import
+  // is the MVP fallback documented in
+  // zohal-platform/Documentation/Templates/Mihad-Market-Data-CSV.md.
+  TR: [],
+  GR: [],
+};
+
+function defaultSourcesForMandate(mandate = {}) {
+  const countries = Array.isArray(mandate?.target_country_codes)
+    ? mandate.target_country_codes
+        .map((code) => String(code || "").toUpperCase())
+        .filter(Boolean)
+    : [];
+  if (countries.length === 0) {
+    return ["aqar", "bayut"];
+  }
+  const selected = new Set();
+  for (const code of countries) {
+    for (const source of (DEFAULT_SOURCES_BY_COUNTRY[code] || [])) {
+      selected.add(source);
+    }
+  }
+  if (selected.size === 0) {
+    return ["aqar", "bayut"];
+  }
+  return [...selected];
+}
 
 function normalizeLimits(value = {}) {
   const input = value && typeof value === "object" ? value : {};
@@ -298,7 +338,7 @@ export async function runSearch({ searchRun, mandate, suppressedCandidates = [] 
   const limits = normalizeLimits(searchRun.limits_json);
   const sources = Array.isArray(searchRun.sources_json) && searchRun.sources_json.length
     ? searchRun.sources_json
-    : ["aqar", "bayut"];
+    : defaultSourcesForMandate(mandate);
   const selected = sources.map((source) => ADAPTERS[source]).filter(Boolean);
   return await withBrowser(async (browser) => {
     const candidates = [];
@@ -316,6 +356,7 @@ export async function runSearch({ searchRun, mandate, suppressedCandidates = [] 
 }
 
 export const __test = {
+  defaultSourcesForMandate,
   filterSuppressedCards,
   normalizeLimits,
   normalizeUrlForSuppression,

@@ -770,48 +770,63 @@ export type Database = {
       }
       acquisition_mandates: {
         Row: {
+          budget_currency: string
           budget_range_json: Json
           buy_box_json: Json
           confidence_json: Json
           created_at: string
           excluded_criteria_json: Json
           id: string
+          liquidity_class: string | null
           organization_id: string | null
+          purpose: string | null
           risk_appetite: string | null
           status: string
+          target_country_codes: string[]
           target_locations_json: Json
+          timeline: string | null
           title: string
           updated_at: string
           user_id: string | null
           workspace_id: string | null
         }
         Insert: {
+          budget_currency?: string
           budget_range_json?: Json
           buy_box_json?: Json
           confidence_json?: Json
           created_at?: string
           excluded_criteria_json?: Json
           id?: string
+          liquidity_class?: string | null
           organization_id?: string | null
+          purpose?: string | null
           risk_appetite?: string | null
           status?: string
+          target_country_codes?: string[]
           target_locations_json?: Json
+          timeline?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
           workspace_id?: string | null
         }
         Update: {
+          budget_currency?: string
           budget_range_json?: Json
           buy_box_json?: Json
           confidence_json?: Json
           created_at?: string
           excluded_criteria_json?: Json
           id?: string
+          liquidity_class?: string | null
           organization_id?: string | null
+          purpose?: string | null
           risk_appetite?: string | null
           status?: string
+          target_country_codes?: string[]
           target_locations_json?: Json
+          timeline?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
@@ -3044,6 +3059,204 @@ export type Database = {
           },
         ]
       }
+      broker_events: {
+        Row: {
+          broker_partner_id: string
+          buyer_profile_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata_json: Json
+          occurred_at: string
+          opportunity_id: string | null
+          outcome: string | null
+          recorded_by: string | null
+          response_latency_seconds: number | null
+          workspace_id: string | null
+        }
+        Insert: {
+          broker_partner_id: string
+          buyer_profile_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata_json?: Json
+          occurred_at?: string
+          opportunity_id?: string | null
+          outcome?: string | null
+          recorded_by?: string | null
+          response_latency_seconds?: number | null
+          workspace_id?: string | null
+        }
+        Update: {
+          broker_partner_id?: string
+          buyer_profile_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata_json?: Json
+          occurred_at?: string
+          opportunity_id?: string | null
+          outcome?: string | null
+          recorded_by?: string | null
+          response_latency_seconds?: number | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_events_broker_partner_id_fkey"
+            columns: ["broker_partner_id"]
+            isOneToOne: false
+            referencedRelation: "broker_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_events_buyer_profile_id_fkey"
+            columns: ["buyer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_readiness_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_events_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_partners: {
+        Row: {
+          city: string | null
+          co_brokerage_terms_json: Json
+          contact_email: string | null
+          contact_phone: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          languages: string[]
+          legal_name: string | null
+          licensing_json: Json
+          markets_covered_json: Json
+          metadata_json: Json
+          notes: string | null
+          organization_id: string | null
+          privacy_agreement_signed_at: string | null
+          response_sla_minutes: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          co_brokerage_terms_json?: Json
+          contact_email?: string | null
+          contact_phone?: string | null
+          country_code: string
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          languages?: string[]
+          legal_name?: string | null
+          licensing_json?: Json
+          markets_covered_json?: Json
+          metadata_json?: Json
+          notes?: string | null
+          organization_id?: string | null
+          privacy_agreement_signed_at?: string | null
+          response_sla_minutes?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          co_brokerage_terms_json?: Json
+          contact_email?: string | null
+          contact_phone?: string | null
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          languages?: string[]
+          legal_name?: string | null
+          licensing_json?: Json
+          markets_covered_json?: Json
+          metadata_json?: Json
+          notes?: string | null
+          organization_id?: string | null
+          privacy_agreement_signed_at?: string | null
+          response_sla_minutes?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_partners_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_scorecards: {
+        Row: {
+          broker_partner_id: string
+          buyer_satisfaction_pts: number
+          compliance_pts: number
+          composite_score: number
+          computed_at: string
+          inputs_json: Json
+          offer_to_close_pts: number
+          response_speed_pts: number
+          shortlist_quality_pts: number
+          updated_at: string
+        }
+        Insert: {
+          broker_partner_id: string
+          buyer_satisfaction_pts?: number
+          compliance_pts?: number
+          composite_score?: number
+          computed_at?: string
+          inputs_json?: Json
+          offer_to_close_pts?: number
+          response_speed_pts?: number
+          shortlist_quality_pts?: number
+          updated_at?: string
+        }
+        Update: {
+          broker_partner_id?: string
+          buyer_satisfaction_pts?: number
+          compliance_pts?: number
+          composite_score?: number
+          computed_at?: string
+          inputs_json?: Json
+          offer_to_close_pts?: number
+          response_speed_pts?: number
+          shortlist_quality_pts?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_scorecards_broker_partner_id_fkey"
+            columns: ["broker_partner_id"]
+            isOneToOne: true
+            referencedRelation: "broker_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brokerage_agreements: {
         Row: {
           agreement_type: string
@@ -3231,6 +3444,79 @@ export type Database = {
           },
         ]
       }
+      buyer_packets: {
+        Row: {
+          buyer_profile_id: string
+          consent_scope_json: Json
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          mandate_id: string | null
+          revoked_at: string | null
+          revoked_reason: string | null
+          snapshot_json: Json
+          status: string
+          updated_at: string
+          version: number
+          workspace_id: string | null
+        }
+        Insert: {
+          buyer_profile_id: string
+          consent_scope_json?: Json
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          mandate_id?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          snapshot_json?: Json
+          status?: string
+          updated_at?: string
+          version?: number
+          workspace_id?: string | null
+        }
+        Update: {
+          buyer_profile_id?: string
+          consent_scope_json?: Json
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          mandate_id?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          snapshot_json?: Json
+          status?: string
+          updated_at?: string
+          version?: number
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_packets_buyer_profile_id_fkey"
+            columns: ["buyer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_readiness_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_packets_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buyer_packets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buyer_readiness_evidence: {
         Row: {
           attestation_json: Json
@@ -3307,6 +3593,7 @@ export type Database = {
       buyer_readiness_profiles: {
         Row: {
           brokerage_status: string
+          budget_band: string | null
           buyer_entity_id: string | null
           buyer_type: string
           buyer_user_id: string | null
@@ -3323,11 +3610,14 @@ export type Database = {
           readiness_level: number
           sharing_mode: string
           updated_at: string
+          verification_confidence: string
+          verification_expires_at: string | null
           visit_readiness: string | null
           workspace_id: string | null
         }
         Insert: {
           brokerage_status?: string
+          budget_band?: string | null
           buyer_entity_id?: string | null
           buyer_type?: string
           buyer_user_id?: string | null
@@ -3344,11 +3634,14 @@ export type Database = {
           readiness_level?: number
           sharing_mode?: string
           updated_at?: string
+          verification_confidence?: string
+          verification_expires_at?: string | null
           visit_readiness?: string | null
           workspace_id?: string | null
         }
         Update: {
           brokerage_status?: string
+          budget_band?: string | null
           buyer_entity_id?: string | null
           buyer_type?: string
           buyer_user_id?: string | null
@@ -3365,6 +3658,8 @@ export type Database = {
           readiness_level?: number
           sharing_mode?: string
           updated_at?: string
+          verification_confidence?: string
+          verification_expires_at?: string | null
           visit_readiness?: string | null
           workspace_id?: string | null
         }
@@ -4475,18 +4770,20 @@ export type Database = {
           consent_acknowledged_by: string | null
           consent_disclaimer: string | null
           created_at: string
-          document_id: string
+          document_id: string | null
           document_scope_json: Json
           expires_at: string | null
           granted_by: string | null
           granted_to_identifier: string | null
           granted_to_kind: string
           id: string
+          metadata_json: Json
           opportunity_id: string | null
           purpose: string
           recipient_contact_json: Json
           recipient_display_name: string | null
           revoked_at: string | null
+          revoked_reason: string | null
           share_mode: string
           token_hash: string | null
           updated_at: string
@@ -4499,18 +4796,20 @@ export type Database = {
           consent_acknowledged_by?: string | null
           consent_disclaimer?: string | null
           created_at?: string
-          document_id: string
+          document_id?: string | null
           document_scope_json?: Json
           expires_at?: string | null
           granted_by?: string | null
           granted_to_identifier?: string | null
           granted_to_kind?: string
           id?: string
+          metadata_json?: Json
           opportunity_id?: string | null
           purpose: string
           recipient_contact_json?: Json
           recipient_display_name?: string | null
           revoked_at?: string | null
+          revoked_reason?: string | null
           share_mode?: string
           token_hash?: string | null
           updated_at?: string
@@ -4523,18 +4822,20 @@ export type Database = {
           consent_acknowledged_by?: string | null
           consent_disclaimer?: string | null
           created_at?: string
-          document_id?: string
+          document_id?: string | null
           document_scope_json?: Json
           expires_at?: string | null
           granted_by?: string | null
           granted_to_identifier?: string | null
           granted_to_kind?: string
           id?: string
+          metadata_json?: Json
           opportunity_id?: string | null
           purpose?: string
           recipient_contact_json?: Json
           recipient_display_name?: string | null
           revoked_at?: string | null
+          revoked_reason?: string | null
           share_mode?: string
           token_hash?: string | null
           updated_at?: string
@@ -9863,6 +10164,68 @@ export type Database = {
           },
         ]
       }
+      referral_partners: {
+        Row: {
+          category: string
+          contact_email: string | null
+          contact_phone: string | null
+          country_codes: string[]
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          legal_name: string | null
+          metadata_json: Json
+          notes: string | null
+          organization_id: string | null
+          status: string
+          terms_json: Json
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          country_codes?: string[]
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          legal_name?: string | null
+          metadata_json?: Json
+          notes?: string | null
+          organization_id?: string | null
+          status?: string
+          terms_json?: Json
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          country_codes?: string[]
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          legal_name?: string | null
+          metadata_json?: Json
+          notes?: string | null
+          organization_id?: string | null
+          status?: string
+          terms_json?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_partners_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           created_at: string
@@ -13677,6 +14040,7 @@ export type Database = {
           status: string
           updated_at: string
           workspace_domain: string | null
+          workspace_kind: string
           workspace_type: string
         }
         Insert: {
@@ -13702,6 +14066,7 @@ export type Database = {
           status?: string
           updated_at?: string
           workspace_domain?: string | null
+          workspace_kind?: string
           workspace_type?: string
         }
         Update: {
@@ -13727,6 +14092,7 @@ export type Database = {
           status?: string
           updated_at?: string
           workspace_domain?: string | null
+          workspace_kind?: string
           workspace_type?: string
         }
         Relationships: [

@@ -843,6 +843,79 @@ test("document sharing grants default financial evidence to status-only", async 
   assert.equal(grant.allowed_action, "share_document");
 });
 
+test("revokeBuyerPacketGrant flips the grant and logs a consent_revoked broker event", async () => {
+  const supabase = createMockSupabase({
+    document_sharing_grants: [{
+      id: "grant_1",
+      workspace_id: "ws_1",
+      buyer_profile_id: "profile_1",
+      granted_to_kind: "broker",
+      granted_to_identifier: "broker_1",
+      share_mode: "status_only",
+      allowed_action: "share_status",
+      purpose: "share_buyer_readiness_with_broker",
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      revoked_at: null,
+      revoked_reason: null,
+      metadata_json: { buyer_packet_id: "packet_1" },
+    }],
+    broker_partners: [{
+      id: "broker_1",
+      display_name: "Test Broker",
+      country_code: "AE",
+      status: "active",
+    }],
+    broker_events: [],
+  });
+
+  const result = await __test.revokeBuyerPacketGrant(supabase, "grant_1", {
+    reason: "revoked_by_buyer",
+  });
+
+  assert.equal(result.already_revoked, false);
+  assert.ok(result.grant.revoked_at, "revoked_at should be set");
+  assert.equal(result.grant.revoked_reason, "revoked_by_buyer");
+
+  // Subsequent revoke should be idempotent (no double-billing the broker).
+  const repeat = await __test.revokeBuyerPacketGrant(supabase, "grant_1", {
+    reason: "revoked_by_buyer",
+  });
+  assert.equal(repeat.already_revoked, true);
+
+  const events = supabase.db.broker_events || [];
+  const consentRevokeEvents = events.filter((e) => e.event_type === "consent_revoked");
+  assert.equal(consentRevokeEvents.length, 1, "exactly one consent_revoked event should be logged");
+  assert.equal(consentRevokeEvents[0].broker_partner_id, "broker_1");
+  assert.equal(consentRevokeEvents[0].metadata_json?.sharing_grant_id, "grant_1");
+  assert.equal(consentRevokeEvents[0].metadata_json?.buyer_packet_id, "packet_1");
+});
+
+test("computeScorecardFromEvents penalises consent revocations under the compliance pillar", () => {
+  const clean = __test.computeScorecardFromEvents([
+    { event_type: "intro_sent" },
+    { event_type: "first_response", response_latency_seconds: 600 },
+  ]);
+  const withRevocations = __test.computeScorecardFromEvents([
+    { event_type: "intro_sent" },
+    { event_type: "first_response", response_latency_seconds: 600 },
+    { event_type: "consent_revoked" },
+    { event_type: "consent_revoked" },
+  ]);
+  assert.ok(
+    withRevocations.compliance_pts < clean.compliance_pts,
+    "two consent revocations should reduce the compliance pillar",
+  );
+  assert.equal(withRevocations.inputs_json.consent_revocations, 2);
+});
+
+test("revokeBuyerPacketGrant rejects unknown grant ids with 404", async () => {
+  const supabase = createMockSupabase({ document_sharing_grants: [] });
+  await assert.rejects(
+    () => __test.revokeBuyerPacketGrant(supabase, "11111111-1111-1111-1111-111111111111", {}),
+    (err) => err.statusCode === 404 && /sharing_grant_not_found/.test(err.message),
+  );
+});
+
 test("approval-gated actions require brokerage authority before execution", async () => {
   const supabase = createMockSupabase({
     buyer_readiness_profiles: [{

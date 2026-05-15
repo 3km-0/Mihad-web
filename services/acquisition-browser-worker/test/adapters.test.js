@@ -393,3 +393,117 @@ test("worker run limits clamp unsafe values", () => {
     },
   );
 });
+
+test("defaultSourcesForMandate picks country-native adapters", async () => {
+  const saSources = workerTest.defaultSourcesForMandate({ target_country_codes: ["SA"] });
+  assert.deepEqual(saSources.sort(), ["aqar", "bayut", "property_finder"]);
+
+  const aeSources = workerTest.defaultSourcesForMandate({ target_country_codes: ["AE"] });
+  assert.deepEqual(aeSources, ["property_finder"]);
+
+  const esSources = workerTest.defaultSourcesForMandate({ target_country_codes: ["ES"] });
+  assert.deepEqual(esSources, ["idealista"]);
+
+  const crossBorder = workerTest.defaultSourcesForMandate({ target_country_codes: ["AE", "ES"] });
+  assert.deepEqual(new Set(crossBorder), new Set(["property_finder", "idealista"]));
+
+  const trGr = workerTest.defaultSourcesForMandate({ target_country_codes: ["TR", "GR"] });
+  // TR and GR have no native adapter yet; fall back to legacy SA scrapers
+  // so the worker still emits a search run (operators rely on CSV ingest).
+  assert.deepEqual(trGr.sort(), ["aqar", "bayut"]);
+
+  const empty = workerTest.defaultSourcesForMandate({});
+  assert.deepEqual(empty, ["aqar", "bayut"]);
+});
+
+test("Idealista adapter parses search cards from /inmueble/{id}/ URLs", async () => {
+  const { IdealistaBrowsingAdapter } = await import("../src/adapters/idealista.js");
+  const html = `
+    <a href="/en/inmueble/12345678/">Piso en venta Salamanca Madrid 650.000 €</a>
+    <a href="/en/inmueble/87654321/">Apartamento Chamberí 420.000 €</a>
+    <a href="/en/news/some-article/">Not a listing</a>
+  `;
+  const cards = IdealistaBrowsingAdapter.parseSearchResults(html, "https://www.idealista.com/en/venta-viviendas/madrid/");
+  assert.equal(cards.length, 2);
+  assert.equal(cards[0].source, "idealista");
+  assert.match(cards[0].source_url, /idealista\.com\/en\/inmueble\/12345678/);
+});
+
+test("Idealista adapter records EUR currency and ES country on listing detail", async () => {
+  const { IdealistaBrowsingAdapter } = await import("../src/adapters/idealista.js");
+  const detail = IdealistaBrowsingAdapter.parseListingDetail(`
+    <h1>Apartment for sale in Salamanca Madrid</h1>
+    <p>Bright 120 m² apartment with 3 dormitorios and 2 baños. 650.000 € — Idealista reference 12345678.</p>
+  `, "https://www.idealista.com/en/inmueble/12345678/");
+  assert.equal(detail.source, "idealista");
+  assert.equal(detail.asking_price, 650000);
+  assert.equal(detail.limited_evidence_snapshot_json.country_code, "ES");
+  assert.equal(detail.limited_evidence_snapshot_json.currency, "EUR");
+  assert.equal(detail.limited_evidence_snapshot_json.asking_price_native, 650000);
+  assert.equal(detail.area_sqm, 120);
+  assert.equal(detail.bedroom_count, 3);
+  assert.ok(detail.source_fingerprint);
+});
+
+test("Idealista buildSearchUrl picks city slug from mandate buy box", async () => {
+  const { IdealistaBrowsingAdapter } = await import("../src/adapters/idealista.js");
+  const url = IdealistaBrowsingAdapter.buildSearchUrl({
+    buy_box_json: { city: "Madrid", property_type: "apartment" },
+  });
+  assert.match(url, /idealista\.com\/en\/venta-viviendas\/madrid\//);
+});
+
+test("PropertyFinder adapter parses /plp/ listing cards", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  const html = `
+    <a href="/en/plp/buy-properties-for-sale-1234567.html">Luxury apartment in Downtown Dubai AED 2,500,000</a>
+    <a href="/en/plp/buy-properties-for-sale-7654321.html">Townhouse in JVC AED 1,800,000</a>
+    <a href="/en/news/article">Not a listing</a>
+  `;
+  const cards = PropertyFinderBrowsingAdapter.parseSearchResults(html, "https://www.propertyfinder.ae/en/search?c=1");
+  assert.equal(cards.length, 2);
+  assert.equal(cards[0].source, "property_finder");
+  assert.match(cards[0].source_url, /propertyfinder\.ae\/en\/plp\//);
+});
+
+test("PropertyFinder adapter records AED for .ae and SAR for .sa detail pages", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  const aeDetail = PropertyFinderBrowsingAdapter.parseListingDetail(`
+    <h1>Apartment for sale in Downtown Dubai</h1>
+    <p>1,250 sqm apartment. AED 2,500,000.</p>
+  `, "https://www.propertyfinder.ae/en/plp/buy-properties-for-sale-1234567.html");
+  assert.equal(aeDetail.source, "property_finder");
+  assert.equal(aeDetail.asking_price, 2500000);
+  assert.equal(aeDetail.limited_evidence_snapshot_json.country_code, "AE");
+  assert.equal(aeDetail.limited_evidence_snapshot_json.currency, "AED");
+  assert.equal(aeDetail.area_sqm, 1250);
+
+  const saDetail = PropertyFinderBrowsingAdapter.parseListingDetail(`
+    <h1>Villa in Riyadh</h1>
+    <p>520 sqm villa. SAR 3,500,000.</p>
+  `, "https://www.propertyfinder.sa/en/plp/buy-properties-for-sale-9876543.html");
+  assert.equal(saDetail.source, "property_finder");
+  assert.equal(saDetail.asking_price, 3500000);
+  assert.equal(saDetail.limited_evidence_snapshot_json.country_code, "SA");
+  assert.equal(saDetail.limited_evidence_snapshot_json.currency, "SAR");
+});
+
+test("PropertyFinder buildSearchUrl honors mandate target country", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  const aeUrl = PropertyFinderBrowsingAdapter.buildSearchUrl({ target_country_codes: ["AE"] });
+  assert.match(aeUrl, /propertyfinder\.ae/);
+  const saUrl = PropertyFinderBrowsingAdapter.buildSearchUrl({ target_country_codes: ["SA"] });
+  assert.match(saUrl, /propertyfinder\.sa/);
+});
+
+test("parsePriceWithCurrency handles European thousand separators and AED", async () => {
+  const { parsePriceWithCurrency } = await import("../src/adapters/shared.js");
+  assert.deepEqual(parsePriceWithCurrency("Listed at 650.000 €"), { amount: 650000, currency: "EUR" });
+  assert.deepEqual(parsePriceWithCurrency("€ 1.250.000"), { amount: 1250000, currency: "EUR" });
+  assert.deepEqual(parsePriceWithCurrency("AED 2,500,000 — exclusive"), { amount: 2500000, currency: "AED" });
+  assert.deepEqual(parsePriceWithCurrency("Price 1,800,000 AED"), { amount: 1800000, currency: "AED" });
+  assert.deepEqual(parsePriceWithCurrency("1.500.000 TL"), { amount: 1500000, currency: "TRY" });
+  assert.deepEqual(parsePriceWithCurrency("£450,000 in London"), { amount: 450000, currency: "GBP" });
+  assert.deepEqual(parsePriceWithCurrency("Reference 12345 in description", { defaultCurrency: "EUR" }), { amount: 12345, currency: "EUR" });
+  assert.deepEqual(parsePriceWithCurrency("no price here"), { amount: null, currency: null });
+});
