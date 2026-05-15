@@ -1383,16 +1383,50 @@ async function callBrowserWorker({ requestId, searchRun, mandate, suppressedCand
   if (!BROWSER_WORKER_URL) {
     return { candidates: [], adapter_runs: [], skipped: true, reason: "ACQUISITION_BROWSER_WORKER_URL not configured" };
   }
-  const response = await fetch(`${BROWSER_WORKER_URL}/internal/search-run`, {
-    method: "POST",
-    headers: getInternalTaskHeaders(requestId),
-    body: JSON.stringify({
-      search_run: searchRun,
-      mandate,
-      suppressed_candidates: suppressedCandidates,
-      request_id: requestId,
-    }),
-  });
+  // Bound the worker call to a hard ceiling instead of letting it ride
+  // the Cloud Run request timeout (300s). Anything past ~4 minutes is
+  // either a cold-start gone wrong or a stuck DNS/keep-alive socket;
+  // failing fast preserves the rest of the backend handler (so we can
+  // record an `adapter_run` and surface a useful error to the cockpit
+  // instead of returning a generic "fetch failed").
+  const perSourceTimeout = Number(searchRun?.limits_json?.per_source_timeout_ms || 60_000);
+  const perRunTimeout = Number(searchRun?.limits_json?.per_run_timeout_ms || 240_000);
+  const sourcesLength = Array.isArray(searchRun?.sources_json) && searchRun.sources_json.length
+    ? searchRun.sources_json.length
+    : 2;
+  const budgetMs = Math.min(
+    Math.max(perRunTimeout, perSourceTimeout * sourcesLength + 60_000),
+    240_000,
+  );
+  const controller = new AbortController();
+  const abortTimer = setTimeout(() => controller.abort(new Error(`worker_call_timeout_${budgetMs}ms`)), budgetMs);
+  let response;
+  try {
+    response = await fetch(`${BROWSER_WORKER_URL}/internal/search-run`, {
+      method: "POST",
+      headers: getInternalTaskHeaders(requestId),
+      body: JSON.stringify({
+        search_run: searchRun,
+        mandate,
+        suppressed_candidates: suppressedCandidates,
+        request_id: requestId,
+      }),
+      signal: controller.signal,
+      // Disable connection reuse for this call. We hit a transient
+      // backend-to-worker hang where node:fetch kept selecting a stale
+      // pooled socket after a worker redeploy; forcing a fresh
+      // connection per call neutralises that path. The per-call setup
+      // cost is negligible against the worker's 10-30s render budget.
+      keepalive: false,
+    });
+  } catch (fetchError) {
+    clearTimeout(abortTimer);
+    const message = controller.signal.aborted
+      ? `Browser worker call aborted after ${budgetMs}ms (${fetchError?.message || "timeout"})`
+      : `Browser worker fetch failed: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`;
+    throw new Error(message);
+  }
+  clearTimeout(abortTimer);
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(json?.error || `Browser worker failed (${response.status})`);
@@ -1461,13 +1495,35 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
     candidates.sort((left, right) =>
       Number(right.screening_output_json?.fit?.score || 0) - Number(left.screening_output_json?.fit?.score || 0)
     );
+
+    // Auto-promote candidates that passed screening to opportunities
+    // so they appear in the workspace cockpit's deal pipeline. The
+    // cockpit reads `acquisition_opportunities` (not raw candidates),
+    // so without this step a successful search returns "5 candidates
+    // found" in the action dock but an empty pipeline. We only
+    // promote screening_decision === 'pass' to keep invalid or
+    // duplicate listings out of the pipeline; everything else stays
+    // queryable in `acquisition_candidate_opportunities` for ops.
+    const promoted = [];
+    for (const candidate of candidates) {
+      if (candidate.screening_decision !== "pass") continue;
+      try {
+        const result = await promoteCandidate(supabase, candidate.id);
+        if (result?.opportunity?.id) promoted.push(result.opportunity);
+      } catch (promoteError) {
+        console.warn(
+          `[processSearchRun] failed to auto-promote candidate ${candidate.id}: ${promoteError instanceof Error ? promoteError.message : String(promoteError)}`,
+        );
+      }
+    }
+
     const { data: updated } = await supabase.from("acquisition_search_runs").update({
       status: "completed",
       completed_at: completedAt,
       candidate_count: candidates.length,
       error_summary: browserResult.skipped ? browserResult.reason : null,
     }).eq("id", searchRun.id).select("*").single();
-    return { search_run: updated, candidates, adapter_runs: adapterRuns };
+    return { search_run: updated, candidates, adapter_runs: adapterRuns, opportunities: promoted };
   } catch (runError) {
     await supabase.from("acquisition_search_runs").update({
       status: "failed",

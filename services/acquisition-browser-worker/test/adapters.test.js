@@ -568,6 +568,81 @@ test("PropertyFinder buildSearchUrl honors mandate target country", async () => 
   assert.match(saUrl, /propertyfinder\.sa/);
 });
 
+test("PropertyFinder adapter prefers NEXT_DATA hydration payload over text regex", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  // Real shape captured from propertyfinder.ae listing 87049697.
+  // Inline price/size/location/coordinates override the text-derived
+  // values; the broken "Handover 2026" area noise in the body is
+  // ignored because structured data wins.
+  const nextData = JSON.stringify({
+    props: {
+      pageProps: {
+        propertyResult: {
+          property: {
+            id: 87049697,
+            title: "Luxurious | High Floor with Full Marina View",
+            property_type: "Apartment",
+            price: { value: 38000000, currency: "AED", period: "sell" },
+            size: { value: 2611, unit: "sqft" },
+            bedrooms: 3,
+            bathrooms: 4,
+            location: {
+              path_name: "Dubai, Jumeirah, Jumeirah Bay Island, Bulgari Resort & Residences",
+              full_name: "Bulgari Resort & Residences 6, Bulgari Resort & Residences, Jumeirah Bay Island, Jumeirah, Dubai",
+              coordinates: { lat: 25.20964, lon: 55.23322 },
+            },
+          },
+        },
+      },
+    },
+  });
+  const html = `
+    <h1>Bulgari Resort &amp; Residences 6</h1>
+    <p>Sea view apartment. Handover 2026. AED 6,000,000 starting from.</p>
+    <script id="__NEXT_DATA__" type="application/json">${nextData}</script>
+  `;
+  const candidate = PropertyFinderBrowsingAdapter.parseListingDetail(
+    html,
+    "https://www.propertyfinder.ae/en/plp/buy/apartment-for-sale-dubai-jumeirah-jumeirah-bay-island-bulgari-resort-residences-bulgari-resort-residences-6-87049697.html",
+  );
+  assert.equal(candidate.asking_price, "38000000");
+  assert.equal(candidate.limited_evidence_snapshot_json.currency, "AED");
+  assert.equal(candidate.limited_evidence_snapshot_json.price_source, "property_finder_next_data");
+  // 2611 sqft -> 243 sqm (rounded).
+  assert.equal(candidate.area_sqm, 243);
+  assert.equal(candidate.bedroom_count, 3);
+  assert.equal(candidate.bathroom_count, 4);
+  assert.equal(candidate.city, "Dubai");
+  assert.equal(candidate.district, "Jumeirah Bay Island");
+  assert.equal(candidate.property_type, "apartment");
+  assert.equal(candidate.latitude, 25.20964);
+  assert.equal(candidate.longitude, 55.23322);
+  assert.equal(candidate.location_source, "property_finder_next_data");
+});
+
+test("PropertyFinder adapter falls back to URL slug for city/district when NEXT_DATA missing", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  // No __NEXT_DATA__ block; we rely on the slug to populate location.
+  const candidate = PropertyFinderBrowsingAdapter.parseListingDetail(
+    "<h1>Apartment for sale</h1><p>AED 1,700,000</p>",
+    "https://www.propertyfinder.ae/en/plp/buy/apartment-for-sale-abu-dhabi-saadiyat-island-saadiyat-cultural-district-louvre-abu-dhabi-residences-89641521.html",
+  );
+  assert.equal(candidate.city, "Abu Dhabi");
+  assert.match(candidate.district, /Saadiyat/);
+});
+
+test("PropertyFinder area parser drops year-like values when structured data is missing", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  // Text-regex captures "Handover 2026" as area; without NEXT_DATA we
+  // still want to suppress the obviously-wrong 4-digit-year value
+  // rather than poison the IQS calculation.
+  const candidate = PropertyFinderBrowsingAdapter.parseListingDetail(
+    "<h1>Apartment</h1><p>Beachfront. Handover 2026. AED 1,700,000.</p>",
+    "https://www.propertyfinder.ae/en/plp/buy/apartment-for-sale-abu-dhabi-saadiyat-island-89641521.html",
+  );
+  assert.equal(candidate.area_sqm, null);
+});
+
 test("parsePriceWithCurrency handles European thousand separators and AED", async () => {
   const { parsePriceWithCurrency } = await import("../src/adapters/shared.js");
   assert.deepEqual(parsePriceWithCurrency("Listed at 650.000 €"), { amount: 650000, currency: "EUR" });

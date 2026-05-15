@@ -147,6 +147,8 @@ export const PropertyFinderBrowsingAdapter = {
     const host = parsed.host;
     const countryCode = host.endsWith(".sa") ? "SA" : host.endsWith(".qa") ? "QA" : host.endsWith(".bh") ? "BH" : host.endsWith(".eg") ? "EG" : "AE";
     const defaultCurrency = DEFAULT_CURRENCY[countryCode] || "AED";
+    // Start with a text-regex candidate so we have a baseline if the
+    // Next.js payload is absent (older revisions, partial WAF render).
     const candidate = candidateFromTextWithLocale({
       source: "property_finder",
       sourceUrl: absoluteUrl(url, HOSTS.AE),
@@ -155,15 +157,35 @@ export const PropertyFinderBrowsingAdapter = {
       countryCode,
       defaultCurrency,
     });
-    applyLocationMetadata(candidate, chooseBestLocationMetadata([
-      ...(Array.isArray(context.location_hints) ? context.location_hints : []),
-      extractLocationMetadata(html, {
-        source: "listing_json",
-        district: candidate.district,
-        city: candidate.city,
-        address: candidate.address,
-      }),
-    ]));
+
+    // Preferred path: PF embeds the full listing payload in a Next.js
+    // hydration script. It contains canonical price/size/location data
+    // and avoids the text-regex bugs (e.g. "Handover 2026" being read
+    // as an area, listing tower prefix bleeding into city). When this
+    // succeeds we overwrite the corresponding text-derived fields.
+    const structured = extractPropertyFinderNextData(html);
+    if (structured) {
+      applyPropertyFinderStructured(candidate, structured, defaultCurrency);
+    }
+    // URL slug is a deterministic secondary signal for city/community
+    // (PF slugs follow apartment-for-sale-{city}-{community}-...). Use
+    // it only to fill gaps left by structured data.
+    applyPropertyFinderUrlSlug(candidate, url);
+
+    // If structured data already gave us exact coordinates we trust it
+    // (PF's NEXT_DATA coords are authoritative). Otherwise fall back
+    // to the worker's generic location hint extractor.
+    if (candidate.location_source !== "property_finder_next_data") {
+      applyLocationMetadata(candidate, chooseBestLocationMetadata([
+        ...(Array.isArray(context.location_hints) ? context.location_hints : []),
+        extractLocationMetadata(html, {
+          source: "listing_json",
+          district: candidate.district,
+          city: candidate.city,
+          address: candidate.address,
+        }),
+      ]));
+    }
     candidate.photo_refs_json = extractPhotoRefs(html, HOSTS.AE, 8);
     if (detectContactGate(html)) {
       candidate.limited_evidence_snapshot_json = {
@@ -187,3 +209,158 @@ export const PropertyFinderBrowsingAdapter = {
     return candidate;
   },
 };
+
+// Pulls the Next.js hydration payload out of a Property Finder detail
+// page. Returns null if the script tag is missing or unparseable so
+// callers can fall back to text parsing.
+export function extractPropertyFinderNextData(html) {
+  const match = String(html || "").match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match) return null;
+  try {
+    const data = JSON.parse(match[1]);
+    const property = data?.props?.pageProps?.propertyResult?.property;
+    return property && typeof property === "object" ? property : null;
+  } catch {
+    return null;
+  }
+}
+
+// Overlays canonical fields from PF's NEXT_DATA `property` object onto
+// a candidate built from text. Each field is guarded so partial
+// payloads (e.g. price hidden behind broker sign-in) only fill what
+// they actually contain.
+export function applyPropertyFinderStructured(candidate, property, defaultCurrency = "AED") {
+  if (!property || typeof property !== "object") return;
+
+  const priceValue = property?.price?.value;
+  if (Number.isFinite(Number(priceValue)) && Number(priceValue) > 0) {
+    candidate.asking_price = String(Number(priceValue));
+    const currency = String(property?.price?.currency || defaultCurrency).toUpperCase();
+    candidate.limited_evidence_snapshot_json = {
+      ...candidate.limited_evidence_snapshot_json,
+      currency,
+      price_source: "property_finder_next_data",
+    };
+  }
+
+  const sizeUnit = String(property?.size?.unit || "").toLowerCase();
+  const sizeValue = Number(property?.size?.value);
+  if (Number.isFinite(sizeValue) && sizeValue > 0) {
+    // PF stores area in sqft for UAE; convert to sqm so downstream
+    // baselines (price per sqm) stay consistent across countries.
+    if (sizeUnit === "sqft" || sizeUnit === "ft2") {
+      candidate.area_sqm = Math.round(sizeValue * 0.092903);
+    } else {
+      candidate.area_sqm = Math.round(sizeValue);
+    }
+  } else if (candidate.area_sqm && candidate.area_sqm >= 1900 && candidate.area_sqm <= 2100) {
+    // Heuristic cleanup: text-regex sometimes captures a 4-digit year
+    // like "Handover 2026" as area. If structured data is missing but
+    // the prior value looks like a year, drop it instead of misleading
+    // the IQS calculator.
+    candidate.area_sqm = null;
+  }
+
+  if (Number.isFinite(Number(property.bedrooms)) && Number(property.bedrooms) >= 0) {
+    candidate.bedroom_count = Number(property.bedrooms);
+  }
+  if (Number.isFinite(Number(property.bathrooms)) && Number(property.bathrooms) >= 0) {
+    candidate.bathroom_count = Number(property.bathrooms);
+  }
+
+  if (property.property_type && !candidate.property_type) {
+    candidate.property_type = String(property.property_type).toLowerCase();
+  }
+
+  // Location payload shape (verified against propertyfinder.ae):
+  //   location.path_name = "Dubai, Jumeirah, Jumeirah Bay Island, Bulgari Resort & Residences"
+  //   location.full_name = "Bulgari Resort & Residences 6, Bulgari Resort & Residences, Jumeirah Bay Island, Jumeirah, Dubai"
+  //   location.coordinates = { lat, lon }
+  // path_name is ordered city -> ... -> tower; we want the FIRST
+  // segment as city and the most-specific named segment as district.
+  const loc = property.location;
+  if (loc && typeof loc === "object") {
+    const pathName = String(loc.path_name || "").trim();
+    if (pathName) {
+      const parts = pathName.split(",").map((p) => p.trim()).filter(Boolean);
+      if (parts.length >= 1) candidate.city = parts[0];
+      if (parts.length >= 3) candidate.district = parts[2];
+      else if (parts.length >= 2) candidate.district = parts[1];
+    }
+    if (!candidate.address && loc.full_name) {
+      candidate.address = String(loc.full_name);
+    }
+    const lat = Number(loc?.coordinates?.lat);
+    const lon = Number(loc?.coordinates?.lon ?? loc?.coordinates?.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      candidate.latitude = lat;
+      candidate.longitude = lon;
+      candidate.location_precision = "exact";
+      candidate.location_source = "property_finder_next_data";
+    }
+  }
+}
+
+// Slug fallback for when NEXT_DATA is unavailable or missing the
+// location object. PF slugs are highly structured:
+//   /plp/buy/apartment-for-sale-{city}-{district}[-{sub}]-{tower}-{id}.html
+// We extract city + district by walking the slug tokens between the
+// asset prefix and the trailing numeric id. This is intentionally
+// conservative: we only fill `candidate.city` / `candidate.district`
+// if they are still empty after structured extraction.
+export function applyPropertyFinderUrlSlug(candidate, url) {
+  if (candidate.city && candidate.district) return;
+  let pathname = "";
+  try {
+    pathname = new URL(url, HOSTS.AE).pathname;
+  } catch {
+    return;
+  }
+  const match = pathname.match(/\/plp\/(?:buy\/)?([a-z0-9-]+?)-\d{6,}\.html?$/i);
+  if (!match) return;
+  const slug = match[1];
+  const assetMatch = slug.match(/^(apartment|villa|townhouse|land|plot|penthouse|duplex|studio|hotel-apartment)-for-(sale|rent)-(.+)$/);
+  const remainder = assetMatch ? assetMatch[3] : slug;
+  const tokens = remainder.split("-").filter(Boolean);
+  if (tokens.length === 0) return;
+  const KNOWN_CITIES = new Set([
+    "dubai",
+    "abu-dhabi",
+    "abudhabi",
+    "sharjah",
+    "ajman",
+    "ras-al-khaimah",
+    "fujairah",
+    "umm-al-quwain",
+    "al-ain",
+    "riyadh",
+    "jeddah",
+    "dammam",
+    "khobar",
+    "mecca",
+    "medina",
+  ]);
+  let cityToken = tokens[0];
+  let remainingStart = 1;
+  if (cityToken === "abu" && tokens[1] === "dhabi") {
+    cityToken = "abu-dhabi";
+    remainingStart = 2;
+  } else if (cityToken === "ras" && tokens[1] === "al" && tokens[2] === "khaimah") {
+    cityToken = "ras-al-khaimah";
+    remainingStart = 3;
+  }
+  if (KNOWN_CITIES.has(cityToken)) {
+    if (!candidate.city) {
+      candidate.city = cityToken
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+    if (!candidate.district && tokens.length > remainingStart) {
+      const districtTokens = tokens.slice(remainingStart, Math.min(remainingStart + 2, tokens.length));
+      candidate.district = districtTokens
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+  }
+}
