@@ -186,7 +186,19 @@ export const PropertyFinderBrowsingAdapter = {
         }),
       ]));
     }
-    candidate.photo_refs_json = extractPhotoRefs(html, HOSTS.AE, 8);
+
+    // Photo extraction: prefer the structured `property.images.property[]`
+    // array from NEXT_DATA. The generic `extractPhotoRefs` (used as a
+    // fallback) walks every <img>/srcset on the page and ends up
+    // picking PF's nav-header banner before the actual listing photos
+    // - which makes every cockpit card render with the same hero
+    // image. Filter out PF site assets and agent logos defensively.
+    const structuredPhotos = structured ? extractPropertyFinderPhotos(structured) : null;
+    if (structuredPhotos && structuredPhotos.length > 0) {
+      candidate.photo_refs_json = structuredPhotos.slice(0, 8);
+    } else {
+      candidate.photo_refs_json = filterListingPhotos(extractPhotoRefs(html, HOSTS.AE, 12)).slice(0, 8);
+    }
     if (detectContactGate(html)) {
       candidate.limited_evidence_snapshot_json = {
         ...candidate.limited_evidence_snapshot_json,
@@ -209,6 +221,71 @@ export const PropertyFinderBrowsingAdapter = {
     return candidate;
   },
 };
+
+// PF embeds three asset paths that the generic <img> walker keeps
+// picking up before any real listing photo:
+//   growth.propertyfinder.com/static/...        (site-wide nav banners)
+//   media/images/client_logos/...                (agent branding chip)
+//   /icons/, /static/, /assets/                  (UI furniture)
+// They render as the hero image in every cockpit card, which is what
+// makes five distinct listings look identical at a glance. This
+// filter is intentionally allowlist-friendly: anything served from
+// PF's listing CDN (static.shared.propertyfinder.ae/media/images/listing
+// or graph-images.propertyfinder.ae or new-projects-media.propertyfinder.com)
+// passes through.
+const PHOTO_REJECT_PATTERNS = [
+  /growth\.propertyfinder\.com\/static\//i,
+  /\/nav_header_banner/i,
+  /\/client_logos\//i,
+  /\/icons\//i,
+  /\/static\//i,
+  /\/assets\//i,
+];
+
+export function filterListingPhotos(urls) {
+  if (!Array.isArray(urls)) return [];
+  return urls.filter((url) => {
+    const str = String(url || "");
+    if (!str) return false;
+    return !PHOTO_REJECT_PATTERNS.some((pattern) => pattern.test(str));
+  });
+}
+
+// Extracts the canonical listing photo URLs from PF's NEXT_DATA
+// `property.images` payload. Real shape (verified):
+//   property.images = {
+//     property: [
+//       { small, medium, full, thumbnail, classification_label, ... },
+//       ...
+//     ],
+//     // sometimes also: floor_plans, agent_logo, etc.
+//   }
+// We prefer the `medium` (~668x452) variant because that's what the
+// cockpit card thumbnail expects, and fall back through full → small
+// → thumbnail so a partial payload still yields one URL per photo.
+export function extractPropertyFinderPhotos(property) {
+  if (!property || typeof property !== "object") return null;
+  const raw = property.images;
+  let list = null;
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (raw && typeof raw === "object" && Array.isArray(raw.property)) {
+    list = raw.property;
+  } else {
+    return null;
+  }
+  const urls = [];
+  for (const entry of list) {
+    if (!entry) continue;
+    if (typeof entry === "string") {
+      urls.push(entry);
+      continue;
+    }
+    const candidate = entry.medium || entry.full || entry.small || entry.thumbnail || entry.url;
+    if (candidate) urls.push(String(candidate));
+  }
+  return filterListingPhotos(urls);
+}
 
 // Pulls the Next.js hydration payload out of a Property Finder detail
 // page. Returns null if the script tag is missing or unparseable so

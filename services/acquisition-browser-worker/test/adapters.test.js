@@ -631,6 +631,98 @@ test("PropertyFinder adapter falls back to URL slug for city/district when NEXT_
   assert.match(candidate.district, /Saadiyat/);
 });
 
+test("PropertyFinder photo extractor pulls per-listing URLs from NEXT_DATA and drops site assets", async () => {
+  const {
+    PropertyFinderBrowsingAdapter,
+    filterListingPhotos,
+    extractPropertyFinderPhotos,
+  } = await import("../src/adapters/property-finder.js");
+
+  // filterListingPhotos: strip nav banners, agent logos, generic /static/.
+  assert.deepEqual(
+    filterListingPhotos([
+      "https://growth.propertyfinder.com/static/nav_header_banner.webp",
+      "https://growth.propertyfinder.com/static/nav_header_banner_2.webp",
+      "https://static.shared.propertyfinder.ae/media/images/listing/ABCD/1.jpg",
+      "https://static.shared.propertyfinder.ae/media/images/client_logos/847/logo.jpg",
+      "https://static.shared.propertyfinder.ae/media/images/listing/ABCD/2.jpg",
+    ]),
+    [
+      "https://static.shared.propertyfinder.ae/media/images/listing/ABCD/1.jpg",
+      "https://static.shared.propertyfinder.ae/media/images/listing/ABCD/2.jpg",
+    ],
+  );
+
+  // extractPropertyFinderPhotos: prefer the `medium` variant from the
+  // structured `property.images.property[]` array.
+  const photos = extractPropertyFinderPhotos({
+    images: {
+      property: [
+        {
+          thumbnail: "https://x/listing/A/260x185.jpg",
+          small: "https://x/listing/A/416x272.jpg",
+          medium: "https://x/listing/A/668x452.jpg",
+          full: "https://x/listing/A/1312x894.jpg",
+        },
+        {
+          thumbnail: "https://x/listing/B/260x185.jpg",
+          medium: "https://x/listing/B/668x452.jpg",
+        },
+      ],
+    },
+  });
+  assert.deepEqual(photos, [
+    "https://x/listing/A/668x452.jpg",
+    "https://x/listing/B/668x452.jpg",
+  ]);
+
+  // End-to-end: parseListingDetail consumes NEXT_DATA and never lets a
+  // nav-banner URL into photo_refs_json.
+  const nextData = JSON.stringify({
+    props: {
+      pageProps: {
+        propertyResult: {
+          property: {
+            id: 87049697,
+            title: "Bulgari Resort",
+            price: { value: 38000000, currency: "AED", period: "sell" },
+            size: { value: 2611, unit: "sqft" },
+            bedrooms: 3,
+            bathrooms: 4,
+            location: {
+              path_name: "Dubai, Jumeirah, Jumeirah Bay Island",
+              coordinates: { lat: 25.2, lon: 55.23 },
+            },
+            images: {
+              property: [
+                { medium: "https://cdn.example/listing/A1/668x452.jpg" },
+                { medium: "https://cdn.example/listing/A2/668x452.jpg" },
+                { medium: "https://cdn.example/listing/A3/668x452.jpg" },
+              ],
+            },
+          },
+        },
+      },
+    },
+  });
+  // The page HTML also contains the nav banner inside an <img> tag,
+  // mimicking the real PF layout, to prove the generic fallback path
+  // would have polluted us if we ever fell back.
+  const html = `
+    <h1>Bulgari Resort</h1>
+    <img src="https://growth.propertyfinder.com/static/nav_header_banner.webp" />
+    <img src="https://cdn.example/listing/A1/668x452.jpg" />
+    <script id="__NEXT_DATA__" type="application/json">${nextData}</script>
+  `;
+  const candidate = PropertyFinderBrowsingAdapter.parseListingDetail(
+    html,
+    "https://www.propertyfinder.ae/en/plp/buy/apartment-for-sale-dubai-jumeirah-jumeirah-bay-island-bulgari-resort-residences-bulgari-resort-residences-6-87049697.html",
+  );
+  assert.equal(candidate.photo_refs_json.length, 3);
+  assert.equal(candidate.photo_refs_json[0], "https://cdn.example/listing/A1/668x452.jpg");
+  assert.ok(!candidate.photo_refs_json.some((url) => /nav_header_banner/.test(url)));
+});
+
 test("PropertyFinder area parser drops year-like values when structured data is missing", async () => {
   const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
   // Text-regex captures "Handover 2026" as area; without NEXT_DATA we
