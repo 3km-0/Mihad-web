@@ -1,5 +1,6 @@
 import { AqarBrowsingAdapter } from "./adapters/aqar.js";
 import { BayutBrowsingAdapter } from "./adapters/bayut.js";
+import { FotocasaBrowsingAdapter } from "./adapters/fotocasa.js";
 import { IdealistaBrowsingAdapter } from "./adapters/idealista.js";
 import { PropertyFinderBrowsingAdapter } from "./adapters/property-finder.js";
 import { access } from "node:fs/promises";
@@ -10,6 +11,7 @@ import { boundedTextSnapshot, extractLocationMetadata } from "./adapters/shared.
 const ADAPTERS = {
   aqar: AqarBrowsingAdapter,
   bayut: BayutBrowsingAdapter,
+  fotocasa: FotocasaBrowsingAdapter,
   idealista: IdealistaBrowsingAdapter,
   property_finder: PropertyFinderBrowsingAdapter,
 };
@@ -18,10 +20,17 @@ const ADAPTERS = {
 // Used to pick sensible default sources when the mandate doesn't specify
 // sources_json. Saudi (SA) maps to the existing aqar/bayut/property_finder
 // trio; cross-border markets pick country-native sources.
+//
+// Spain (ES) prefers Fotocasa: its SSR'd pages embed a structured
+// `realEstate` JSON object (price, surface, rooms, lat/lng) which gives
+// us a much richer candidate than text-regex extraction. Idealista is
+// retained as a known-good URL shape but is currently DataDome-protected
+// (returns HTTP 403 for automated clients) and should only be used when
+// an authenticated storage_state is configured.
 const DEFAULT_SOURCES_BY_COUNTRY = {
   SA: ["aqar", "bayut", "property_finder"],
   AE: ["property_finder"],
-  ES: ["idealista"],
+  ES: ["fotocasa"],
   // TR and GR have no native adapter yet; operator-CSV market-data import
   // is the MVP fallback documented in
   // zohal-platform/Documentation/Templates/Mihad-Market-Data-CSV.md.

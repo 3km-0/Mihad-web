@@ -132,6 +132,23 @@ fi
 if [[ -n "${RESOLVED_PUBLICATION_API_URL}" ]]; then
   DEFAULT_ENV_VARS="${DEFAULT_ENV_VARS},EXPERIENCES_PUBLICATION_URL=${RESOLVED_PUBLICATION_API_URL}"
 fi
+
+# Preserve the URL of the acquisition browser worker (Cloud Run) across
+# deploys. `--set-env-vars` replaces the full env-var map, so any value
+# only ever set out-of-band via `gcloud run services update` gets wiped
+# on the next deploy. If unset, we look up the sibling Cloud Run service
+# in the same region and inject its public URL automatically.
+ACQUISITION_BROWSER_WORKER_SERVICE="${ACQUISITION_BROWSER_WORKER_SERVICE:-acquisition-browser-worker}"
+RESOLVED_BROWSER_WORKER_URL="${ACQUISITION_BROWSER_WORKER_URL:-}"
+if [[ -z "${RESOLVED_BROWSER_WORKER_URL}" ]]; then
+  RESOLVED_BROWSER_WORKER_URL="$("${GCLOUD_BIN}" run services describe "${ACQUISITION_BROWSER_WORKER_SERVICE}" \
+    --project="${PROJECT_ID}" \
+    --region="${SERVICE_REGION}" \
+    --format='value(status.url)' 2>/dev/null || true)"
+fi
+if [[ -n "${RESOLVED_BROWSER_WORKER_URL}" ]]; then
+  DEFAULT_ENV_VARS="${DEFAULT_ENV_VARS},ACQUISITION_BROWSER_WORKER_URL=${RESOLVED_BROWSER_WORKER_URL}"
+fi
 DEPLOY_ENV_VARS="${UPDATE_ENV_VARS:-}"
 if [[ -n "${DEPLOY_ENV_VARS}" ]]; then
   case "${DEPLOY_ENV_VARS}" in

@@ -37,6 +37,7 @@ const ALLOWED_SOURCES = new Set([
   "developer_page",
   "broker_page",
   "idealista",
+  "fotocasa",
   "property_finder",
 ]);
 const MVP_SOURCES = ["aqar", "bayut"];

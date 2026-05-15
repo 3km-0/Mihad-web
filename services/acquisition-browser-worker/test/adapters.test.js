@@ -402,10 +402,10 @@ test("defaultSourcesForMandate picks country-native adapters", async () => {
   assert.deepEqual(aeSources, ["property_finder"]);
 
   const esSources = workerTest.defaultSourcesForMandate({ target_country_codes: ["ES"] });
-  assert.deepEqual(esSources, ["idealista"]);
+  assert.deepEqual(esSources, ["fotocasa"]);
 
   const crossBorder = workerTest.defaultSourcesForMandate({ target_country_codes: ["AE", "ES"] });
-  assert.deepEqual(new Set(crossBorder), new Set(["property_finder", "idealista"]));
+  assert.deepEqual(new Set(crossBorder), new Set(["property_finder", "fotocasa"]));
 
   const trGr = workerTest.defaultSourcesForMandate({ target_country_codes: ["TR", "GR"] });
   // TR and GR have no native adapter yet; fall back to legacy SA scrapers
@@ -451,6 +451,74 @@ test("Idealista buildSearchUrl picks city slug from mandate buy box", async () =
     buy_box_json: { city: "Madrid", property_type: "apartment" },
   });
   assert.match(url, /idealista\.com\/en\/venta-viviendas\/madrid\//);
+});
+
+test("Fotocasa adapter extracts canonical detail URLs from search HTML", async () => {
+  const { FotocasaBrowsingAdapter } = await import("../src/adapters/fotocasa.js");
+  const html = `
+    <a href="/es/comprar/vivienda/marbella/aire-acondicionado-amueblado/189574811/d">Listing one</a>
+    <a href="/es/comprar/vivienda/marbella/parking-jardin/187923448">Listing two</a>
+    <a href="/es/comprar/vivienda/marbella/parking-jardin/187923448">duplicate ignored</a>
+    <a href="/es/comprar/news/article">Not a listing</a>
+  `;
+  const cards = FotocasaBrowsingAdapter.parseSearchResults(html, "https://www.fotocasa.es/es/comprar/viviendas/marbella/todas-las-zonas/l");
+  assert.equal(cards.length, 2);
+  assert.equal(cards[0].source, "fotocasa");
+  assert.match(cards[0].source_url, /fotocasa\.es\/es\/comprar\/vivienda\/marbella\/.+\/189574811\/d$/);
+  assert.match(cards[1].source_url, /fotocasa\.es\/es\/comprar\/vivienda\/marbella\/.+\/187923448\/d$/);
+});
+
+test("Fotocasa adapter prefers structured realEstate JSON over text-regex", async () => {
+  const { FotocasaBrowsingAdapter } = await import("../src/adapters/fotocasa.js");
+  // Real Fotocasa pages embed a `realEstate` object inline with stable
+  // numeric fields. The text body deliberately disagrees with those
+  // structured fields so we can confirm the adapter picks the structured
+  // values instead of the noisy text regex.
+  const detailHtml = `
+    <h1>Villa con vistas al mar — Marbella</h1>
+    <p>Property text says 999 m² and 99 dormitorios (red herring).</p>
+    <script>
+      window.__INITIAL_DATA__ = {};
+      var data = {"realEstate":{"address":{"country":"España","district":"Nueva Andalucía","neighborhood":"Puerto Banús","city":"Marbella","province":"Málaga"},"price":2450000,"surface":320,"rooms":4,"bathrooms":4,"latitude":36.48734,"longitude":-4.95201}};
+    </script>
+  `;
+  const detail = FotocasaBrowsingAdapter.parseListingDetail(
+    detailHtml,
+    "https://www.fotocasa.es/es/comprar/vivienda/marbella/parking-jardin-piscina/189574811/d",
+  );
+  assert.equal(detail.source, "fotocasa");
+  assert.equal(detail.asking_price, "2450000");
+  assert.equal(detail.area_sqm, 320);
+  assert.equal(detail.bedroom_count, 4);
+  assert.equal(detail.bathroom_count, 4);
+  assert.equal(detail.district, "Nueva Andalucía");
+  assert.equal(detail.city, "Marbella");
+  assert.equal(detail.latitude, 36.48734);
+  assert.equal(detail.longitude, -4.95201);
+  assert.equal(detail.location_precision, "exact");
+  assert.equal(detail.limited_evidence_snapshot_json.country_code, "ES");
+  assert.equal(detail.limited_evidence_snapshot_json.currency, "EUR");
+  assert.equal(detail.limited_evidence_snapshot_json.asking_price_native, 2450000);
+  assert.ok(detail.source_fingerprint);
+});
+
+test("Fotocasa buildSearchUrl applies price filters and city slug", async () => {
+  const { FotocasaBrowsingAdapter } = await import("../src/adapters/fotocasa.js");
+  const url = FotocasaBrowsingAdapter.buildSearchUrl({
+    target_country_codes: ["ES"],
+    buy_box_json: {
+      city: "Marbella",
+      property_type: "villa",
+      budget_min_native: 1500000,
+      budget_max_native: 3000000,
+    },
+  });
+  const parsed = new URL(url);
+  assert.equal(parsed.hostname, "www.fotocasa.es");
+  // Villas mandates should route to the casas-y-villas segment.
+  assert.match(parsed.pathname, /\/es\/comprar\/casas-y-villas\/marbella\/todas-las-zonas\/l$/);
+  assert.equal(parsed.searchParams.get("precioMin"), "1500000");
+  assert.equal(parsed.searchParams.get("precioMax"), "3000000");
 });
 
 test("PropertyFinder adapter parses /plp/ listing cards", async () => {
