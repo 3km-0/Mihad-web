@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { hasEffectivePaidSubscription, type SubscriptionProfileLike } from '@/lib/subscription';
 
 export const assetTypes = ['villa', 'townhouse', 'apartment', 'building', 'land', 'mixed_use'] as const;
 export const strategyTypes = ['buy_renovate_rent', 'buy_renovate_sell', 'income_hold', 'family_office', 'opportunistic'] as const;
@@ -53,6 +54,7 @@ export interface CreateAcquisitionWorkspaceInput {
   parentFolderId?: string | null;
   buyBox: BuyBoxInput;
   seedSource?: string;
+  adminApprovedAdditionalMandate?: boolean;
 }
 
 export function splitList(value: string | string[] | null | undefined) {
@@ -109,10 +111,45 @@ export function buildAcquisitionBrief(name: string, buyBox: BuyBox) {
   return parts.join('\n');
 }
 
+async function assertAcquisitionWorkspaceAllowed(
+  supabase: SupabaseClient,
+  input: CreateAcquisitionWorkspaceInput
+) {
+  if (input.adminApprovedAdditionalMandate) return;
+
+  const { data: existingMandates, error: mandatesError } = await supabase
+    .from('acquisition_mandates')
+    .select('id, status')
+    .eq('user_id', input.userId);
+
+  if (mandatesError) {
+    throw new Error(mandatesError.message || 'Failed to inspect mandate access');
+  }
+
+  const activeMandateCount = (existingMandates || []).filter((row: { status?: string | null }) => row.status === 'active').length;
+  if (activeMandateCount < 1) return;
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('subscription_tier, subscription_status, subscription_expires_at, grace_period_ends_at')
+    .eq('id', input.userId)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message || 'Failed to inspect subscription access');
+  }
+
+  if (!hasEffectivePaidSubscription(profile as SubscriptionProfileLike | null)) {
+    throw new Error('Additional active mandates require a paid plan or admin approval.');
+  }
+}
+
 export async function createAcquisitionWorkspace(
   supabase: SupabaseClient,
   input: CreateAcquisitionWorkspaceInput
 ) {
+  await assertAcquisitionWorkspaceAllowed(supabase, input);
+
   const buyBox = normalizeBuyBox(input.buyBox);
   const name = input.name.trim();
   const summary = input.description?.trim() || buildAcquisitionBrief(name, buyBox);

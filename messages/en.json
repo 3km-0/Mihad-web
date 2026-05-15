@@ -2125,28 +2125,28 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — AI acquisition workflow for Saudi real estate investors",
-      "description": "Give Zohal your buy box and get serious property candidates with evidence, scenarios, renovation exposure, and clear next steps."
+      "title": "Zohal — Buy property abroad with confidence",
+      "description": "Tell Zohal your target country, budget, and property type. We will review your request, send suitable overseas property options, and help you move forward with trusted local partners when you are ready."
     },
     "content": {
       "brand": {
         "name": "Zohal",
-        "tagline": "Your AI-powered real estate acquisition team.",
+        "tagline": "Buy property abroad with confidence.",
         "theme": "acquisition-operator"
       },
       "nav": {
         "links": [
           {
-            "label": "Product",
-            "href": "#product"
-          },
-          {
             "label": "How it works",
             "href": "#how"
           },
           {
-            "label": "Workspaces",
+            "label": "Markets",
             "href": "#workflows"
+          },
+          {
+            "label": "Why Zohal?",
+            "href": "#product"
           },
           {
             "label": "Pricing",
@@ -2169,43 +2169,43 @@
             "href": "/auth/login"
           },
           "primaryCta": {
-            "label": "Start your mandate",
+            "label": "Start for free",
             "href": "/auth/signup"
           }
         }
       },
       "hero": {
-        "headline": "Your AI-powered real estate acquisition team",
-        "subhead": "Give Zohal your buy box. It sources serious Saudi property opportunities, verifies the evidence, models scenarios, estimates renovation exposure, and gives you a live workspace to decide what to do next.",
+        "headline": "Buying property abroad? Start with زُحل.",
+        "subhead": "Tell us your target country, budget, and property type. We will review your request, send suitable options, and help you move forward with trusted local partners when you are ready.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start your mandate",
+            "label": "Start for free",
             "href": "/auth/signup"
           },
           {
             "type": "secondary",
-            "label": "Book an investor demo",
-            "href": "/support"
+            "label": "See how it works",
+            "href": "#how"
           }
         ],
-        "proofLine": "Mandate-first sourcing • Evidence-linked deal files • Renovation-aware scenarios",
+        "proofLine": "Tell us what you want • Get suitable options • Move forward when ready",
         "mock": {
-          "title": "Acquisition Workspace",
+          "title": "Buyer Request",
           "panels": [
-            "Mandate Fit",
-            "Scenario Model",
-            "Diligence Gaps"
+            "Your Request",
+            "Suitable Options",
+            "Next Step"
           ]
         }
       },
       "credibilityStrip": {
-        "label": "Built for serious Saudi investors",
+        "label": "Built for Saudi buyers exploring property abroad",
         "items": [
-          "Launch focus: active Riyadh investors buying SAR 1.5M-5M residential or mixed-use opportunities",
-          "Buy-box interpretation, candidate sourcing, comparable context, and diligence tracking",
-          "Renovation scope ranges, capex bands, confidence levels, and return impact",
-          "Evidence labels separate verified sources, market signals, modeled outputs, counterparty claims, and open diligence"
+          "Start with a simple request: country, budget, property type, and purpose",
+          "Receive selected overseas property options instead of random listings",
+          "Move forward with trusted local partners when an option fits",
+          "Before partner introductions, we may ask for a simple confirmation of buying ability"
         ]
       },
       "partners": {
@@ -2242,52 +2242,52 @@
         ]
       },
       "problem": {
-        "title": "Investors start with a mandate, not a listing.",
+        "title": "Why use زُحل?",
         "body": [
-          "A serious buyer already knows the budget, neighborhoods, asset type, financing limits, return target, renovation appetite, timeline, and risk tolerance. The hard part is turning that intent into a researched shortlist before the opportunity disappears.",
-          "Zohal works like a high-output acquisition analyst: it turns the buy box into candidates, normalizes messy property information, builds comparable and valuation context, flags diligence gaps, coordinates missing information, and preserves the decision record."
+          "We start with what you want, not random listings.",
+          "We filter options before sending them to you. If an option fits, we help coordinate the next step with trusted local partners."
         ],
         "sideCard": {
-          "title": "From scattered search to acquisition workflow",
+          "title": "From random search to a clear request",
           "before": [
-            "Listings, brokers, private groups, classifieds, and WhatsApp threads stay fragmented",
-            "Comparable context, valuation logic, and renovation exposure arrive too late",
-            "Broker follow-up, missing documents, and partner comments disappear across chats"
+            "Thousands of listings that may not match your budget or purpose",
+            "Unclear next steps when a property looks interesting",
+            "Broker conversations before you know if the option is worth pursuing"
           ],
           "after": [
-            "The mandate becomes a ranked candidate pipeline with clear fit reasons",
-            "Each serious property gets a live workspace with evidence, scenarios, capex logic, and next steps",
-            "Decisions, assumptions, diligence items, and counterparty replies stay in one shared memory"
+            "Your request becomes the starting point",
+            "Selected options are reviewed before they reach you",
+            "When you are ready, Zohal helps with the serious next step"
           ]
         }
       },
       "howItWorks": {
-        "title": "From buy box to decision-ready workspace.",
-        "subhead": "Zohal follows the same core loop every time: mandate intake, opportunity sourcing, research and enrichment, evaluation, renovation logic, and diligence coordination.",
+        "title": "How it works",
+        "subhead": "Three simple steps from request to next move.",
         "steps": [
           {
-            "title": "Give Zohal the mandate",
-            "body": "Share the buy box: budget, neighborhoods, asset type, financing constraints, target returns, renovation appetite, timeline, and risk tolerance."
+            "title": "Tell us what you want",
+            "body": "Choose the country, budget, property type, and purpose."
           },
           {
-            "title": "Receive serious candidates",
-            "body": "Zohal sources and ranks opportunities, enriches property facts, builds comparable context, and marks what is verified, modeled, claimed, or still uncertain."
+            "title": "Get suitable options",
+            "body": "We send you selected opportunities that match your request."
           },
           {
-            "title": "Model, coordinate, and decide",
-            "body": "Each serious candidate becomes a live acquisition workspace with scenarios, renovation ranges, diligence gaps, broker follow-up, and a clear next action."
+            "title": "Move forward when ready",
+            "body": "If an option fits, we help coordinate the next step with trusted local partners."
           }
         ],
         "ctas": [
           {
             "type": "link",
-            "label": "See checked decision pack",
-            "href": "#decision-pack"
+            "label": "See markets",
+            "href": "#workflows"
           },
           {
             "type": "secondary",
-            "label": "See privacy and control",
-            "href": "#security"
+            "label": "Start for free",
+            "href": "/auth/signup"
           }
         ]
       },
@@ -2369,45 +2369,71 @@
         ]
       },
       "applications": {
-        "title": "What each acquisition workspace contains.",
-        "subhead": "The homepage now reflects the sharper product: a mandate-first acquisition operator, not a generic listing dashboard.",
+        "title": "Markets we focus on",
+        "subhead": "We focus on overseas markets where Saudi buyers commonly compare lifestyle, family, investment, and longer-term plans.",
         "cards": [
           {
-            "id": "contracts",
-            "title": "Mandate Fit",
-            "subtitle": "See why a property surfaced, where it fits the buy box, and where it fails the investor's constraints.",
+            "id": "uae",
+            "title": "UAE",
+            "subtitle": "Close and familiar.",
             "bullets": [
-              "Budget, geography, asset type, timeline, financing, and return fit",
-              "Clear pursue, pass, request info, visit, negotiate, or quote next step"
+              "Popular for regional access and familiar process",
+              "Useful for lifestyle, family, and investment requests"
             ],
             "cta": {
-              "label": "See mandate fit",
+              "label": "See UAE options",
               "href": "#product"
             }
           },
           {
-            "id": "amendments",
-            "title": "Evidence and Diligence",
-            "subtitle": "Keep listing data, documents, photos, maps, public-record references, broker claims, and open questions in one deal file.",
+            "id": "turkey",
+            "title": "Turkey",
+            "subtitle": "Suitable for families and investment.",
             "bullets": [
-              "Basis labels for verified sources, market signals, modeled outputs, counterparty claims, and uncertainty",
-              "Missing documents, contradictions, inspection needs, and broker follow-ups"
+              "Strong demand for family use and rental potential",
+              "Good fit for buyers comparing budget and location"
             ],
             "cta": {
-              "label": "See evidence layer",
+              "label": "See Turkey options",
               "href": "#product"
             }
           },
           {
-            "id": "bilingual-work",
-            "title": "Scenario and Renovation Logic",
-            "subtitle": "Model price, financing, hold period, rent, operating costs, capex, exit assumptions, and return thresholds.",
+            "id": "greece",
+            "title": "Greece",
+            "subtitle": "Attractive European options.",
             "bullets": [
-              "Base, upside, and downside scenarios with visible assumptions",
-              "Renovation scope ranges, capex bands, confidence levels, and return impact"
+              "European lifestyle and investment appeal",
+              "Useful for buyers comparing residency-oriented goals"
             ],
             "cta": {
-              "label": "See scenarios",
+              "label": "See Greece options",
+              "href": "#product"
+            }
+          },
+          {
+            "id": "spain",
+            "title": "Spain",
+            "subtitle": "Lifestyle and long-term investment.",
+            "bullets": [
+              "Good fit for long-term use and second-home planning",
+              "Useful for buyers comparing city, coast, and budget"
+            ],
+            "cta": {
+              "label": "See Spain options",
+              "href": "#product"
+            }
+          },
+          {
+            "id": "uk",
+            "title": "UK",
+            "subtitle": "For specific requests and higher budgets.",
+            "bullets": [
+              "Best for focused requests with clear budget bands",
+              "Useful for buyers with education, family, or long-term plans"
+            ],
+            "cta": {
+              "label": "See UK options",
               "href": "#product"
             }
           }
@@ -2450,39 +2476,39 @@
       },
       "pricing": {
         "id": "pricing",
-        "title": "Pricing for active acquisition work.",
+        "title": "Start free, continue when it makes sense.",
         "toggleLabels": [
-          "Investors",
-          "Teams"
+          "Buyer requests",
+          "Active search"
         ],
         "professional": [
           {
             "id": "pro",
-            "name": "Starter Workspace",
-            "price": "SAR 299 / month or SAR 2,999 / year",
+            "name": "First buyer request",
+            "price": "Free",
             "bullets": [
-              "Best for evaluating one live property with discipline",
-              "One acquisition workspace for mandate fit, evidence, scenarios, diligence gaps, and next steps",
-              "Upload listing material, documents, photos, and broker notes",
-              "Evidence labels and review history included"
+              "Create your first active request for free",
+              "Receive a limited number of selected options that match your request",
+              "When you are ready to move forward, we may ask for a simple confirmation of buying ability before partner introductions",
+              "Additional active requests or concierge search can be paid or approved by the team"
             ],
             "cta": {
-              "label": "Start Workspace",
+              "label": "Start for free",
               "href": "/auth/signup"
             }
           },
           {
             "id": "max",
-            "name": "Active Investor",
+            "name": "Active search",
             "price": "SAR 749 / month",
             "bullets": [
-              "Best for repeated mandates and active Riyadh deal flow",
-              "3 workspaces and 2 users for collaboration with a partner, adviser, or family member",
-              "Mandate monitoring, candidate ranking, scenario modeling, and diligence tracking",
-              "Renovation ranges plus 2 vendor estimate or visit workflows yearly"
+              "Best for buyers who want continued matching beyond the free start",
+              "Support for additional active requests",
+              "Partner coordination when you are ready to move forward",
+              "Simple tracking for options, notes, and next steps"
             ],
             "cta": {
-              "label": "Start Active Investor",
+              "label": "Start active search",
               "href": "/auth/signup"
             }
           }
@@ -2493,10 +2519,10 @@
             "name": "Team",
             "price": "Contact us",
             "bullets": [
-              "For family-office-style buyers, small investment teams, and recurring acquisition programs",
-              "20 acquisition workspaces and 5 users",
-              "Portfolio continuity, shared mandate memory, and team decision history",
-              "Premium live-deal coordination and 5 vendor estimate or visit workflows yearly"
+              "For family buyers, small investment teams, and recurring overseas property requests",
+              "Shared request tracking for multiple buyers or advisers",
+              "Team visibility into options, status, and partner coordination",
+              "Premium support for serious cross-border property searches"
             ],
             "cta": {
               "label": "Contact Us",
@@ -2505,8 +2531,8 @@
           }
         ],
         "usageMeter": {
-          "title": "Simple acquisition units",
-          "body": "Plans are organized around mandates, candidate workspaces, users, renovation estimate workflows, monitoring, and premium coordination. The goal is simple: move from raw opportunity to disciplined decision faster."
+          "title": "What happens after the free start",
+          "body": "Your request stays saved. To keep receiving active matching or move into partner introductions, you can confirm buying ability, get team approval, or choose a paid active-search plan."
         }
       },
       "insights": {
@@ -2599,18 +2625,18 @@
         }
       },
       "finalCta": {
-        "title": "Send us your buy box.",
-        "subhead": "We will show how Zohal turns it into serious candidates, evidence-linked deal files, renovation exposure, and clear next steps.",
+        "title": "Buying property abroad? Start with زُحل.",
+        "subhead": "Tell us your target country, budget, and property type. We will review your request, send suitable options, and help you move forward with trusted local partners when you are ready.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start your mandate",
+            "label": "Start for free",
             "href": "/auth/signup"
           },
           {
             "type": "secondary",
-            "label": "Book an investor demo",
-            "href": "/support"
+            "label": "See how it works",
+            "href": "#how"
           }
         ]
       },
@@ -2620,36 +2646,32 @@
             "title": "Product",
             "links": [
               {
-                "label": "Overview",
-                "href": "#product"
-              },
-              {
-                "label": "Acquisition Workspaces",
-                "href": "#product"
-              },
-              {
-                "label": "Evidence Labels",
+                "label": "How it works",
                 "href": "#how"
               },
               {
-                "label": "Investor Workflows",
+                "label": "Markets",
                 "href": "#workflows"
+              },
+              {
+                "label": "Start free",
+                "href": "/auth/signup"
               }
             ]
           },
           {
-            "title": "Use Cases",
+            "title": "Markets",
             "links": [
               {
-                "label": "Mandate Screening",
+                "label": "UAE",
                 "href": "#workflows"
               },
               {
-                "label": "Renovation-Aware Deals",
+                "label": "Turkey",
                 "href": "#workflows"
               },
               {
-                "label": "Diligence Tracking",
+                "label": "Greece, Spain, UK",
                 "href": "#workflows"
               }
             ]
@@ -2685,10 +2707,10 @@
             ]
           }
         ],
-        "legalNote": "Watd Information Technology Company provides acquisition workflow software for investor-side research and decision support. Investors remain responsible for final diligence, licensed advice, and transaction decisions."
+        "legalNote": "Watd Information Technology Company helps buyers review overseas property options and coordinate next steps. Buyers remain responsible for final diligence, licensed advice, and transaction decisions."
       },
       "ui": {
-        "mentalModelLine": "Mandate -> Candidate Pipeline -> Property Workspace -> Decision",
+        "mentalModelLine": "Request -> Suitable Options -> Trusted Partner -> Next Step",
         "beforeLabel": "Without Zohal",
         "afterLabel": "With Zohal",
         "modal": {
@@ -2700,33 +2722,33 @@
           "close": "Close"
         },
         "mock": {
-          "decisionPackLabel": "Acquisition Workspace",
-          "samplePackTitle": "Riyadh Villa Candidate - Al Narjis",
-          "provisional": "Needs review",
-          "finalized": "Live",
-          "verifiedStatus": "Verified",
+          "decisionPackLabel": "Buyer Request",
+          "samplePackTitle": "Overseas property request",
+          "provisional": "Reviewing",
+          "finalized": "Ready",
+          "verifiedStatus": "Suitable",
           "reviewStatus": "Check",
-          "sampleGoverningLawLabel": "Mandate Fit",
-          "sampleGoverningLawValue": "Riyadh north, SAR 3.2M ask",
-          "samplePartyALabel": "Market Signal",
-          "samplePartyAValue": "Comparable range pending review",
-          "sampleEffectiveDateLabel": "Renovation Exposure",
-          "sampleEffectiveDateValue": "MEP + roof inspection needed",
+          "sampleGoverningLawLabel": "Target country",
+          "sampleGoverningLawValue": "UAE, Turkey, Greece, Spain, or UK",
+          "samplePartyALabel": "Budget",
+          "samplePartyAValue": "Shared by buyer",
+          "sampleEffectiveDateLabel": "Property type",
+          "sampleEffectiveDateValue": "Apartment, villa, or investment unit",
           "sampleTermLabel": "Next Action",
-          "sampleTermMonthsValue": "Request documents + visit",
-          "documentViewer": "Evidence Layer",
-          "verifiedVariables": "Deal Signals",
-          "exports": "Workspace Outputs",
+          "sampleTermMonthsValue": "Send suitable options",
+          "documentViewer": "Request Details",
+          "verifiedVariables": "Matching Signals",
+          "exports": "Selected Options",
           "showEvidence": "Show source",
           "hideEvidence": "Hide source",
           "evidence": "Evidence",
           "pageLabel": "Page {page}",
-          "highlightSnippet": "Counterparty claim: roof work was completed last year. Needs invoice, photo evidence, or inspection before underwriting.",
+          "highlightSnippet": "When you are ready to move forward, we may ask for a simple confirmation of buying ability before partner introductions.",
           "verificationObjectFilename": "",
-          "uiMockLabel": "Workspace Preview",
-          "exceptionsQueueTitle": "Diligence blocker",
-          "exceptionsQueueBody": "Capex range changes the base case. Request MEP photos and contractor quote before negotiation.",
-          "fieldEvidenceLabel": "Linked evidence",
+          "uiMockLabel": "Request Preview",
+          "exceptionsQueueTitle": "Next step",
+          "exceptionsQueueBody": "Review selected options and choose which market or property type to explore next.",
+          "fieldEvidenceLabel": "Request detail",
           "claimKey": "claim",
           "statusKey": "status",
           "confidenceKey": "confidence",
@@ -2735,18 +2757,18 @@
         "decisionPackPreview": {
           "deliverablesLabel": "Included",
           "deliverables": [
-            "Mandate fit",
-            "Scenario model",
-            "Capex range",
-            "Diligence tracker"
+            "Request review",
+            "Suitable options",
+            "Partner coordination",
+            "Next step"
           ],
-          "deliverablesBody": "Ready for review, coordination, and a disciplined next step."
+          "deliverablesBody": "A simple way to start before moving into serious partner coordination."
         },
         "security": {
           "buyersCareTitle": "What governance teams ask first"
         },
         "finalCta": {
-          "previewLabel": "Workspace preview"
+          "previewLabel": "Request preview"
         }
       }
     }

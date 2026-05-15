@@ -261,6 +261,48 @@ test("mandate creation writes acquisition_mandates", async () => {
   assert.equal(supabase.db.acquisition_mandates.length, 1);
 });
 
+test("first active mandate is free and additional active mandates require payment or approval", async () => {
+  const supabase = createMockSupabase({
+    profiles: [{
+      id: "user_1",
+      subscription_tier: "free",
+      subscription_status: "active",
+    }],
+  });
+
+  await __test.createMandate(supabase, {
+    workspace_id: "ws_1",
+    user_id: "user_1",
+    title: "First free mandate",
+  });
+
+  await assert.rejects(
+    () => __test.createMandate(supabase, {
+      workspace_id: "ws_2",
+      user_id: "user_1",
+      title: "Second mandate",
+    }),
+    /Additional active mandates require a paid plan or admin approval/,
+  );
+
+  supabase.db.profiles[0].subscription_tier = "pro";
+  const paidMandate = await __test.createMandate(supabase, {
+    workspace_id: "ws_2",
+    user_id: "user_1",
+    title: "Paid mandate",
+  });
+  assert.equal(paidMandate.workspace_id, "ws_2");
+
+  supabase.db.profiles[0].subscription_tier = "free";
+  const approvedMandate = await __test.createMandate(supabase, {
+    workspace_id: "ws_3",
+    user_id: "user_1",
+    title: "Approved mandate",
+    confidence_json: { access: { additional_mandate_approved: true } },
+  });
+  assert.equal(approvedMandate.workspace_id, "ws_3");
+});
+
 test("workspace search-run route helper creates a mandate when needed and queues sourcing", async () => {
   const previousLocation = process.env.GCP_TASKS_LOCATION;
   delete process.env.GCP_TASKS_LOCATION;
@@ -497,6 +539,75 @@ test("weekly acquisition report creation is idempotent by mandate period", async
   assert.equal(supabase.db.acquisition_opportunities[0].metadata_json.location_analysis.max, 15);
 });
 
+test("free weekly reports pause after the second report until buyer is qualified", async () => {
+  const baseMandate = {
+    id: "mandate_1",
+    workspace_id: "ws_1",
+    user_id: "user_1",
+    status: "active",
+    title: "Free weekly mandate",
+    buy_box_json: {},
+    target_locations_json: [],
+    budget_range_json: {},
+  };
+  const supabase = createMockSupabase({
+    profiles: [{
+      id: "user_1",
+      subscription_tier: "free",
+      subscription_status: "active",
+    }],
+    acquisition_mandates: [baseMandate],
+    acquisition_search_runs: [],
+    acquisition_opportunities: [{
+      id: "opp_1",
+      workspace_id: "ws_1",
+      title: "Weekly candidate",
+      stage: "workspace_created",
+      metadata_json: { investment_score: 80, asking_price: 3000000, property_type: "villa" },
+    }],
+    acquisition_candidate_opportunities: [],
+    acquisition_claims: [],
+    acquisition_diligence_items: [],
+    acquisition_scenarios: [],
+    acquisition_deal_desk_reports: [
+      { id: "report_1", workspace_id: "ws_1", mandate_id: "mandate_1", report_period: "2026-W18", schedule_kind: "weekly", artifact_kind: "acquisition_report", status: "assembled" },
+      { id: "report_2", workspace_id: "ws_1", mandate_id: "mandate_1", report_period: "2026-W19", schedule_kind: "weekly", artifact_kind: "acquisition_report", status: "assembled" },
+    ],
+    acquisition_deal_desk_notes: [],
+    buyer_readiness_profiles: [],
+  });
+
+  const paused = await __test.createAcquisitionReport(supabase, "ws_1", {
+    mandate_id: "mandate_1",
+    report_period: "2026-W20",
+    schedule_kind: "weekly",
+  }, { requestId: "req_paused", idempotent: true });
+
+  assert.equal(paused.status, "paused");
+  assert.equal(paused.paused, true);
+  assert.equal(paused.free_report_count, 2);
+  assert.equal(supabase.db.acquisition_deal_desk_reports.length, 2);
+
+  supabase.db.buyer_readiness_profiles.push({
+    id: "profile_1",
+    workspace_id: "ws_1",
+    mandate_id: "mandate_1",
+    readiness_level: 4,
+    evidence_status: "verified",
+    kyc_state: "buyer_verified",
+    brokerage_status: "not_started",
+  });
+
+  const resumed = await __test.createAcquisitionReport(supabase, "ws_1", {
+    mandate_id: "mandate_1",
+    report_period: "2026-W20",
+    schedule_kind: "weekly",
+  }, { requestId: "req_resumed", idempotent: true });
+
+  assert.equal(resumed.status, "assembled");
+  assert.equal(supabase.db.acquisition_deal_desk_reports.length, 3);
+});
+
 test("manual listing intake records manual source metadata", async () => {
   const supabase = createMockSupabase();
   const result = await __test.createListingCandidate(supabase, {
@@ -554,6 +665,50 @@ test("rejecting an opportunity archives its candidate so future upserts stay sup
   assert.equal(supabase.db.acquisition_candidate_opportunities[0].status, "archived");
   assert.equal(repeated.suppressed_by_workspace, true);
   assert.equal(supabase.db.acquisition_events.at(-1).event_type, "opportunity_rejected");
+});
+
+test("late pipeline stages require buyer qualification or admin override", async () => {
+  const supabase = createMockSupabase({
+    acquisition_opportunities: [{
+      id: "opp_1",
+      workspace_id: "ws_1",
+      mandate_id: "mandate_1",
+      stage: "workspace_created",
+      metadata_json: {},
+    }],
+    buyer_readiness_profiles: [{
+      id: "profile_1",
+      workspace_id: "ws_1",
+      mandate_id: "mandate_1",
+      readiness_level: 2,
+      evidence_status: "self_declared",
+      kyc_state: "not_started",
+      brokerage_status: "not_started",
+      visit_readiness: "available this week",
+    }],
+    acquisition_events: [],
+  });
+
+  await assert.rejects(
+    () => __test.updateOpportunityStage(supabase, "opp_1", { stage: "visit_requested" }),
+    /Buyer readiness verification required/,
+  );
+
+  await __test.attachReadinessEvidence(supabase, "profile_1", { evidence_type: "identity", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, "profile_1", { evidence_type: "proof_of_funds", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, "profile_1", { evidence_type: "offer_readiness", status: "verified" });
+  const advanced = await __test.updateOpportunityStage(supabase, "opp_1", { stage: "visit_requested" });
+  assert.equal(advanced.stage, "visit_requested");
+
+  supabase.db.buyer_readiness_profiles[0].readiness_level = 1;
+  const overridden = await __test.updateOpportunityStage(supabase, "opp_1", {
+    stage: "offer",
+    admin_override: true,
+    allow_admin_override: true,
+    override_reason: "operator_manual_review",
+  });
+  assert.equal(overridden.stage, "offer");
+  assert.equal(overridden.metadata_json.pipeline_gate.admin_override, true);
 });
 
 test("underwriting run persists versioned assumptions and outputs on base scenario", async () => {
@@ -709,6 +864,15 @@ test("approval-gated actions require brokerage authority before execution", asyn
     action_type: "send_outreach",
     draft_payload: { message: "Zohal represents a verified buyer mandate." },
   });
+
+  await assert.rejects(
+    () => __test.approveExternalAction(supabase, approval.id, { user_id: "operator_1" }),
+    /Buyer readiness verification required/,
+  );
+
+  await __test.attachReadinessEvidence(supabase, "profile_1", { evidence_type: "identity", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, "profile_1", { evidence_type: "proof_of_funds", status: "verified" });
+  await __test.attachReadinessEvidence(supabase, "profile_1", { evidence_type: "offer_readiness", status: "verified" });
 
   await assert.rejects(
     () => __test.approveExternalAction(supabase, approval.id, { user_id: "operator_1" }),

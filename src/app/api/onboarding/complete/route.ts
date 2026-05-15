@@ -151,7 +151,7 @@ export async function POST(request: Request) {
   const service = await createServiceClient();
   const { data: profile, error: profileError } = await service
     .from('profiles')
-    .select('phone_verified_at, subscription_status, subscription_tier, subscription_expires_at, onboarding_completed_at')
+    .select('phone_verified_at, onboarding_completed_at')
     .eq('id', session.user.id)
     .single();
 
@@ -165,10 +165,6 @@ export async function POST(request: Request) {
 
   if (!profile.phone_verified_at) {
     return jsonError('Verify your phone number before creating a workspace.', 409, 'phone_not_verified');
-  }
-
-  if (profile.subscription_status !== 'trialing' || profile.subscription_tier !== 'pro') {
-    return jsonError('Start your free trial before creating a workspace.', 409, 'trial_not_active');
   }
 
   const existingWorkspace = await findExistingOnboardingWorkspace(service, session.user.id);

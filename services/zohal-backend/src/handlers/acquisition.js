@@ -75,10 +75,34 @@ const OPPORTUNITY_STAGES = new Set([
 ]);
 const READINESS_LEVEL_MIN = 0;
 const READINESS_LEVEL_MAX = 5;
+const REQUIRED_BROKERAGE_READINESS_LEVEL = 4;
+const FREE_ACTIVE_MANDATE_LIMIT = 1;
+const FREE_WEEKLY_REPORT_LIMIT = 2;
 const KYC_STATES = new Set(["not_started", "basic_verified", "buyer_verified", "brokerage_ready", "restricted", "escalated"]);
 const BUYER_TYPES = new Set(["individual", "company", "family_office", "other"]);
 const EVIDENCE_STATUSES = new Set(["pending", "self_declared", "verified", "rejected", "expired", "revoked"]);
 const ACTION_TYPES_REQUIRING_BROKERAGE = new Set(["send_outreach", "send_offer", "send_negotiation_message"]);
+const ACTION_TYPES_REQUIRING_BUYER_QUALIFICATION = new Set([
+  "send_outreach",
+  "share_readiness_signal",
+  "share_document",
+  "share_financing_packet",
+  "send_offer",
+  "send_negotiation_message",
+]);
+const STAGES_REQUIRING_BUYER_QUALIFICATION = new Set([
+  "pursue",
+  "visit_requested",
+  "quote_requested",
+  "negotiation",
+  "offer",
+  "offer_drafted",
+  "offer_submitted",
+  "formal_diligence",
+  "closed",
+]);
+const ENTITLED_SUBSCRIPTION_STATUSES = new Set(["", "active", "past_due", "trialing", "canceled", "cancelled"]);
+const PAID_ENTITLEMENT_TIERS = new Set(["pro", "premium", "team"]);
 const EXTERNAL_ACTION_TYPES = new Set([
   "send_outreach",
   "share_readiness_signal",
@@ -207,6 +231,32 @@ function normalizeText(value) {
 
 function normalizeUuid(value) {
   return normalizeText(value).toLowerCase() || null;
+}
+
+function normalizeEntitlementTier(rawTier) {
+  const value = normalizeText(rawTier).toLowerCase();
+  if (["premium", "ultra"].includes(value)) return "premium";
+  if (["team", "institutional"].includes(value)) return "team";
+  if (["pro", "pro_plus", "student_monthly", "student_semester", "exam_prep", "educator"].includes(value)) return "pro";
+  return "free";
+}
+
+function parseIsoDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function profileHasActivePaidPlan(profile) {
+  const tier = normalizeEntitlementTier(profile?.subscription_tier);
+  if (!PAID_ENTITLEMENT_TIERS.has(tier)) return false;
+  const now = Date.now();
+  const graceEndsAt = parseIsoDate(profile?.grace_period_ends_at);
+  if (graceEndsAt && graceEndsAt.getTime() > now) return true;
+  const expiresAt = parseIsoDate(profile?.subscription_expires_at);
+  if (expiresAt && expiresAt.getTime() <= now) return false;
+  const status = normalizeText(profile?.subscription_status || "active").toLowerCase();
+  return ENTITLED_SUBSCRIPTION_STATUSES.has(status);
 }
 
 function bearerToken(headers) {
@@ -1372,6 +1422,7 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
 }
 
 async function createMandate(supabase, body) {
+  await assertMandateCreationAllowed(supabase, body);
   const payload = {
     workspace_id: normalizeUuid(body.workspace_id),
     organization_id: normalizeUuid(body.organization_id),
@@ -1565,6 +1616,23 @@ async function updateOpportunityStage(supabase, opportunityId, body = {}) {
   const metadata = existing.metadata_json && typeof existing.metadata_json === "object"
     ? { ...existing.metadata_json }
     : {};
+  if (STAGES_REQUIRING_BUYER_QUALIFICATION.has(stage)) {
+    if (hasStageAdminOverride(body)) {
+      metadata.pipeline_gate = {
+        ...(metadata.pipeline_gate || {}),
+        admin_override: true,
+        override_reason: normalizeText(body.override_reason) || "manual_admin_override",
+        overridden_at: new Date().toISOString(),
+        stage,
+      };
+    } else {
+      await assertBuyerQualificationForOpportunity(supabase, existing, `advancing to ${stage}`, {
+        ...body,
+        admin_override: false,
+        manual_override: false,
+      });
+    }
+  }
   if (shouldSuppress) {
     metadata.suppression = {
       ...(metadata.suppression || {}),
@@ -1907,6 +1975,38 @@ async function approveExternalAction(supabase, approvalId, body = {}) {
     const notFound = new Error("External action approval not found");
     notFound.statusCode = 404;
     throw notFound;
+  }
+  const overrideBody = { ...body, allow_admin_override: true };
+  if (ACTION_TYPES_REQUIRING_BUYER_QUALIFICATION.has(approval.action_type) && !hasStageAdminOverride(overrideBody)) {
+    if (approval.buyer_profile_id) {
+      const profile = await fetchReadinessProfile(supabase, approval.buyer_profile_id);
+      if (!readinessQualifiesForBrokerage(profile)) {
+        const denied = new Error(`Buyer readiness verification required before ${approval.action_type}`);
+        denied.statusCode = 409;
+        denied.code = "buyer_qualification_required";
+        denied.readiness_level = profile?.readiness_level ?? null;
+        denied.evidence_status = profile?.evidence_status ?? null;
+        denied.kyc_state = profile?.kyc_state ?? null;
+        throw denied;
+      }
+    } else if (approval.opportunity_id) {
+      const { data: opportunity, error: opportunityError } = await supabase
+        .from("acquisition_opportunities")
+        .select("*")
+        .eq("id", approval.opportunity_id)
+        .maybeSingle();
+      if (opportunityError || !opportunity) {
+        const denied = new Error(opportunityError?.message || "Opportunity not found for buyer qualification gate");
+        denied.statusCode = 404;
+        throw denied;
+      }
+      await assertBuyerQualificationForOpportunity(supabase, opportunity, approval.action_type, overrideBody);
+    } else {
+      const denied = new Error(`Buyer readiness verification required before ${approval.action_type}`);
+      denied.statusCode = 409;
+      denied.code = "buyer_qualification_required";
+      throw denied;
+    }
   }
   if (ACTION_TYPES_REQUIRING_BROKERAGE.has(approval.action_type)) {
     await assertActiveBrokerageAuthority(supabase, approval.buyer_profile_id);
@@ -2425,6 +2525,199 @@ async function selectRows(query, tableName) {
   const { data, error } = await query;
   if (error) throw new Error(`Failed to load ${tableName}: ${error.message}`);
   return Array.isArray(data) ? data : [];
+}
+
+function metadataAccessFlag(metadata, keys) {
+  if (!metadata || typeof metadata !== "object") return false;
+  return keys.some((key) => metadata[key] === true);
+}
+
+function hasAdminAccessOverride(value, keys) {
+  if (!value || typeof value !== "object") return false;
+  if (metadataAccessFlag(value, keys)) return true;
+  return [
+    value.access,
+    value.access_model,
+    value.report_access,
+    value.mandate_access,
+    value.admin_approval,
+    value.manual_approval,
+  ].some((nested) => metadataAccessFlag(nested, keys));
+}
+
+function hasMandateAdminApproval(body = {}) {
+  return hasAdminAccessOverride(body, [
+    "admin_approved",
+    "manual_approved",
+    "additional_mandates_approved",
+    "additional_mandate_approved",
+  ]) || hasAdminAccessOverride(body.confidence_json || body.confidence || {}, [
+    "admin_approved",
+    "manual_approved",
+    "additional_mandates_approved",
+    "additional_mandate_approved",
+  ]);
+}
+
+function hasReportAdminApproval({ mandate, body = {}, allowManualOverride = false }) {
+  if (allowManualOverride && hasAdminAccessOverride(body, ["admin_approved", "manual_approved", "reports_approved", "continue_reports"])) {
+    return true;
+  }
+  return hasAdminAccessOverride(mandate?.confidence_json || {}, [
+    "admin_approved",
+    "manual_approved",
+    "reports_approved",
+    "continue_reports",
+  ]);
+}
+
+function hasStageAdminOverride(body = {}) {
+  return body.allow_admin_override === true && (
+    body.admin_override === true ||
+    body.manual_override === true ||
+    body.admin_approved === true ||
+    body.manual_approved === true
+  );
+}
+
+async function fetchProfileForUser(supabase, userId) {
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, subscription_tier, subscription_status, subscription_expires_at, grace_period_ends_at")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw new Error(`Failed to load profile entitlement: ${error.message}`);
+  return data || null;
+}
+
+async function activeMandateCountForUser(supabase, userId) {
+  if (!userId) return 0;
+  const rows = await selectRows(
+    supabase
+      .from("acquisition_mandates")
+      .select("id, status")
+      .eq("user_id", userId),
+    "acquisition_mandates",
+  );
+  return rows.filter((row) => row.status === "active").length;
+}
+
+async function assertMandateCreationAllowed(supabase, body = {}) {
+  const userId = normalizeUuid(body.user_id);
+  if (!userId) return { allowed: true, reason: "no_user_scope" };
+  const activeCount = await activeMandateCountForUser(supabase, userId);
+  if (activeCount < FREE_ACTIVE_MANDATE_LIMIT) {
+    return { allowed: true, reason: "first_active_mandate_free", active_mandate_count: activeCount };
+  }
+  const profile = await fetchProfileForUser(supabase, userId);
+  if (profileHasActivePaidPlan(profile)) {
+    return { allowed: true, reason: "paid_plan", active_mandate_count: activeCount };
+  }
+  if (hasMandateAdminApproval(body)) {
+    return { allowed: true, reason: "admin_approved", active_mandate_count: activeCount };
+  }
+  const error = new Error("Additional active mandates require a paid plan or admin approval");
+  error.statusCode = 402;
+  error.code = "additional_mandate_requires_upgrade";
+  error.active_mandate_count = activeCount;
+  throw error;
+}
+
+async function loadBestReadinessProfileForMandate(supabase, { workspaceId, mandateId }) {
+  const byMandate = mandateId
+    ? await selectRows(
+      supabase
+        .from("buyer_readiness_profiles")
+        .select("*")
+        .eq("mandate_id", mandateId)
+        .order("updated_at", { ascending: false })
+        .limit(1),
+      "buyer_readiness_profiles",
+    )
+    : [];
+  if (byMandate[0]) return byMandate[0];
+  if (!workspaceId) return null;
+  const byWorkspace = await selectRows(
+    supabase
+      .from("buyer_readiness_profiles")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("updated_at", { ascending: false })
+      .limit(1),
+    "buyer_readiness_profiles",
+  );
+  return byWorkspace[0] || null;
+}
+
+function readinessQualifiesForBrokerage(profile) {
+  if (!profile) return false;
+  if (["rejected", "expired"].includes(profile.evidence_status)) return false;
+  if (Number(profile.readiness_level || 0) >= REQUIRED_BROKERAGE_READINESS_LEVEL) return true;
+  return profile.evidence_status === "verified" && ["buyer_verified", "brokerage_ready"].includes(profile.kyc_state);
+}
+
+async function assertBuyerQualificationForOpportunity(supabase, opportunity, stageOrAction, body = {}) {
+  if (hasStageAdminOverride(body)) {
+    return { allowed: true, reason: "admin_override", profile: null };
+  }
+  const profile = await loadBestReadinessProfileForMandate(supabase, {
+    workspaceId: opportunity?.workspace_id,
+    mandateId: opportunity?.mandate_id,
+  });
+  if (readinessQualifiesForBrokerage(profile)) {
+    return { allowed: true, reason: "buyer_qualified", profile };
+  }
+  const error = new Error(`Buyer readiness verification required before ${stageOrAction}`);
+  error.statusCode = 409;
+  error.code = "buyer_qualification_required";
+  error.readiness_level = profile?.readiness_level ?? null;
+  error.evidence_status = profile?.evidence_status ?? null;
+  error.kyc_state = profile?.kyc_state ?? null;
+  throw error;
+}
+
+async function resolveWeeklyReportAccess(supabase, { mandate, workspaceId, body = {}, allowManualOverride = false }) {
+  if (!mandate?.id) {
+    return { allowed: true, reason: "missing_mandate_scope", free_report_count: 0, free_report_limit: FREE_WEEKLY_REPORT_LIMIT };
+  }
+  const reports = await selectRows(
+    supabase
+      .from("acquisition_deal_desk_reports")
+      .select("id, status, artifact_kind, schedule_kind")
+      .eq("mandate_id", mandate.id)
+      .eq("schedule_kind", "weekly"),
+    "acquisition_deal_desk_reports",
+  );
+  const freeReportCount = reports.filter((row) =>
+    row.status !== "archived" &&
+    (row.artifact_kind || "acquisition_report") === "acquisition_report"
+  ).length;
+  if (freeReportCount < FREE_WEEKLY_REPORT_LIMIT) {
+    return { allowed: true, reason: "within_free_weekly_report_limit", free_report_count: freeReportCount, free_report_limit: FREE_WEEKLY_REPORT_LIMIT };
+  }
+  const profile = await fetchProfileForUser(supabase, mandate.user_id);
+  if (profileHasActivePaidPlan(profile)) {
+    return { allowed: true, reason: "paid_plan", free_report_count: freeReportCount, free_report_limit: FREE_WEEKLY_REPORT_LIMIT };
+  }
+  const readinessProfile = await loadBestReadinessProfileForMandate(supabase, {
+    workspaceId: workspaceId || mandate.workspace_id,
+    mandateId: mandate.id,
+  });
+  if (readinessQualifiesForBrokerage(readinessProfile)) {
+    return { allowed: true, reason: "buyer_qualified", free_report_count: freeReportCount, free_report_limit: FREE_WEEKLY_REPORT_LIMIT };
+  }
+  if (hasReportAdminApproval({ mandate, body, allowManualOverride })) {
+    return { allowed: true, reason: "admin_approved", free_report_count: freeReportCount, free_report_limit: FREE_WEEKLY_REPORT_LIMIT };
+  }
+  return {
+    allowed: false,
+    reason: "free_weekly_report_limit_exhausted",
+    free_report_count: freeReportCount,
+    free_report_limit: FREE_WEEKLY_REPORT_LIMIT,
+    requires_upgrade: true,
+    reports_paused_reason: "verify_buying_capacity_or_upgrade",
+  };
 }
 
 async function loadLatestMandateForWorkspace(supabase, workspaceId) {
@@ -3117,7 +3410,7 @@ async function findExistingAcquisitionReport(supabase, { workspaceId, mandateId,
   }) || null;
 }
 
-async function createAcquisitionReport(supabase, workspaceId, body = {}, { requestId, idempotent = false } = {}) {
+async function createAcquisitionReport(supabase, workspaceId, body = {}, { requestId, idempotent = false, allowManualOverride = false } = {}) {
   const normalizedWorkspaceId = normalizeUuid(workspaceId);
   if (!normalizedWorkspaceId) {
     const error = new Error("workspace_id is required");
@@ -3150,6 +3443,39 @@ async function createAcquisitionReport(supabase, workspaceId, body = {}, { reque
         publication: { attempted: false, status: existing.status, reason: "existing_report" },
       };
     }
+  }
+  if (scheduleKind === "weekly") {
+    const reportMandate = await fetchMandate(supabase, payload.mandate.id).catch(() => payload.mandate);
+    const access = await resolveWeeklyReportAccess(supabase, {
+      mandate: { ...reportMandate, user_id: reportMandate?.user_id || body.user_id },
+      workspaceId: normalizedWorkspaceId,
+      body,
+      allowManualOverride,
+    });
+    if (!access.allowed) {
+      return {
+        report_id: null,
+        experience_id: null,
+        artifact_kind: "acquisition_report",
+        surface_family: "deal_desk",
+        surface_key: null,
+        report_url: null,
+        legacy_deal_desk_url: null,
+        live_url: null,
+        redeem_url: null,
+        status: "paused",
+        paused: true,
+        reports_paused_reason: access.reports_paused_reason,
+        requires_upgrade: access.requires_upgrade,
+        free_report_count: access.free_report_count,
+        free_report_limit: access.free_report_limit,
+        publication: { attempted: false, status: "paused", reason: access.reason },
+      };
+    }
+    payload.access = {
+      ...(payload.access || {}),
+      weekly_report_access: access,
+    };
   }
   const computedOutputs = await refreshReportComputedOutputs(supabase, payload, body).catch((error) => ({
     skipped: false,
@@ -3294,7 +3620,7 @@ async function runWeeklyAcquisitionReports({ supabase, req, requestId, body = {}
         report_period: reportPeriod,
         schedule_kind: "weekly",
         delivery_hint: body.delivery_hint || "weekly",
-      }, { requestId, idempotent: true });
+      }, { requestId, idempotent: true, allowManualOverride: true });
       results.push({ mandate_id: mandate.id, workspace_id: mandate.workspace_id, report });
     } catch (error) {
       results.push({
@@ -3442,6 +3768,7 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
     if (["intakeListing", "promoteCandidate", "updateOpportunityStage"].includes(route.name)) {
       const body = await readJsonBody(req);
       const allowInternal = isInternalCaller(req.headers);
+      body.allow_admin_override = allowInternal;
       let userId = null;
       if (!allowInternal) {
         const token = bearerToken(req.headers);
@@ -3509,7 +3836,7 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
         await assertWorkspaceWriteAccess(supabase, normalizeUuid(route.workspaceId), userId);
       }
       body.user_id ||= userId;
-      const result = await createAcquisitionReport(supabase, route.workspaceId, body, { requestId });
+      const result = await createAcquisitionReport(supabase, route.workspaceId, body, { requestId, allowManualOverride: allowInternal });
       const statusCode = result.publication?.attempted ? 201 : 202;
       return sendJson(res, statusCode, buildEnvelope(requestId, result));
     }
@@ -3671,7 +3998,7 @@ export async function handleAcquisitionInternal(req, res, { requestId, log, read
         schedule_kind: normalizeText(body.schedule_kind) || "weekly",
         report_period: reportPeriodFromBody(body),
         delivery_hint: normalizeText(body.delivery_hint) || "weekly",
-      }, { requestId, idempotent: true });
+      }, { requestId, idempotent: true, allowManualOverride: true });
       return sendJson(res, 200, buildEnvelope(requestId, result));
     }
     if (pathname === "/internal/acquisition/screen-candidate") {
