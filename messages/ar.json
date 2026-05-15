@@ -3152,8 +3152,10 @@
     "progress": {
       "title": "من النية إلى الإغلاق",
       "mandateReady": "جاهزية التفويض",
+      "verifyBuyer": "تحقق المشتري",
       "sourceDeals": "البحث عن صفقات",
       "selectDeal": "اختيار الصفقة",
+      "activateBroker": "تفعيل الوسيط",
       "verifyInfo": "تحقق المعلومات",
       "visitInspect": "زيارة / فحص",
       "offerPath": "مسار العرض",

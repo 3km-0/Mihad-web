@@ -30,7 +30,15 @@ const BROWSER_WORKER_URL = String(
   process.env.ACQUISITION_BROWSER_WORKER_URL || "",
 ).trim().replace(/\/+$/, "");
 
-const ALLOWED_SOURCES = new Set(["aqar", "bayut", "haraj", "developer_page", "broker_page"]);
+const ALLOWED_SOURCES = new Set([
+  "aqar",
+  "bayut",
+  "haraj",
+  "developer_page",
+  "broker_page",
+  "idealista",
+  "property_finder",
+]);
 const MVP_SOURCES = ["aqar", "bayut"];
 const OPPORTUNITY_SOURCE_CHANNELS = new Set([
   "whatsapp",

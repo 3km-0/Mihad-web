@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, HTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AskAgentView } from '@/components/ask/AskAgentView';
-import { LegalDisclaimerFooter } from '@/components/legal/LegalDisclaimerFooter';
 import { ShareWithBrokerModal } from '@/components/workspace/mihad/ShareWithBrokerModal';
 import { Button, Spinner } from '@/components/ui';
 import {
@@ -256,9 +255,12 @@ type AcquisitionClaimRow = {
   evidence_refs_json?: unknown;
 };
 
-type CockpitModule = 'overview' | 'model' | 'openItems' | 'renovation' | 'outreach' | 'offer';
+// Renovation capex is legacy (Riyadh-only flip strategy). It is hidden from
+// the cockpit on all workspaces; the underlying data fetch is preserved for
+// historical workspaces but no render path remains.
+type CockpitModule = 'overview' | 'model' | 'openItems' | 'outreach' | 'offer';
 type WorkspaceDrawerTab = 'command' | 'evidence' | 'activity' | 'files' | 'consent' | 'map';
-type PrimaryWorkspaceTab = 'overview' | 'underwriting' | 'discover' | 'verify' | 'activate';
+type PrimaryWorkspaceTab = 'overview' | 'underwriting';
 
 type MihadCountryCode = 'AE' | 'TR' | 'GR' | 'ES' | 'SA';
 
@@ -479,7 +481,6 @@ const moduleIcons: Record<CockpitModule, LucideIcon> = {
   overview: ShieldCheck,
   model: Gauge,
   openItems: ClipboardList,
-  renovation: Wrench,
   outreach: Send,
   offer: CheckCircle2,
 };
@@ -511,17 +512,6 @@ function formatMihadCurrency(value: number | null | undefined, currency: string 
   if (numeric >= 1_000_000) return `${Math.round((numeric / 1_000_000) * 10) / 10}M ${cur}`;
   if (numeric >= 1_000) return `${Math.round(numeric / 1_000)}K ${cur}`;
   return `${numeric} ${cur}`;
-}
-
-const LEGACY_RENOVATION_CAPEX_FLAG = 'legacy_renovation_capex';
-
-function isLegacyRenovationCapexEnabled(workspaceKind: string | null | undefined): boolean {
-  if (workspaceKind === 'mihad_buyer_desk') return false;
-  if (typeof process !== 'undefined') {
-    const flag = String(process.env.NEXT_PUBLIC_LEGACY_RENOVATION_CAPEX || '').trim().toLowerCase();
-    if (flag === 'off' || flag === 'false' || flag === '0') return false;
-  }
-  return true;
 }
 
 const formatSAR = new Intl.NumberFormat('en-SA', {
@@ -1340,9 +1330,6 @@ export default function WorkspaceCockpitPage() {
 
   useEffect(() => {
     if (primaryTabInitialized || !workspace) return;
-    if (workspace.workspace_kind === 'mihad_buyer_desk') {
-      setActivePrimaryTab('discover');
-    }
     setPrimaryTabInitialized(true);
   }, [primaryTabInitialized, workspace]);
 
@@ -2109,6 +2096,8 @@ export default function WorkspaceCockpitPage() {
               missingItems={selectedMissing}
               readinessProfile={readinessProfile}
               brokerageActive={brokerageActive}
+              mandate={mandate}
+              sharingGrants={sharingGrants}
               onOpenDrawer={openDrawer}
               onRequestVisit={() => void scheduleVisit()}
               compact
@@ -2176,6 +2165,8 @@ export default function WorkspaceCockpitPage() {
                     missingItems={selectedMissing}
                     readinessProfile={readinessProfile}
                     brokerageActive={brokerageActive}
+                    mandate={mandate}
+                    sharingGrants={sharingGrants}
                     onOpenDrawer={openDrawer}
                     onRequestVisit={() => void scheduleVisit()}
                   />
@@ -2194,37 +2185,8 @@ export default function WorkspaceCockpitPage() {
                   <PrimaryWorkspaceTabs
                     active={activePrimaryTab}
                     onChange={setActivePrimaryTab}
-                    workspaceKind={workspace?.workspace_kind ?? null}
                   />
-                  {activePrimaryTab === 'discover' ? (
-                    <MihadDiscoverModule
-                      mandate={mandate}
-                      opportunities={opportunities}
-                      marketObservations={marketObservations}
-                      searchRuns={searchRuns}
-                    />
-                  ) : activePrimaryTab === 'verify' ? (
-                    <MihadVerifyModule
-                      readinessProfile={readinessProfile}
-                      readinessEvidence={readinessEvidence}
-                      sharingGrants={sharingGrants}
-                      actionApprovals={actionApprovals}
-                      onOpenEvidence={() => openDrawer('evidence')}
-                    />
-                  ) : activePrimaryTab === 'activate' ? (
-                    <MihadActivateModule
-                      mandate={mandate}
-                      readinessProfile={readinessProfile}
-                      buyerPackets={buyerPackets}
-                      brokerPartners={brokerPartners}
-                      sharingGrants={sharingGrants}
-                      actionBusy={mihadActionBusy}
-                      actionError={mihadActionError}
-                      onRequestPacket={() => void requestBuyerPacket()}
-                      onShareWithBroker={(brokerId) => requestShareWithBroker(brokerId)}
-                      onRevokeShare={(grantId) => void revokeShareWithBroker(grantId)}
-                    />
-                  ) : activePrimaryTab === 'overview' ? (
+                  {activePrimaryTab === 'overview' ? (
                     <OverviewModule
                       opportunity={selectedOpportunity}
                       marketObservations={marketObservations}
@@ -2248,6 +2210,17 @@ export default function WorkspaceCockpitPage() {
                       onScheduleVisit={() => void scheduleVisit()}
                       onWaiveVisit={() => void updateSelectedStage('formal_diligence')}
                       onPassProperty={() => selectedOpportunity?.id ? void rejectOpportunity(selectedOpportunity.id) : undefined}
+                      mandate={mandate}
+                      readinessProfile={readinessProfile}
+                      buyerPackets={buyerPackets}
+                      brokerPartners={brokerPartners}
+                      sharingGrants={sharingGrants}
+                      mihadActionBusy={mihadActionBusy}
+                      mihadActionError={mihadActionError}
+                      onOpenEvidence={() => openDrawer('evidence')}
+                      onRequestPacket={() => void requestBuyerPacket()}
+                      onShareWithBroker={(brokerId) => requestShareWithBroker(brokerId)}
+                      onRevokeShare={(grantId) => void revokeShareWithBroker(grantId)}
                     />
                   ) : activePrimaryTab === 'underwriting' ? (
                     <ModelModule
@@ -2961,6 +2934,8 @@ function ProgressTracker({
   missingItems,
   readinessProfile,
   brokerageActive,
+  mandate,
+  sharingGrants,
   onOpenDrawer,
   onRequestVisit,
   compact = false,
@@ -2971,12 +2946,37 @@ function ProgressTracker({
   missingItems: string[];
   readinessProfile: BuyerReadinessProfileRow | null;
   brokerageActive: boolean;
+  mandate: AcquisitionMandateRow | null;
+  sharingGrants: DocumentSharingGrantRow[];
   onOpenDrawer: (tab: WorkspaceDrawerTab) => void;
   onRequestVisit: () => void;
   compact?: boolean;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const steps = [
+  // A mandate is "cross-border" if it targets any non-Saudi market.
+  // Pure-SA mandates retain the legacy 7-step strip; cross-border mandates
+  // grow two Mihad-specific stages: Verify buyer (after Mandate) and
+  // Activate broker (after Select deal).
+  const targetCountryCodes = (mandate?.target_country_codes ?? []).filter((code): code is string => Boolean(code));
+  const isCrossBorder = targetCountryCodes.some((code) => code.toUpperCase() !== 'SA');
+  const verificationConfidence =
+    (readinessProfile as (BuyerReadinessProfileRow & { verification_confidence?: string | null }) | null)
+      ?.verification_confidence ?? null;
+  const verificationExpiresAt =
+    (readinessProfile as (BuyerReadinessProfileRow & { verification_expires_at?: string | null }) | null)
+      ?.verification_expires_at ?? null;
+  const verificationExpired = verificationExpiresAt
+    ? new Date(verificationExpiresAt).getTime() < Date.now()
+    : false;
+  const buyerVerified =
+    !verificationExpired && (verificationConfidence === 'medium' || verificationConfidence === 'high');
+  const hasActiveBrokerGrant = sharingGrants.some(
+    (grant) =>
+      grant.share_mode === 'status_only' &&
+      !grant.revoked_at &&
+      (!grant.granted_to_kind || grant.granted_to_kind === 'broker'),
+  );
+  const baseSteps = [
     t('progress.mandateReady'),
     t('progress.sourceDeals'),
     t('progress.selectDeal'),
@@ -2985,15 +2985,43 @@ function ProgressTracker({
     t('progress.offerPath'),
     t('progress.outcome'),
   ];
+  const steps = isCrossBorder
+    ? [
+        baseSteps[0],
+        t('progress.verifyBuyer', { default: 'Verify buyer' }),
+        baseSteps[1],
+        baseSteps[2],
+        t('progress.activateBroker', { default: 'Activate broker' }),
+        baseSteps[3],
+        baseSteps[4],
+        baseSteps[5],
+        baseSteps[6],
+      ]
+    : baseSteps;
   const latestSearchStatus = searchRuns[0]?.status ?? null;
   const sourcingActive = ['queued', 'running', 'processing'].includes(String(latestSearchStatus || ''));
-  const current = opportunity
+  const baseCurrent = opportunity
     ? progressStepIndexForStage(opportunity.stage)
     : opportunityCount > 0
       ? 3
       : sourcingActive
         ? 2
         : 1;
+  let current = baseCurrent;
+  if (isCrossBorder) {
+    // Shift legacy 0..6 indices into the 9-step Mihad layout:
+    //   legacy 0           -> 0  (Mandate)
+    //   legacy 1 (source)   -> 2
+    //   legacy 2 (select)   -> 3
+    //   legacy 3..6         -> 5..8 (verifyInfo onwards, shifted by 2)
+    if (baseCurrent >= 3) current = baseCurrent + 2;
+    else if (baseCurrent >= 1) current = baseCurrent + 1;
+    // Gate on Mihad-specific stages: hold on Verify buyer / Activate broker
+    // until those preconditions are satisfied. Saudi workspaces never enter
+    // this branch.
+    if (!buyerVerified) current = Math.min(current, 1);
+    else if (!hasActiveBrokerGrant && current > 4) current = 4;
+  }
   const blockers = [
     !readinessProfile ? t('progress.blockerReadiness') : null,
     !brokerageActive ? t('progress.blockerBrokerage') : null,
@@ -3009,18 +3037,29 @@ function ProgressTracker({
           ? t('progress.nextVisit')
           : t('progress.nextOffer');
   const blocked = blockers.length > 0;
+  const trackerMinWidth = compact ? undefined : steps.length > 7 ? 880 : 720;
   const tracker = (
-    <div className={cn(compact ? 'w-full max-w-[620px]' : 'mt-6 overflow-x-auto pb-1')}>
-      <div className={cn('grid grid-cols-7', compact ? 'min-w-0' : 'min-w-[720px]')}>
+    <div className={cn(compact ? 'w-full max-w-[760px]' : 'mt-6 overflow-x-auto pb-1')}>
+      <div
+        className={cn('grid', compact ? 'min-w-0' : '')}
+        style={{
+          gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+          ...(trackerMinWidth ? { minWidth: `${trackerMinWidth}px` } : {}),
+        }}
+      >
         {steps.map((step, index) => {
           const completed = index < current;
           const active = index === current;
           const pending = index > current;
           const nodeBlocked = active && blocked;
           const status = completed ? t('progress.done') : active ? t(nodeBlocked ? 'progress.blocked' : 'progress.current') : t('progress.pending');
+          // Visit/inspect lives at index 4 in the 7-step Saudi layout and
+          // index 6 in the 9-step Mihad layout. We highlight open diligence
+          // items in its tooltip when there are any.
+          const visitInspectIndex = isCrossBorder ? 6 : 4;
           const detail = active
             ? (blockers[0] || nextAction)
-            : index === 4
+            : index === visitInspectIndex
               ? t('progress.blockerMissing', { count: missingItems.length })
               : pending
                 ? t('progress.notStarted')
@@ -3048,10 +3087,12 @@ function ProgressTracker({
               <button
                 type="button"
                 onClick={() => {
-                  if (index <= 1) onOpenDrawer('evidence');
-                  else if (index <= 3) onOpenDrawer('evidence');
-                  else if (index === 4) onOpenDrawer('evidence');
-                  else onOpenDrawer('consent');
+                  // Mihad 9-step layout: step 4 (Activate broker) + steps 7–8
+                  // (Offer / Outcome) open the consent drawer. Saudi 7-step
+                  // layout: steps 5–6 (Offer / Outcome) open consent. All
+                  // earlier steps open the evidence drawer.
+                  const consentIndices = isCrossBorder ? new Set([4, 7, 8]) : new Set([5, 6]);
+                  onOpenDrawer(consentIndices.has(index) ? 'consent' : 'evidence');
                 }}
                 className={cn(
                   'group relative flex w-full flex-col items-center text-center transition hover:text-text',
@@ -3139,26 +3180,15 @@ function ProgressTracker({
 function PrimaryWorkspaceTabs({
   active,
   onChange,
-  workspaceKind,
 }: {
   active: PrimaryWorkspaceTab;
   onChange: (tab: PrimaryWorkspaceTab) => void;
-  workspaceKind?: string | null;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const isMihad = workspaceKind === 'mihad_buyer_desk';
-  const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = isMihad
-    ? [
-        { key: 'discover', label: t('discoverTab', { default: 'Discover' }), icon: Search },
-        { key: 'overview', label: t('overviewTab'), icon: ShieldCheck },
-        { key: 'underwriting', label: t('underwritingTab'), icon: Gauge },
-        { key: 'verify', label: t('verifyTab', { default: 'Verify' }), icon: ShieldCheck },
-        { key: 'activate', label: t('activateTab', { default: 'Activate' }), icon: Send },
-      ]
-    : [
-        { key: 'overview', label: t('overviewTab'), icon: ShieldCheck },
-        { key: 'underwriting', label: t('underwritingTab'), icon: Gauge },
-      ];
+  const tabs: { key: PrimaryWorkspaceTab; label: string; icon: LucideIcon }[] = [
+    { key: 'overview', label: t('overviewTab'), icon: ShieldCheck },
+    { key: 'underwriting', label: t('underwritingTab'), icon: Gauge },
+  ];
   return (
     <div className="flex w-full gap-2 rounded-[18px] border border-[rgba(var(--accent-rgb),0.18)] bg-surface-alt/75 p-2 shadow-[inset_0_1px_0_rgba(var(--accent-rgb),.05)]">
       {tabs.map(({ key, label, icon: Icon }) => {
@@ -3229,7 +3259,7 @@ function CurrentBlockerBanner({
 
 function ModuleTabs({ active, onChange }: { active: CockpitModule; onChange: (module: CockpitModule) => void }) {
   const t = useTranslations('workspaceCockpitPage.modules');
-  const modules: CockpitModule[] = ['overview', 'model', 'openItems', 'renovation', 'outreach', 'offer'];
+  const modules: CockpitModule[] = ['overview', 'model', 'openItems', 'outreach', 'offer'];
   return (
     <div className="flex gap-2 overflow-x-auto rounded-[16px] border border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt p-2">
       {modules.map((module) => {
@@ -3385,170 +3415,21 @@ function ActionSection({
   );
 }
 
-function MihadDiscoverModule({
+// A small Overview-scoped card that surfaces buyer-verification state for
+// cross-border (Mihad) mandates only. Renders nothing for Saudi workspaces.
+function MihadVerifyBuyerCard({
   mandate,
-  opportunities,
-  marketObservations,
-  searchRuns,
-}: {
-  mandate: AcquisitionMandateRow | null;
-  opportunities: OpportunityRow[];
-  marketObservations: MarketObservationRow[];
-  searchRuns: AcquisitionSearchRunRow[];
-}) {
-  const t = useTranslations('workspaceCockpitPage');
-  const locale = useLocale();
-  const countryCodes = (mandate?.target_country_codes ?? [])
-    .filter(isMihadCountryCode);
-  const purpose = mandate?.purpose ?? null;
-  const timeline = mandate?.timeline ?? null;
-  const liquidity = mandate?.liquidity_class ?? null;
-  const budgetCurrency = mandate?.budget_currency ?? 'SAR';
-  const budgetRange = (mandate?.budget_range_json ?? null) as Record<string, unknown> | null;
-  const budgetMin = budgetRange ? Number((budgetRange as { min?: unknown }).min ?? NaN) : NaN;
-  const budgetMax = budgetRange ? Number((budgetRange as { max?: unknown }).max ?? NaN) : NaN;
-  const candidateCount = opportunities.length;
-  const pursueCount = opportunities.filter((item) => recommendationFor(item) === 'pursue' || item.stage === 'pursue').length;
-  const latestSearchRun = searchRuns[0] ?? null;
-  const observationsByCountry = new Map<string, number>();
-  marketObservations.forEach((obs) => {
-    const key = String((obs as { country_code?: string | null }).country_code ?? '').toUpperCase();
-    if (!key) return;
-    observationsByCountry.set(key, (observationsByCountry.get(key) ?? 0) + 1);
-  });
-  return (
-    <div className="space-y-5" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <Panel className="p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">
-              {t('mihad.discoverEyebrow', { default: 'Mihad — Discover' })}
-            </p>
-            <h3 className="text-2xl font-bold text-text">
-              {mandate?.title || t('mihad.discoverTitleFallback', { default: 'Cross-border buy mandate' })}
-            </h3>
-            <p className="max-w-2xl text-sm text-text-soft">
-              {t('mihad.discoverSubtitle', {
-                default:
-                  'Target markets, intent and indicative budget. We use these to shortlist properties and brief vetted brokers — never to expose your raw documents.',
-              })}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <TrustPill label={`${candidateCount} ${t('candidates')}`} tone="slate" />
-            <TrustPill label={`${pursueCount} ${t('pursue')}`} tone="lime" />
-            {latestSearchRun ? <TrustPill label={humanize(latestSearchRun.status) || t('notSet')} tone="cyan" /> : null}
-          </div>
-        </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            icon={MapIcon}
-            label={t('mihad.markets', { default: 'Target markets' })}
-            value={countryCodes.length ? countryCodes.map((c) => MIHAD_COUNTRY_LABELS[c]).join(' · ') : t('notSet')}
-          />
-          <MetricCard
-            icon={Home}
-            label={t('mihad.purpose', { default: 'Purpose' })}
-            value={purpose ? humanize(purpose) : t('notSet')}
-          />
-          <MetricCard
-            icon={Clock3}
-            label={t('mihad.timeline', { default: 'Timeline' })}
-            value={timeline ? humanize(timeline) : t('notSet')}
-          />
-          <MetricCard
-            icon={TrendingUp}
-            label={t('mihad.liquidity', { default: 'Financing posture' })}
-            value={liquidity ? humanize(liquidity) : t('notSet')}
-          />
-        </div>
-        {Number.isFinite(budgetMin) || Number.isFinite(budgetMax) ? (
-          <p className="mt-4 text-sm text-text-soft">
-            {t('mihad.budget', { default: 'Indicative budget' })}:{' '}
-            <span className="font-semibold text-text">
-              {Number.isFinite(budgetMin) ? formatMihadCurrency(budgetMin, budgetCurrency) : '—'}
-              {' – '}
-              {Number.isFinite(budgetMax) ? formatMihadCurrency(budgetMax, budgetCurrency) : '—'}
-            </span>
-          </p>
-        ) : null}
-      </Panel>
-
-      {countryCodes.length > 0 ? (
-        <Panel className="p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">
-            {t('mihad.countryGuides', { default: 'Country guides' })}
-          </p>
-          <p className="mt-2 max-w-2xl text-sm text-text-soft">
-            {t('mihad.countryGuidesSubtitle', {
-              default:
-                'Source-cited residency, tax and due-diligence notes for your target markets. Saudi compliance disclaimers apply where relevant.',
-            })}
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {countryCodes.map((code) => {
-              const observed = observationsByCountry.get(code) ?? 0;
-              return (
-                <a
-                  key={code}
-                  href={MIHAD_COUNTRY_GUIDE_PATHS[code]}
-                  className="group block rounded-[14px] border border-border bg-surface-alt px-4 py-3 transition hover:border-accent/30 hover:bg-surface"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-text">{MIHAD_COUNTRY_LABELS[code]}</p>
-                    <ExternalLink className="h-4 w-4 text-text-muted transition group-hover:text-accent" />
-                  </div>
-                  <p className="mt-1 text-xs text-text-soft">
-                    {observed > 0
-                      ? t('mihad.countryObservations', { default: '{count} market signals on file', count: observed })
-                      : t('mihad.countryObservationsEmpty', { default: 'No market signals yet — ingestion pending' })}
-                  </p>
-                </a>
-              );
-            })}
-          </div>
-        </Panel>
-      ) : null}
-
-      <Panel className="p-6">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">
-          {t('mihad.discoverIntel', { default: 'Market intelligence' })}
-        </p>
-        <p className="mt-2 text-sm text-text-soft">
-          {marketObservations.length > 0
-            ? t('mihad.discoverIntelCount', { default: '{count} recent observations across your target markets', count: marketObservations.length })
-            : t('mihad.discoverIntelEmpty', { default: 'No observations indexed yet for these markets.' })}
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <IntelligenceMetric
-            label={t('mihad.discoverIntelCandidates', { default: 'Candidates surfaced' })}
-            value={String(candidateCount)}
-          />
-          <IntelligenceMetric
-            label={t('mihad.discoverIntelLastRun', { default: 'Last sourcing run' })}
-            value={latestSearchRun?.updated_at ? formatRelativeTime(latestSearchRun.updated_at) : t('notSet')}
-          />
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
-function MihadVerifyModule({
   readinessProfile,
-  readinessEvidence,
-  sharingGrants,
-  actionApprovals,
   onOpenEvidence,
 }: {
+  mandate: AcquisitionMandateRow | null;
   readinessProfile: BuyerReadinessProfileRow | null;
-  readinessEvidence: BuyerReadinessEvidenceRow[];
-  sharingGrants: DocumentSharingGrantRow[];
-  actionApprovals: ExternalActionApprovalRow[];
   onOpenEvidence: () => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const locale = useLocale();
+  const targetCountryCodes = (mandate?.target_country_codes ?? []).filter((code): code is string => Boolean(code));
+  const isCrossBorder = targetCountryCodes.some((code) => code.toUpperCase() !== 'SA');
+  if (!isCrossBorder) return null;
   const verificationConfidence =
     (readinessProfile as (BuyerReadinessProfileRow & { verification_confidence?: string | null }) | null)
       ?.verification_confidence ?? null;
@@ -3556,55 +3437,103 @@ function MihadVerifyModule({
     (readinessProfile as (BuyerReadinessProfileRow & { verification_expires_at?: string | null }) | null)
       ?.verification_expires_at ?? null;
   const expired = verificationExpiresAt ? new Date(verificationExpiresAt).getTime() < Date.now() : false;
+  const verified =
+    !expired && (verificationConfidence === 'medium' || verificationConfidence === 'high');
+  // Collapsed "all green" pill: only show if verified, full confidence, and
+  // not expiring within 30 days. Otherwise show the full card.
+  const expiringSoon =
+    verificationExpiresAt
+      ? new Date(verificationExpiresAt).getTime() - Date.now() < 30 * 24 * 60 * 60 * 1000
+      : false;
+  if (verified && verificationConfidence === 'high' && !expiringSoon) {
+    return (
+      <div className="rounded-[14px] border border-success/30 bg-success/8 px-4 py-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-success">
+          {t('mihad.verifyEyebrow', { default: 'Buyer verification' })}
+        </p>
+        <p className="mt-1 text-sm text-text">
+          {verificationExpiresAt
+            ? t('mihad.verifiedExpires', {
+                default: 'Verified · expires {when}',
+                when: formatRelativeTime(verificationExpiresAt),
+              })
+            : t('mihad.verifiedNoExpiry', { default: 'Verified' })}
+        </p>
+      </div>
+    );
+  }
+  const tone = expired || verificationConfidence === 'low'
+    ? 'warning'
+    : verified
+      ? 'cyan'
+      : 'neutral';
+  const toneClass = {
+    warning: 'border-warning/30 bg-warning/10',
+    cyan: 'border-highlight/24 bg-highlight/8',
+    neutral: 'border-[rgba(var(--accent-rgb),0.16)] bg-surface-alt',
+  }[tone];
+  const eyebrowToneClass = {
+    warning: 'text-warning',
+    cyan: 'text-highlight',
+    neutral: 'text-text-soft',
+  }[tone];
+  const message = !readinessProfile
+    ? t('mihad.verifyNeeded', {
+        default: 'Cross-border deals need a privacy-preserving buyer profile before sharing with brokers.',
+      })
+    : expired
+      ? t('mihad.verifyExpired', {
+          default: 'Verification expired. Re-upload evidence to keep your buyer packet active.',
+        })
+      : verificationConfidence === 'low'
+        ? t('mihad.verifyLowConfidence', {
+            default: 'Low confidence — add stronger proofs to unlock more brokers.',
+          })
+        : expiringSoon
+          ? t('mihad.verifyExpiringSoon', {
+              default: 'Verification expires soon. Refresh before sharing with new brokers.',
+            })
+          : t('mihad.verifyImprove', {
+              default: 'Verification active. Add a notarized declaration to reach high confidence.',
+            });
   return (
-    <div className="space-y-5" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <Panel className="p-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">
-              {t('mihad.verifyEyebrow', { default: 'Mihad — Verify' })}
+    <Panel className={cn('p-4', toneClass)}>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className={cn('font-mono text-[10px] uppercase tracking-[0.22em]', eyebrowToneClass)}>
+              {t('mihad.verifyEyebrow', { default: 'Buyer verification' })}
             </p>
-            <h3 className="text-2xl font-bold text-text">
-              {t('mihad.verifyTitle', { default: 'Buyer-readiness ladder' })}
+            <h3 className="mt-1 text-sm font-bold text-text">
+              {readinessProfile
+                ? t('mihad.verifyTitleActive', { default: 'Strengthen buyer verification' })
+                : t('mihad.verifyTitleStart', { default: 'Start buyer verification' })}
             </h3>
-            <p className="max-w-2xl text-sm text-text-soft">
-              {t('mihad.verifySubtitle', {
-                default:
-                  'Privacy-preserving qualification: upload proof to short-lived storage. Brokers see only readiness signals — never the source documents.',
-              })}
-            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {verificationConfidence ? (
               <TrustPill
                 label={humanize(verificationConfidence) || t('notSet')}
                 tone={expired ? 'amber' : verificationConfidence === 'high' ? 'lime' : 'cyan'}
               />
             ) : null}
-            {verificationExpiresAt ? (
-              <TrustPill
-                label={`${t('mihad.verifyExpires', { default: 'Expires' })}: ${formatRelativeTime(verificationExpiresAt)}`}
-                tone={expired ? 'amber' : 'slate'}
-              />
-            ) : null}
-            <Button variant="secondary" size="sm" onClick={onOpenEvidence}>
-              {t('mihad.verifyUpload', { default: 'Upload evidence' })}
-            </Button>
           </div>
         </div>
-      </Panel>
-
-      <BuyerReadinessPanel
-        profile={readinessProfile}
-        evidence={readinessEvidence}
-        grants={sharingGrants}
-        approvals={actionApprovals}
-      />
-    </div>
+        <p className="text-xs leading-5 text-text-soft">{message}</p>
+        <div>
+          <Button variant="secondary" size="sm" onClick={onOpenEvidence}>
+            {t('mihad.verifyUpload', { default: 'Upload evidence' })}
+          </Button>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
-function MihadActivateModule({
+// Overview-scoped Brokers panel. Surfaces vetted brokers in the buyer's
+// target markets, the buyer-packet state, and per-broker Share / Revoke
+// actions. Renders nothing for Saudi-only mandates.
+function MihadBrokersPanel({
   mandate,
   readinessProfile,
   buyerPackets,
@@ -3628,17 +3557,21 @@ function MihadActivateModule({
   onRevokeShare: (grantId: string) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
-  const locale = useLocale();
+  const targetCountryCodes = (mandate?.target_country_codes ?? [])
+    .filter((code): code is string => Boolean(code))
+    .map((code) => code.toUpperCase());
+  const isCrossBorder = targetCountryCodes.some((code) => code !== 'SA');
+  if (!isCrossBorder) return null;
   const activePacket = buyerPackets.find((p) => p.status === 'active') ?? null;
-  const targetCountries = (mandate?.target_country_codes ?? []).filter(isMihadCountryCode);
-  const eligibleBrokers = brokerPartners.filter((b) => {
-    if (targetCountries.length === 0) return true;
-    return targetCountries.includes(b.country_code.toUpperCase() as MihadCountryCode);
+  const mihadCountryCodes = targetCountryCodes.filter((code): code is MihadCountryCode =>
+    isMihadCountryCode(code),
+  );
+  const eligibleBrokers = brokerPartners.filter((broker) => {
+    if (mihadCountryCodes.length === 0) return true;
+    return mihadCountryCodes.includes(broker.country_code.toUpperCase() as MihadCountryCode);
   });
-  // Map brokerPartnerId -> active grant row so the row can flip to a Revoke
-  // action and so we can show consent expiry/status. `granted_to_identifier`
-  // is where `grantBuyerPacketToBroker` stamps the broker id; older code
-  // looked at `metadata_json.broker_partner_id` which was never written.
+  // `granted_to_identifier` is where grantBuyerPacketToBroker stamps the
+  // broker id, so we look up active grants per broker by that field.
   const activeGrantByBroker = new Map<string, DocumentSharingGrantRow>();
   for (const grant of sharingGrants) {
     if (grant.share_mode !== 'status_only') continue;
@@ -3646,158 +3579,128 @@ function MihadActivateModule({
     if (grant.granted_to_kind && grant.granted_to_kind !== 'broker') continue;
     const id = grant.granted_to_identifier;
     if (!id) continue;
-    const existing = activeGrantByBroker.get(id);
-    if (!existing) activeGrantByBroker.set(id, grant);
+    if (!activeGrantByBroker.has(id)) activeGrantByBroker.set(id, grant);
   }
   return (
-    <div className="space-y-5" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <Panel className="p-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">
-              {t('mihad.activateEyebrow', { default: 'Mihad — Activate' })}
-            </p>
-            <h3 className="text-2xl font-bold text-text">
-              {t('mihad.activateTitle', { default: 'Buyer packet & broker activation' })}
-            </h3>
-            <p className="max-w-2xl text-sm text-text-soft">
-              {t('mihad.activateSubtitle', {
-                default:
-                  'We share derived readiness signals with vetted brokers on your behalf — never raw documents. Each grant is a logged consent action.',
-              })}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {activePacket ? (
-              <>
-                <TrustPill
-                  label={`v${activePacket.version ?? 1} · ${t('mihad.packetActive', { default: 'Active' })}`}
-                  tone="lime"
-                />
-                {activePacket.expires_at ? (
-                  <TrustPill
-                    label={`${t('mihad.packetExpires', { default: 'Expires' })}: ${formatRelativeTime(activePacket.expires_at)}`}
-                    tone="slate"
-                  />
-                ) : null}
-              </>
-            ) : (
-              <TrustPill label={t('mihad.packetNone', { default: 'No active packet' })} tone="amber" />
-            )}
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={onRequestPacket}
-              disabled={!readinessProfile || actionBusy === 'packet'}
-            >
-              {actionBusy === 'packet'
-                ? t('mihad.packetCreating', { default: 'Creating…' })
-                : activePacket
-                  ? t('mihad.packetRegenerate', { default: 'Regenerate packet' })
-                  : t('mihad.packetCreate', { default: 'Create buyer packet' })}
-            </Button>
-          </div>
-        </div>
-        {actionError ? (
-          <p className="mt-3 rounded-[12px] border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-            {actionError}
+    <Panel className="p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
+            {t('mihad.activateEyebrow', { default: 'Broker activation' })}
           </p>
-        ) : null}
-      </Panel>
-
-      <Panel className="p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-text-soft">
-              {t('mihad.activateBrokers', { default: 'Vetted brokers' })}
-            </p>
-            <p className="mt-2 max-w-2xl text-sm text-text-soft">
-              {targetCountries.length > 0
-                ? t('mihad.activateBrokersFiltered', {
-                    default: 'Brokers in your target markets that have signed our privacy and co-brokerage terms.',
-                  })
-                : t('mihad.activateBrokersAll', {
-                    default: 'All active broker partners. Define target markets in Discover to filter.',
-                  })}
-            </p>
-          </div>
-          <TrustPill label={`${eligibleBrokers.length} ${t('mihad.activateBrokersAvailable', { default: 'available' })}`} tone="cyan" />
+          <h3 className="mt-1 text-base font-bold text-text">
+            {t('mihad.activateBrokers', { default: 'Vetted brokers' })}
+          </h3>
+          <p className="mt-1 max-w-xl text-xs leading-5 text-text-soft">
+            {t('mihad.activateSubtitle', {
+              default:
+                'We share derived readiness signals with vetted brokers on your behalf — never raw documents. Each grant is a logged consent action.',
+            })}
+          </p>
         </div>
-        <div className="mt-4 space-y-3">
-          {eligibleBrokers.length === 0 ? (
-            <p className="rounded-[12px] border border-border bg-surface-alt px-4 py-6 text-center text-sm text-text-soft">
-              {t('mihad.activateBrokersEmpty', {
-                default:
-                  'No vetted brokers in your target markets yet. We are onboarding partners — you will be notified when matches are ready.',
-              })}
-            </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {activePacket ? (
+            <TrustPill
+              label={`v${activePacket.version ?? 1} · ${t('mihad.packetActive', { default: 'Active' })}`}
+              tone="lime"
+            />
           ) : (
-            eligibleBrokers.map((broker) => {
-              const activeGrant = activeGrantByBroker.get(broker.id) ?? null;
-              const alreadyShared = Boolean(activeGrant);
-              const shareBusyKey = `share-${broker.id}`;
-              const revokeBusyKey = activeGrant ? `revoke-${activeGrant.id}` : null;
-              const grantExpires = activeGrant?.expires_at
-                ? formatRelativeTime(activeGrant.expires_at)
-                : null;
-              return (
-                <div
-                  key={broker.id}
-                  className="flex flex-col gap-3 rounded-[14px] border border-border bg-surface-alt px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-text">{broker.display_name}</p>
-                    <p className="mt-0.5 text-xs text-text-soft">
-                      {[broker.city, MIHAD_COUNTRY_LABELS[broker.country_code.toUpperCase() as MihadCountryCode] || broker.country_code]
-                        .filter(Boolean)
-                        .join(' · ')}
-                      {broker.languages && broker.languages.length > 0 ? ` · ${broker.languages.join(', ')}` : ''}
-                    </p>
-                    {alreadyShared ? (
-                      <p className="mt-1 text-[11px] text-text-soft">
-                        {grantExpires
-                          ? t('mihad.brokerSharedSince', {
-                              default: 'Consent active · expires {when}',
-                              when: grantExpires,
-                            })
-                          : t('mihad.brokerSharedNoExpiry', { default: 'Consent active' })}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {alreadyShared && activeGrant && revokeBusyKey ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => onRevokeShare(activeGrant.id)}
-                        disabled={actionBusy === revokeBusyKey}
-                      >
-                        {actionBusy === revokeBusyKey
-                          ? t('mihad.brokerRevoking', { default: 'Revoking…' })
-                          : t('mihad.brokerRevoke', { default: 'Revoke' })}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => onShareWithBroker(broker.id)}
-                        disabled={!activePacket || actionBusy === shareBusyKey}
-                      >
-                        {actionBusy === shareBusyKey
-                          ? t('mihad.brokerSharing', { default: 'Sharing…' })
-                          : t('mihad.brokerShare', { default: 'Share packet' })}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+            <TrustPill label={t('mihad.packetNone', { default: 'No active packet' })} tone="amber" />
           )}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onRequestPacket}
+            disabled={!readinessProfile || actionBusy === 'packet'}
+          >
+            {actionBusy === 'packet'
+              ? t('mihad.packetCreating', { default: 'Creating…' })
+              : activePacket
+                ? t('mihad.packetRegenerate', { default: 'Regenerate packet' })
+                : t('mihad.packetCreate', { default: 'Create buyer packet' })}
+          </Button>
         </div>
-      </Panel>
-
-      <LegalDisclaimerFooter />
-    </div>
+      </div>
+      {actionError ? (
+        <p className="mt-3 rounded-[10px] border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          {actionError}
+        </p>
+      ) : null}
+      <div className="mt-4 space-y-2.5">
+        {eligibleBrokers.length === 0 ? (
+          <p className="rounded-[12px] border border-border bg-surface-alt px-4 py-5 text-center text-xs text-text-soft">
+            {t('mihad.activateBrokersEmpty', {
+              default:
+                'No vetted brokers in your target markets yet. We are onboarding partners — you will be notified when matches are ready.',
+            })}
+          </p>
+        ) : (
+          eligibleBrokers.map((broker) => {
+            const activeGrant = activeGrantByBroker.get(broker.id) ?? null;
+            const shared = Boolean(activeGrant);
+            const shareBusyKey = `share-${broker.id}`;
+            const revokeBusyKey = activeGrant ? `revoke-${activeGrant.id}` : null;
+            const grantExpires = activeGrant?.expires_at
+              ? formatRelativeTime(activeGrant.expires_at)
+              : null;
+            return (
+              <div
+                key={broker.id}
+                className="flex flex-col gap-2 rounded-[12px] border border-border bg-surface-alt px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-text">{broker.display_name}</p>
+                  <p className="mt-0.5 text-[11px] text-text-soft">
+                    {[
+                      broker.city,
+                      MIHAD_COUNTRY_LABELS[broker.country_code.toUpperCase() as MihadCountryCode] || broker.country_code,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    {broker.languages && broker.languages.length > 0 ? ` · ${broker.languages.join(', ')}` : ''}
+                  </p>
+                  {shared ? (
+                    <p className="mt-0.5 text-[10px] text-text-soft">
+                      {grantExpires
+                        ? t('mihad.brokerSharedSince', {
+                            default: 'Consent active · expires {when}',
+                            when: grantExpires,
+                          })
+                        : t('mihad.brokerSharedNoExpiry', { default: 'Consent active' })}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {shared && activeGrant && revokeBusyKey ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => onRevokeShare(activeGrant.id)}
+                      disabled={actionBusy === revokeBusyKey}
+                    >
+                      {actionBusy === revokeBusyKey
+                        ? t('mihad.brokerRevoking', { default: 'Revoking…' })
+                        : t('mihad.brokerRevoke', { default: 'Revoke' })}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => onShareWithBroker(broker.id)}
+                      disabled={!activePacket || actionBusy === shareBusyKey}
+                    >
+                      {actionBusy === shareBusyKey
+                        ? t('mihad.brokerSharing', { default: 'Sharing…' })
+                        : t('mihad.brokerShare', { default: 'Share packet' })}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </Panel>
   );
 }
 
@@ -3824,6 +3727,17 @@ function OverviewModule({
   onScheduleVisit,
   onWaiveVisit,
   onPassProperty,
+  mandate,
+  readinessProfile,
+  buyerPackets,
+  brokerPartners,
+  sharingGrants,
+  mihadActionBusy,
+  mihadActionError,
+  onOpenEvidence,
+  onRequestPacket,
+  onShareWithBroker,
+  onRevokeShare,
 }: {
   opportunity: OpportunityRow | null;
   marketObservations: MarketObservationRow[];
@@ -3847,6 +3761,17 @@ function OverviewModule({
   onScheduleVisit: () => void;
   onWaiveVisit: () => void;
   onPassProperty: () => void;
+  mandate: AcquisitionMandateRow | null;
+  readinessProfile: BuyerReadinessProfileRow | null;
+  buyerPackets: BuyerPacketRow[];
+  brokerPartners: BrokerPartnerRow[];
+  sharingGrants: DocumentSharingGrantRow[];
+  mihadActionBusy: string | null;
+  mihadActionError: string | null;
+  onOpenEvidence: () => void;
+  onRequestPacket: () => void;
+  onShareWithBroker: (brokerPartnerId: string) => void;
+  onRevokeShare: (grantId: string) => void;
 }) {
   const t = useTranslations('workspaceCockpitPage');
   const locationLabel = locationLabelForOpportunity(opportunity);
@@ -3897,6 +3822,23 @@ function OverviewModule({
           onScheduleVisit={onScheduleVisit}
           onWaiveVisit={onWaiveVisit}
           onPassProperty={onPassProperty}
+        />
+        <MihadVerifyBuyerCard
+          mandate={mandate}
+          readinessProfile={readinessProfile}
+          onOpenEvidence={onOpenEvidence}
+        />
+        <MihadBrokersPanel
+          mandate={mandate}
+          readinessProfile={readinessProfile}
+          buyerPackets={buyerPackets}
+          brokerPartners={brokerPartners}
+          sharingGrants={sharingGrants}
+          actionBusy={mihadActionBusy}
+          actionError={mihadActionError}
+          onRequestPacket={onRequestPacket}
+          onShareWithBroker={onShareWithBroker}
+          onRevokeShare={onRevokeShare}
         />
         <Panel className="p-4">
           <p className="text-xs uppercase tracking-[0.24em] text-text-soft">{t('locationIntelligence')}</p>
@@ -5867,7 +5809,6 @@ function RightPane({
   const titleKey = {
     overview: 'rightPaneTitles.evidence',
     model: 'rightPaneTitles.model',
-    renovation: 'rightPaneTitles.renovation',
     openItems: 'rightPaneTitles.openItems',
     outreach: 'rightPaneTitles.openItems',
     offer: 'rightPaneTitles.model',

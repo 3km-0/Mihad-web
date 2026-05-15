@@ -3151,8 +3151,10 @@
     "progress": {
       "title": "Intent to close",
       "mandateReady": "Mandate Ready",
+      "verifyBuyer": "Verify Buyer",
       "sourceDeals": "Source Deals",
       "selectDeal": "Select Deal",
+      "activateBroker": "Activate Broker",
       "verifyInfo": "Verify Info",
       "visitInspect": "Visit / Inspect",
       "offerPath": "Offer Path",
