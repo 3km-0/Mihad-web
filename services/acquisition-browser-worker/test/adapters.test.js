@@ -521,17 +521,21 @@ test("Fotocasa buildSearchUrl applies price filters and city slug", async () => 
   assert.equal(parsed.searchParams.get("precioMax"), "3000000");
 });
 
-test("PropertyFinder adapter parses /plp/ listing cards", async () => {
+test("PropertyFinder adapter parses /plp/ listing cards (legacy + /buy/ shape)", async () => {
   const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+  // Mix legacy `/plp/...-id.html` and current `/plp/buy/...-id.html`
+  // shapes alongside other PF paths that must be ignored.
   const html = `
-    <a href="/en/plp/buy-properties-for-sale-1234567.html">Luxury apartment in Downtown Dubai AED 2,500,000</a>
-    <a href="/en/plp/buy-properties-for-sale-7654321.html">Townhouse in JVC AED 1,800,000</a>
+    <a href="/en/plp/buy-properties-for-sale-1234567.html">Legacy: Luxury apartment Downtown Dubai AED 2,500,000</a>
+    <a href="/en/plp/buy/apartment-for-sale-dubai-jumeirah-bay-island-bulgari-resort-residences-87049697.html">Current: Bulgari Resort Residences AED 28,000,000</a>
+    <a href="/en/plp/buy/apartment-for-sale-dubai-marina-7654321.html">Current: Marina apartment AED 1,800,000</a>
     <a href="/en/news/article">Not a listing</a>
+    <a href="/en/agents/dubai/some-agency">Not a listing either</a>
   `;
   const cards = PropertyFinderBrowsingAdapter.parseSearchResults(html, "https://www.propertyfinder.ae/en/search?c=1");
-  assert.equal(cards.length, 2);
+  assert.equal(cards.length, 3);
   assert.equal(cards[0].source, "property_finder");
-  assert.match(cards[0].source_url, /propertyfinder\.ae\/en\/plp\//);
+  cards.forEach((card) => assert.match(card.source_url, /propertyfinder\.ae\/en\/plp\//));
 });
 
 test("PropertyFinder adapter records AED for .ae and SAR for .sa detail pages", async () => {

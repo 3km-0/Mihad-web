@@ -91,8 +91,23 @@ export const PropertyFinderBrowsingAdapter = {
   async applySearchFilters(page, mandate, limits = {}) {
     const baseUrl = pickBaseUrl(mandate);
     const url = new URL(searchPath(mandate), baseUrl).toString();
+    // Property Finder is fronted by AWS WAF Bot Control, which issues a
+    // JS challenge (HTTP 202 with `x-amzn-waf-action: challenge`) on
+    // first request. Chromium clears it in ~3-6 seconds.
+    //
+    // We deliberately avoid `waitUntil: "networkidle"` here because PF
+    // pages keep loading analytics/CMP beacons indefinitely and never
+    // reach idle. Instead we wait until listing anchors appear in the
+    // DOM (the WAF challenge has cleared at that point) and pad a
+    // small safety margin before snapshotting.
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: limits.per_source_timeout_ms });
-    await page.waitForTimeout(800);
+    try {
+      await page.waitForSelector("a[href*='/plp/']", { timeout: 12_000 });
+    } catch {
+      // Best-effort: WAF challenge or empty results. Continue and let
+      // parseSearchResults emit a drift signal if cards_seen=0.
+    }
+    await page.waitForTimeout(1200);
     return {
       url: page.url(),
       html: await page.content(),
@@ -104,8 +119,14 @@ export const PropertyFinderBrowsingAdapter = {
     const stripped = stripTags(html);
     if (/no properties|no results|0 results/i.test(stripped)) return [];
     const seen = new Set();
+    // Detail URL shapes accepted (Property Finder rolled out a `/buy/`
+    // path segment around 2026; both shapes still resolve):
+    //   /en/plp/apartment-for-sale-...-12345678.html         (legacy)
+    //   /en/plp/buy/apartment-for-sale-...-12345678.html     (current)
+    // We allow `/` and `-` inside the slug and anchor on a trailing
+    // numeric listing id immediately before the `.html` extension.
     return extractLinks(html, baseUrl, /propertyfinder\.(ae|sa|qa|bh|eg)/i)
-      .filter((link) => /\/plp\/[a-z0-9-]*-\d{4,}\.html?(?:$|[?#])/i.test(link.url))
+      .filter((link) => /\/plp\/(?:[\w/-]+\/)?[\w-]+-\d{6,}\.html?(?:$|[?#])/i.test(link.url))
       .filter((link) => {
         if (seen.has(link.url)) return false;
         seen.add(link.url);

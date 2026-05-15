@@ -71,13 +71,34 @@ function normalizeLimits(value = {}) {
 
 async function withBrowser(fn) {
   const { chromium } = await import("playwright");
-  const browser = await chromium.launch({ headless: true });
+  // Hide the most obvious automation fingerprints so commercial bot
+  // managers (AWS WAF Bot Control, Cloudflare Bot Mgmt, DataDome) let
+  // the JS challenge complete instead of serving a 202/403 interstitial.
+  // `--disable-blink-features=AutomationControlled` removes the
+  // `navigator.webdriver` signal; the init script below scrubs the
+  // residual property in case a script reads it before our override.
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--disable-dev-shm-usage",
+    ],
+  });
   try {
     return await fn(browser);
   } finally {
     await browser.close();
   }
 }
+
+const STEALTH_INIT_SCRIPT = `
+  try {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  } catch (_) { /* navigator.webdriver already overridden */ }
+  try {
+    Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+  } catch (_) { /* navigator.languages immutable */ }
+`;
 
 function authEnvKey(source) {
   return `ACQUISITION_BROWSER_AUTH_STATE_${String(source || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
@@ -99,9 +120,19 @@ async function resolveAuthStatePath(source) {
 
 async function newAdapterContext(browser, adapterRun) {
   const storageState = await resolveAuthStatePath(adapterRun.source);
+  const contextOptions = {
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    viewport: { width: 1366, height: 900 },
+    locale: "en-US",
+    timezoneId: adapterRun.source === "property_finder" ? "Asia/Dubai" : "Europe/London",
+  };
   const context = storageState
-    ? await browser.newContext({ storageState })
-    : await browser.newContext();
+    ? await browser.newContext({ ...contextOptions, storageState })
+    : await browser.newContext(contextOptions);
+  if (typeof context.addInitScript === "function") {
+    await context.addInitScript(STEALTH_INIT_SCRIPT).catch(() => null);
+  }
   adapterRun.auth_json = storageState
     ? { mode: "storage_state", status: "loaded", source: adapterRun.source }
     : { mode: "public", status: "not_configured", source: adapterRun.source };
@@ -135,7 +166,14 @@ async function fetchPageHtml(page, url, timeout, options = {}) {
   try {
     if (onResponse) page.on("response", onResponse);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-    await page.waitForTimeout(600);
+    // Initial render. Slightly longer than the legacy 600ms because
+    // many portals now front their pages with WAF/Bot-management JS
+    // challenges (AWS WAF Bot Control, Cloudflare Bot Mgmt, DataDome)
+    // that resolve client-side within 1.5-4s. We don't block on
+    // `networkidle` because some pages keep loading analytics beacons
+    // indefinitely; 1200ms keeps detail-page latency bounded while
+    // giving the WAF challenge time to release the page.
+    await page.waitForTimeout(1200);
     if (responsePromises.length) {
       await Promise.allSettled(responsePromises);
     }
