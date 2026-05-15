@@ -74,6 +74,11 @@ class Query {
     return this;
   }
 
+  neq(field, value) {
+    this.filters.push({ field, value, op: "neq" });
+    return this;
+  }
+
   in(field, values) {
     this.filters.push({ field, values: new Set(values || []), op: "in" });
     return this;
@@ -91,6 +96,7 @@ class Query {
   _matches(row) {
     return this.filters.every((filter) => {
       if (filter.op === "in") return filter.values.has(row[filter.field]);
+      if (filter.op === "neq") return row[filter.field] !== filter.value;
       return row[filter.field] === filter.value;
     });
   }
@@ -397,6 +403,117 @@ test("candidate promotion creates opportunity, scenario, copied claims, and even
   assert(
     supabase.db.acquisition_claims.some((claim) => claim.opportunity_id === promoted.opportunity.id),
   );
+});
+
+test("buildCrossListingSignature collapses near-identical listings to the same key", () => {
+  const { buildCrossListingSignature } = __test;
+  // Same tower, same price, same beds, area drifts by 1 sqm — collide.
+  const sigA = buildCrossListingSignature({
+    city: "Dubai",
+    district: "Jumeirah Bay Island",
+    asking_price: 38000000,
+    area_sqm: 243,
+    bedroom_count: 3,
+    property_type: "apartment",
+  });
+  const sigB = buildCrossListingSignature({
+    city: "DUBAI",
+    district: "  Jumeirah Bay Island  ",
+    asking_price: 38050000,
+    area_sqm: 244,
+    bedroom_count: 3,
+    property_type: "apartment",
+  });
+  assert.ok(sigA && sigB);
+  assert.equal(sigA, sigB);
+
+  // Same tower, very different price (155M Burj Al Arab unit) — distinct.
+  const sigC = buildCrossListingSignature({
+    city: "Dubai",
+    district: "Jumeirah Bay Island",
+    asking_price: 155000000,
+    area_sqm: 1083,
+    bedroom_count: 5,
+    property_type: "apartment",
+  });
+  assert.notEqual(sigA, sigC);
+
+  // Too sparse — should refuse to sign.
+  const sigSparse = buildCrossListingSignature({
+    city: "Dubai",
+    district: "",
+    asking_price: null,
+    area_sqm: null,
+    bedroom_count: 3,
+    property_type: "apartment",
+  });
+  assert.equal(sigSparse, null);
+});
+
+test("promoteCandidate attaches cross-listings instead of duplicating opportunities", async () => {
+  const supabase = createMockSupabase();
+  // First listing: canonical.
+  const a = await __test.createListingCandidate(supabase, {
+    workspace_id: "ws_dedup",
+    source_url: "https://propertyfinder.ae/.../bulgari-6-87049697.html",
+    title: "Bulgari Resort Marina View",
+    asking_price: 38000000,
+    city: "Dubai",
+    district: "Jumeirah Bay Island",
+    property_type: "apartment",
+    area_sqm: 243,
+    bedroom_count: 3,
+    photo_refs_json: ["https://example.com/a1.jpg"],
+  });
+  const promotedA = await __test.promoteCandidate(supabase, a.candidate.id);
+  assert.equal(promotedA.cross_listing_attached, undefined);
+  assert.equal(promotedA.opportunity.stage, "workspace_created");
+  assert.equal(supabase.db.acquisition_opportunities.length, 1);
+
+  // Second listing: same tower, same price band, same beds, ±1 sqm.
+  // Different broker, different photos. Should attach, not duplicate.
+  const b = await __test.createListingCandidate(supabase, {
+    workspace_id: "ws_dedup",
+    source_url: "https://propertyfinder.ae/.../bulgari-6-84904354.html",
+    title: "Bulgari Resort Skyline View",
+    asking_price: 38000000,
+    city: "Dubai",
+    district: "Jumeirah Bay Island",
+    property_type: "apartment",
+    area_sqm: 244,
+    bedroom_count: 3,
+    photo_refs_json: ["https://example.com/b1.jpg"],
+  });
+  const promotedB = await __test.promoteCandidate(supabase, b.candidate.id);
+  assert.equal(promotedB.cross_listing_attached, true);
+  assert.equal(promotedB.cross_listing_of, promotedA.opportunity.id);
+  // Still only one canonical opportunity.
+  assert.equal(supabase.db.acquisition_opportunities.length, 1);
+  // The canonical opportunity now carries one cross-listing entry.
+  const canonical = supabase.db.acquisition_opportunities[0];
+  assert.equal(canonical.metadata_json.cross_listings?.length, 1);
+  assert.equal(canonical.metadata_json.cross_listings[0].candidate_id, b.candidate.id);
+  // The dedup'd candidate is still marked promoted and linked to the canonical opp.
+  assert.equal(promotedB.candidate.status, "promoted");
+  assert.equal(promotedB.candidate.promoted_opportunity_id, promotedA.opportunity.id);
+
+  // Third listing: same tower but 155M Lighthouse penthouse — genuinely
+  // distinct, must NOT attach.
+  const c = await __test.createListingCandidate(supabase, {
+    workspace_id: "ws_dedup",
+    source_url: "https://propertyfinder.ae/.../bulgari-lighthouse-84904267.html",
+    title: "Bulgari Lighthouse Burj Al Arab View",
+    asking_price: 155000000,
+    city: "Dubai",
+    district: "Jumeirah Bay Island",
+    property_type: "apartment",
+    area_sqm: 1083,
+    bedroom_count: 5,
+    photo_refs_json: ["https://example.com/c1.jpg"],
+  });
+  const promotedC = await __test.promoteCandidate(supabase, c.candidate.id);
+  assert.equal(promotedC.cross_listing_attached, undefined);
+  assert.equal(supabase.db.acquisition_opportunities.length, 2);
 });
 
 test("acquisition report payload ranks by investment score and structured top_n", async () => {

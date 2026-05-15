@@ -1202,6 +1202,136 @@ async function screenCandidate(supabase, candidateId, options = {}) {
   return { candidate: data, screening: output };
 }
 
+// Bucket helpers for the cross-listing signature. We want listings within
+// a small price/area band to collide on the same key so an "identical
+// floorplan, different broker" duplicate gets caught.
+//   - Price bucket: 500k of native currency. Wide enough to absorb the
+//     usual broker price drift on a re-listed unit (1-2%) and narrow
+//     enough that a 38M apartment never collides with a 39M one.
+//   - Area bucket: 5 sqm. Real floorplans within the same tower drift
+//     by 1-3 sqm because of how brokers report gross vs net.
+function priceBucket(value) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  return Math.round(numeric / 500000);
+}
+function areaBucket(value) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  return Math.round(numeric / 5);
+}
+
+// Normalises a free-form city/district string so "Jumeirah Bay Island"
+// and "jumeirah bay island" collide. The same normaliser must be used
+// on both sides of the comparison.
+function dedupNormalise(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildCrossListingSignature(record) {
+  const parts = [
+    dedupNormalise(record.city),
+    dedupNormalise(record.district),
+    priceBucket(record.asking_price),
+    areaBucket(record.area_sqm),
+    record.bedroom_count != null ? Number(record.bedroom_count) : null,
+    dedupNormalise(record.property_type),
+  ];
+  // Reject signatures that are too sparse to be meaningful (e.g. no
+  // district + no area). One soft field missing is fine; two is not.
+  const populated = parts.filter((value) => value !== null && value !== "").length;
+  if (populated < 4) return null;
+  return parts.map((value) => (value == null ? "" : String(value))).join("|");
+}
+
+// Look for an existing active opportunity in this workspace whose dedup
+// signature matches the candidate. If one is found, append the candidate
+// as a cross-listing entry on the canonical opportunity and return the
+// existing opportunity row. Returns null if no duplicate exists.
+async function tryAttachAsCrossListing(supabase, candidate) {
+  const incomingSig = buildCrossListingSignature(candidate);
+  if (!incomingSig) return null;
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("acquisition_opportunities")
+    .select("id, title, metadata_json, stage")
+    .eq("workspace_id", candidate.workspace_id)
+    .neq("stage", "archived")
+    .order("created_at", { ascending: true });
+  if (existingError || !existingRows?.length) return null;
+
+  for (const row of existingRows) {
+    const meta = row.metadata_json || {};
+    // Skip if this candidate is already the canonical record for this
+    // opportunity (idempotent re-promotion should refresh, not duplicate).
+    if (meta.candidate_id === candidate.id) return null;
+
+    const candidateLike = {
+      city: meta.city,
+      district: meta.district,
+      asking_price: meta.asking_price ?? meta.price,
+      area_sqm: meta.area_sqm,
+      bedroom_count: meta.bedroom_count,
+      property_type: meta.property_type,
+    };
+    const existingSig = buildCrossListingSignature(candidateLike);
+    if (!existingSig || existingSig !== incomingSig) continue;
+
+    const priorCrossListings = Array.isArray(meta.cross_listings) ? meta.cross_listings : [];
+    const alreadyTracked = priorCrossListings.some(
+      (entry) =>
+        entry?.candidate_id === candidate.id ||
+        (candidate.source_url && entry?.source_url === candidate.source_url),
+    );
+    let nextOpportunity = row;
+    if (!alreadyTracked) {
+      const newEntry = {
+        candidate_id: candidate.id,
+        source: candidate.source,
+        source_url: candidate.source_url,
+        asking_price: candidate.asking_price,
+        area_sqm: candidate.area_sqm,
+        attached_at: new Date().toISOString(),
+        reason: "signature_match",
+        signature: incomingSig,
+      };
+      const nextMeta = {
+        ...meta,
+        cross_listings: [...priorCrossListings, newEntry],
+      };
+      await supabase
+        .from("acquisition_opportunities")
+        .update({ metadata_json: nextMeta, updated_at: new Date().toISOString() })
+        .eq("id", row.id);
+      nextOpportunity = { ...row, metadata_json: nextMeta };
+    }
+
+    // Mark the candidate as promoted and point it at the canonical
+    // opportunity so the candidate inbox doesn't surface it again.
+    const { data: promotedCandidate } = await supabase
+      .from("acquisition_candidate_opportunities")
+      .update({
+        status: "promoted",
+        promoted_opportunity_id: row.id,
+      })
+      .eq("id", candidate.id)
+      .select("*")
+      .single();
+
+    return {
+      candidate: promotedCandidate || candidate,
+      opportunity: nextOpportunity,
+      cross_listing_attached: true,
+      cross_listing_of: row.id,
+      cross_listing_already_tracked: alreadyTracked,
+    };
+  }
+  return null;
+}
+
 async function promoteCandidate(supabase, candidateId) {
   const candidate = await fetchCandidate(supabase, candidateId);
   const mandate = await fetchMandate(supabase, candidate.mandate_id).catch(() => null);
@@ -1210,6 +1340,20 @@ async function promoteCandidate(supabase, candidateId) {
     ? candidate.screening_output_json
     : buildScreeningOutput(candidate, mandate);
   const title = candidate.title || "Acquisition opportunity";
+
+  // Cross-listing dedup: portals (especially Property Finder) host the same
+  // unit under multiple listing IDs because different brokers re-list the
+  // same inventory to chase commission. From the buyer's point of view
+  // those cards represent one shopping decision, not many. Before we
+  // create a new opportunity row, look for an active opportunity in the
+  // same workspace whose (city, district, price-bucket, area-bucket,
+  // bedroom-count, property-type) signature matches this candidate; if
+  // we find one, attach this candidate as an alternate broker entry
+  // and short-circuit.
+  const dedupResult = await tryAttachAsCrossListing(supabase, candidate);
+  if (dedupResult) {
+    return dedupResult;
+  }
 
   // Compute Investment Quality Score (non-fatal: falls back to null on error)
   let investmentScore = null;
@@ -1249,6 +1393,8 @@ async function promoteCandidate(supabase, candidateId) {
         price: candidate.asking_price,
         area_sqm: candidate.area_sqm,
         property_type: candidate.property_type,
+        bedroom_count: candidate.bedroom_count ?? candidate.bedrooms ?? null,
+        bathroom_count: candidate.bathroom_count ?? candidate.bathrooms ?? null,
         city: candidate.city,
         district: candidate.district,
         location: Object.keys(location).length ? location : null,
@@ -1496,17 +1642,33 @@ async function processSearchRun({ supabase, requestId, searchRunId }) {
       Number(right.screening_output_json?.fit?.score || 0) - Number(left.screening_output_json?.fit?.score || 0)
     );
 
-    // Auto-promote candidates that passed screening to opportunities
+    // Auto-promote candidates that cleared screening to opportunities
     // so they appear in the workspace cockpit's deal pipeline. The
     // cockpit reads `acquisition_opportunities` (not raw candidates),
-    // so without this step a successful search returns "5 candidates
-    // found" in the action dock but an empty pipeline. We only
-    // promote screening_decision === 'pass' to keep invalid or
-    // duplicate listings out of the pipeline; everything else stays
-    // queryable in `acquisition_candidate_opportunities` for ops.
+    // so without this step a successful search returns "8 candidates
+    // found" in the action dock but an empty pipeline. We promote any
+    // `pass` decision plus `pursue` decisions whose only missing item
+    // is contact-access gating — the latter is the norm on cross-
+    // border portals (Property Finder, Idealista, etc.) which require
+    // sign-in to expose broker phone numbers; refusing to promote
+    // those would mean the Mihad cockpit shows zero deals even when
+    // mandate-fit is 100/100. `watch` / `pass_on` / `needs_info` for
+    // other reasons remain in `acquisition_candidate_opportunities`
+    // for ops to triage.
     const promoted = [];
     for (const candidate of candidates) {
-      if (candidate.screening_decision !== "pass") continue;
+      const decision = candidate.screening_decision;
+      let shouldPromote = decision === "pass";
+      if (!shouldPromote && decision === "pursue") {
+        const missing = candidate.screening_output_json?.missingInformation || [];
+        const onlyContactGating = missing.length > 0 && missing.every(
+          (item) => item?.type === "needs_contact_access",
+        );
+        const noMissing = missing.length === 0;
+        const fitScore = Number(candidate.screening_output_json?.fit?.score || 0);
+        shouldPromote = (onlyContactGating || noMissing) && fitScore >= 70;
+      }
+      if (!shouldPromote) continue;
       try {
         const result = await promoteCandidate(supabase, candidate.id);
         if (result?.opportunity?.id) promoted.push(result.opportunity);
@@ -4992,6 +5154,8 @@ export const __test = {
   normalizeSources,
   normalizeReportPresentation,
   promoteCandidate,
+  buildCrossListingSignature,
+  tryAttachAsCrossListing,
   recomputeReadinessProfile,
   resolvePrimaryAcquisitionAction,
   screenCandidate,

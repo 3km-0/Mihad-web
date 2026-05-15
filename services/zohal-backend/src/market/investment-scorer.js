@@ -362,8 +362,20 @@ function scoreP4(candidate) {
 
 /**
  * P5 — Budget Position (15 pts).
- * The mandate budget may be in any supported currency; both the asking price
- * and the budget are converted to SAR for an apples-to-apples comparison.
+ *
+ * Three regimes, all measured against the SAR-normalised asking price:
+ *   - Over budget_max  → 0 pts (deal disqualifies on price).
+ *   - Inside [min,max] → score scales by headroom under the cap, so a
+ *     deal at the bottom of the band reads as "lots of room", and one
+ *     at the very top reads as "tight".
+ *   - Below budget_min → partial credit only. A buyer asking for a
+ *     "6–12M AED apartment" doesn't really want a 1M studio: it
+ *     usually signals off-mandate inventory or stale legacy data. We
+ *     award a small bounded reward proportional to how close the deal
+ *     is to the floor, never full marks.
+ *
+ * The mandate budget may be in any supported currency; both the asking
+ * price and the budget are converted to SAR before the comparison.
  */
 function scoreP5(askingPriceSAR, budgetMinSAR, budgetMaxSAR, currencyMeta) {
   const maxPts = 15;
@@ -385,6 +397,26 @@ function scoreP5(askingPriceSAR, budgetMinSAR, budgetMaxSAR, currencyMeta) {
   }
 
   const bMin = budgetMinSAR && budgetMinSAR > 0 && budgetMinSAR < budgetMaxSAR ? budgetMinSAR : 0;
+
+  if (bMin > 0 && askingPriceSAR < bMin) {
+    // Below floor: bounded reward based on closeness to the floor.
+    // closeness = askingPriceSAR / bMin maps [0..bMin] → [0..1].
+    // We cap the reward at 40% of the pillar so a clearly off-mandate
+    // deal can never out-score a properly-banded one.
+    const closeness = Math.max(0, Math.min(1, askingPriceSAR / bMin));
+    const pts = Math.round(closeness * (maxPts * 0.4));
+    return {
+      pts,
+      max: maxPts,
+      note: "below_budget_floor",
+      asking_sar: Math.round(askingPriceSAR),
+      budget_min_sar: Math.round(bMin),
+      budget_max_sar: Math.round(budgetMaxSAR),
+      floor_distance_pct: Math.round((1 - closeness) * 100),
+      ...currencyMeta,
+    };
+  }
+
   const window = budgetMaxSAR - bMin;
   if (window <= 0) {
     return { pts: 7, max: maxPts, note: "degenerate_budget_window" };
@@ -480,7 +512,30 @@ export async function computeInvestmentScore({ candidate, mandate, supabase }) {
 
   const districtRaw = candidate.district || "";
   const propertyTypeRaw = candidate.property_type || "";
-  const marketRows = await fetchMarketRows(supabase, districtRaw, propertyTypeRaw, countryCode);
+  const rawMarketRows = await fetchMarketRows(supabase, districtRaw, propertyTypeRaw, countryCode);
+
+  // Market observations are stored in the country's native currency
+  // (SAR for SA, AED for AE, EUR for ES/GR, TRY for TR). The deal PSM
+  // we compare against is already SAR-normalized, so we must normalise
+  // the market PSM the same way before P1 computes its ratio. P2
+  // momentum uses ratios of same-currency PSMs and is unaffected; P3
+  // only reads transaction_count so it's unaffected too. We still
+  // normalise the rows once here so downstream pillars don't need to
+  // know about currency at all.
+  const marketCurrency = resolveListingCurrency(null, countryCode);
+  const marketFxToSAR = getFxRateToSAR(marketCurrency) ?? 1;
+  const marketRows = rawMarketRows.map((row) => ({
+    ...row,
+    average_price_per_sqm: row.average_price_per_sqm != null
+      ? Number(row.average_price_per_sqm) * marketFxToSAR
+      : row.average_price_per_sqm,
+    min_price_per_sqm: row.min_price_per_sqm != null
+      ? Number(row.min_price_per_sqm) * marketFxToSAR
+      : row.min_price_per_sqm,
+    max_price_per_sqm: row.max_price_per_sqm != null
+      ? Number(row.max_price_per_sqm) * marketFxToSAR
+      : row.max_price_per_sqm,
+  }));
 
   const latestMarketRow = marketRows.length
     ? marketRows[marketRows.length - 1]
