@@ -62,8 +62,75 @@ function pickBaseUrl(mandate = {}) {
   return HOSTS[pickCountryCode(mandate)] || HOSTS.AE;
 }
 
+// PF emirate IDs verified via probing (`/en/search?c=1&l=<id>`):
+//   l=1 Dubai, l=2 Umm Al Quwain, l=3 Ras Al Khaimah, l=4 Sharjah,
+//   l=5 Ajman, l=6 Abu Dhabi, l=7 Fujairah.
+// Saudi PF (.sa) uses its own scheme; we only expose UAE IDs here
+// because the cross-border MVP mandates all target AE.
+const PF_LOCATION_IDS = {
+  AE: {
+    dubai: "1",
+    "abu dhabi": "6",
+    abudhabi: "6",
+    sharjah: "4",
+    ajman: "5",
+    ras_al_khaimah: "3",
+    "ras al khaimah": "3",
+    rak: "3",
+    umm_al_quwain: "2",
+    "umm al quwain": "2",
+    uaq: "2",
+    fujairah: "7",
+  },
+};
+
+function pickLocationId(mandate = {}) {
+  const country = pickCountryCode(mandate);
+  const map = PF_LOCATION_IDS[country];
+  if (!map) return null;
+  const box = buyBox(mandate);
+  const locations = Array.isArray(mandate.target_locations_json) ? mandate.target_locations_json : [];
+  // Try buy-box city first (most specific), then mandate.target_locations_json.
+  const candidates = [box.city, box.target_city, mandate.target_city, ...locations];
+  for (const candidate of candidates) {
+    const key = String(candidate || "").trim().toLowerCase();
+    if (map[key]) return map[key];
+  }
+  return null;
+}
+
+// Rough FX → AED for cross-border mandates that store their budget in
+// another currency. Intentionally coarse: PF accepts integer price
+// floors/tops and an over-broad band is safer than a too-tight one.
+const FX_TO_AED = { AED: 1, USD: 3.67, EUR: 4, GBP: 4.7, SAR: 0.98 };
+
+function pickPriceRange(mandate = {}) {
+  const box = buyBox(mandate);
+  const range = (mandate.budget_range_json && typeof mandate.budget_range_json === "object")
+    ? mandate.budget_range_json
+    : {};
+  const rawMin = box.budget_min_native ?? box.budget_min ?? range.min ?? null;
+  const rawMax = box.budget_max_native ?? box.budget_max ?? range.max ?? null;
+  const currency = String(
+    box.budget_currency || mandate.budget_currency || range.currency || "AED",
+  ).toUpperCase();
+  const fx = FX_TO_AED[currency] ?? null;
+  if (!fx) return { min: null, max: null };
+  const min = Number.isFinite(Number(rawMin)) && Number(rawMin) > 0 ? Math.round(Number(rawMin) * fx) : null;
+  const max = Number.isFinite(Number(rawMax)) && Number(rawMax) > 0 ? Math.round(Number(rawMax) * fx) : null;
+  return { min, max };
+}
+
+function pickBedroomRange(mandate = {}) {
+  const box = buyBox(mandate);
+  const min = Number.isFinite(Number(box.bedrooms_min)) ? Number(box.bedrooms_min) : null;
+  const max = Number.isFinite(Number(box.bedrooms_max)) ? Number(box.bedrooms_max) : null;
+  return { min, max };
+}
+
 function searchPath(mandate = {}) {
-  // c=1 → for sale. fu=0 → unfurnished filter off. rp=y → results paginated.
+  // c=1 → for sale. t=<id> property type. l=<id> emirate filter.
+  // pf/pt → price floor/top in AED. bf/bt → bedrooms floor/top.
   const box = buyBox(mandate);
   const params = new URLSearchParams();
   params.set("c", "1");
@@ -73,6 +140,14 @@ function searchPath(mandate = {}) {
     else if (/villa|townhouse|فيلا/.test(value)) params.set("t", "35");
     else if (/land|plot|أرض/.test(value)) params.set("t", "5");
   }
+  const locationId = pickLocationId(mandate);
+  if (locationId) params.set("l", locationId);
+  const { min: priceMin, max: priceMax } = pickPriceRange(mandate);
+  if (priceMin) params.set("pf", String(priceMin));
+  if (priceMax) params.set("pt", String(priceMax));
+  const { min: bedMin, max: bedMax } = pickBedroomRange(mandate);
+  if (bedMin) params.set("bf", String(bedMin));
+  if (bedMax) params.set("bt", String(bedMax));
   return `/en/search?${params.toString()}`;
 }
 

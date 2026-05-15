@@ -631,6 +631,65 @@ test("PropertyFinder adapter falls back to URL slug for city/district when NEXT_
   assert.match(candidate.district, /Saadiyat/);
 });
 
+test("PropertyFinder buildSearchUrl applies emirate, price band and bedroom filters from mandate", async () => {
+  const { PropertyFinderBrowsingAdapter } = await import("../src/adapters/property-finder.js");
+
+  // Dubai apartment, 6-12M AED, 2-4 bedrooms.
+  const dubai = PropertyFinderBrowsingAdapter.buildSearchUrl({
+    target_country_codes: ["AE"],
+    target_locations_json: ["Dubai"],
+    budget_currency: "AED",
+    budget_range_json: { min: 6_000_000, max: 12_000_000, currency: "AED" },
+    buy_box_json: {
+      property_type: "apartment",
+      city: "Dubai",
+      bedrooms_min: 2,
+      bedrooms_max: 4,
+    },
+  });
+  const dubaiUrl = new URL(dubai);
+  assert.equal(dubaiUrl.host, "www.propertyfinder.ae");
+  assert.equal(dubaiUrl.searchParams.get("c"), "1");
+  assert.equal(dubaiUrl.searchParams.get("t"), "1");
+  assert.equal(dubaiUrl.searchParams.get("l"), "1");
+  assert.equal(dubaiUrl.searchParams.get("pf"), "6000000");
+  assert.equal(dubaiUrl.searchParams.get("pt"), "12000000");
+  assert.equal(dubaiUrl.searchParams.get("bf"), "2");
+  assert.equal(dubaiUrl.searchParams.get("bt"), "4");
+
+  // Abu Dhabi villa, no price filter (open-ended budget).
+  const abuDhabi = PropertyFinderBrowsingAdapter.buildSearchUrl({
+    target_country_codes: ["AE"],
+    target_locations_json: ["Abu Dhabi"],
+    buy_box_json: { property_type: "villa" },
+  });
+  const abuDhabiUrl = new URL(abuDhabi);
+  assert.equal(abuDhabiUrl.searchParams.get("t"), "35");
+  assert.equal(abuDhabiUrl.searchParams.get("l"), "6");
+  assert.equal(abuDhabiUrl.searchParams.get("pf"), null);
+  assert.equal(abuDhabiUrl.searchParams.get("pt"), null);
+
+  // EUR-denominated mandate gets converted to AED for the filter band.
+  const eurMandate = PropertyFinderBrowsingAdapter.buildSearchUrl({
+    target_country_codes: ["AE"],
+    target_locations_json: ["Dubai"],
+    budget_currency: "EUR",
+    budget_range_json: { min: 1_500_000, max: 3_000_000, currency: "EUR" },
+    buy_box_json: { property_type: "apartment" },
+  });
+  const eurUrl = new URL(eurMandate);
+  assert.equal(eurUrl.searchParams.get("pf"), "6000000");
+  assert.equal(eurUrl.searchParams.get("pt"), "12000000");
+
+  // Unknown city falls back to no `l` filter rather than guessing a wrong emirate.
+  const unknown = PropertyFinderBrowsingAdapter.buildSearchUrl({
+    target_country_codes: ["AE"],
+    target_locations_json: ["Atlantis"],
+    buy_box_json: { property_type: "apartment" },
+  });
+  assert.equal(new URL(unknown).searchParams.get("l"), null);
+});
+
 test("PropertyFinder photo extractor pulls per-listing URLs from NEXT_DATA and drops site assets", async () => {
   const {
     PropertyFinderBrowsingAdapter,
