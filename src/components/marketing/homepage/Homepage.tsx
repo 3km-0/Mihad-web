@@ -532,14 +532,21 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
   const isReadyForAuth = Boolean(result && selectedAnswerCount >= 2);
 
   return (
-    <div className={cn('mx-auto w-full transition-all duration-500', result ? 'mt-5 max-w-[1000px]' : 'mt-8 max-w-[940px]')}>
-      <div className="mb-3 flex items-center justify-center">
+    <div className={cn('mx-auto w-full transition-all duration-500', result ? 'mt-5 max-w-[1000px]' : 'mt-8 max-w-[860px]')}>
+      {/* Agent identity header */}
+      <div className={cn('mb-4 flex items-center justify-center gap-3', isRtl && 'flex-row-reverse')}>
+        <div className="relative h-7 w-7 shrink-0">
+          <span className={cn('absolute inset-0 rounded-full bg-accent/10', loading ? 'scout-orb-ring-active' : 'scout-orb-ring')} />
+          <span className={cn('absolute inset-[3px] rounded-full bg-accent/25', loading ? 'scout-orb-ring-active' : 'scout-orb-ring')} />
+          <span className={cn('absolute inset-[6px] rounded-full bg-accent', loading ? 'scout-orb-ring-active' : 'scout-orb-ring')} />
+        </div>
         <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-muted">{copy.label}</span>
       </div>
+
       {!result ? (
         <form
           className={cn(
-            'flex flex-col gap-2 rounded-[26px] border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.06)] p-2 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur transition-all sm:flex-row',
+            'flex flex-col gap-2 rounded-[22px] border-2 border-border bg-surface p-2 shadow-[var(--shadowMd)] transition-all duration-200 focus-within:border-accent/40 sm:flex-row',
             isRtl && 'sm:flex-row-reverse',
           )}
           onSubmit={(event) => {
@@ -552,27 +559,39 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
             onChange={(event) => setPrompt(event.target.value)}
             placeholder={copy.placeholder}
             dir={isRtl ? 'rtl' : 'ltr'}
-            className="min-h-[64px] min-w-0 flex-1 bg-transparent px-5 text-lg text-text outline-none placeholder:text-text-muted transition-all sm:min-h-[72px]"
+            className="min-h-[56px] min-w-0 flex-1 bg-transparent px-5 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[64px]"
           />
           <button
             type="submit"
             disabled={loading || prompt.trim().length < 4}
-            className="inline-flex min-h-[58px] shrink-0 items-center justify-center gap-2 rounded-[22px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[72px] sm:px-7"
+            className="inline-flex min-h-[50px] shrink-0 items-center justify-center gap-2 rounded-[16px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[64px] sm:px-6"
           >
             <Send className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-            <span>{loading ? '...' : copy.submit}</span>
+            <span className="hidden sm:inline">{copy.submit}</span>
           </button>
         </form>
       ) : null}
-      {!result ? (
-        <div className="mx-auto mt-4 flex max-w-[900px] flex-wrap justify-center gap-2">
+
+      {/* Thinking indicator */}
+      {loading && !result ? (
+        <div className="mx-auto mt-5 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="thinking-dot h-2 w-2 rounded-full bg-accent/60" />
+            <span className="thinking-dot h-2 w-2 rounded-full bg-accent/60" />
+            <span className="thinking-dot h-2 w-2 rounded-full bg-accent/60" />
+          </div>
+        </div>
+      ) : null}
+
+      {!result && !loading ? (
+        <div className="mx-auto mt-3 flex max-w-[860px] flex-wrap justify-center gap-1.5">
           {copy.examples.map((example) => (
             <button
               key={example}
               type="button"
               onClick={() => applyExamplePrompt(example)}
               dir={isRtl ? 'rtl' : 'ltr'}
-              className="min-h-[44px] rounded-full border border-border bg-surface-alt px-4 py-2 text-sm leading-5 text-text-soft transition hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/10 hover:text-text"
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs leading-5 text-text-muted transition hover:-translate-y-0.5 hover:border-accent/40 hover:text-text-soft"
             >
               {example}
             </button>
@@ -588,11 +607,11 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
         <section
           aria-live="polite"
           className={cn(
-            'mt-3 overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.14)] bg-[rgba(14,14,13,0.94)] text-left shadow-[0_28px_90px_rgba(0,0,0,0.38)] backdrop-blur animate-in fade-in slide-in-from-bottom-3 duration-500',
+            'mt-3 overflow-hidden rounded-[28px] border border-border bg-surface text-left shadow-[var(--shadowMd)] animate-in fade-in slide-in-from-bottom-3 duration-500',
             isRtl && 'text-right',
           )}
         >
-          <div className="border-b border-[rgba(255,255,255,0.1)] p-4 sm:p-5">
+          <div className="border-b border-border p-4 sm:p-5">
             <div className={cn('flex items-center justify-between gap-4', isRtl && 'flex-row-reverse')}>
               <div>
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.agent}</p>
@@ -615,14 +634,14 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
             </div>
 
             <div className={cn('flex', isRtl ? 'justify-end' : 'justify-start')}>
-              <div className="max-w-[92%] rounded-[24px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
+              <div className="max-w-[92%] rounded-[24px] border border-border bg-surface-alt p-4">
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.agent}</p>
                 <p className="mt-2 text-lg font-semibold text-text">{copy.understood}</p>
                 <p className="mt-1 text-sm leading-6 text-text-soft">
                   {result.turn.next_question || result.turn.text}
                 </p>
 
-                <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.09)] bg-[rgba(0,0,0,0.18)] p-3">
+                <div className="mt-4 rounded-[18px] border border-border bg-[color:var(--surface-nested)] p-3">
                   <p className="mb-3 text-sm font-semibold text-text">{copy.stepsTitle}</p>
                   {[
                     copy.stepParse,
@@ -645,11 +664,11 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
                   })}
                 </div>
 
-                <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.09)] bg-[rgba(0,0,0,0.18)] p-3">
+                <div className="mt-4 rounded-[18px] border border-border bg-[color:var(--surface-nested)] p-3">
                   <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{copy.extracted}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {briefItems.length ? briefItems.map((item) => (
-                      <div key={item.label} className="rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] p-3">
+                      <div key={item.label} className="rounded-[14px] border border-border bg-surface p-3">
                         <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">{item.label}</p>
                         <p className="mt-1 text-sm font-bold text-text">{item.value || copy.fallback}</p>
                       </div>
@@ -659,17 +678,17 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.09)] bg-[rgba(0,0,0,0.18)] p-3">
+                <div className="mt-4 rounded-[18px] border border-border bg-[color:var(--surface-nested)] p-3">
                   <div className={cn('mb-3 flex items-center justify-between gap-3', isRtl && 'flex-row-reverse')}>
                     <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{copy.previewTitle}</p>
-                    <span className="rounded-full border border-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[10px] font-semibold text-text-muted">
+                    <span className="rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold text-text-muted">
                       {result.preview_status?.live_preview ? copy.livePreview : copy.samplePreview}
                     </span>
                   </div>
                   {previewCards.length ? (
                     <div className="grid gap-2 md:grid-cols-3">
                       {previewCards.map((card) => (
-                        <div key={`${card.title}-${card.location}`} className="rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] p-3">
+                        <div key={`${card.title}-${card.location}`} className="rounded-[14px] border border-border bg-surface p-3">
                           <p className="text-sm font-bold text-text">{card.title}</p>
                           <p className="mt-1 text-xs text-text-muted">{card.location}</p>
                           <p className="mt-2 text-xs leading-5 text-text-soft">{card.note || copy.preview}</p>
@@ -699,7 +718,7 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
             ) : null}
 
             <div className={cn('flex', isRtl ? 'justify-end' : 'justify-start')}>
-              <div className="max-w-[92%] rounded-[24px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
+              <div className="max-w-[92%] rounded-[24px] border border-border bg-surface-alt p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{copy.beforeSearch}</p>
                 <h3 className="mt-2 text-xl font-semibold tracking-normal text-text">
                   {isReadyForAuth ? copy.readyTitle : copy.questionsTitle}
@@ -724,7 +743,7 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
                                 'min-h-[36px] rounded-full border px-3.5 text-sm font-semibold transition',
                                 selected
                                   ? 'border-accent bg-accent text-[color:var(--accent-text)]'
-                                  : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.035)] text-text-soft hover:border-accent/50 hover:text-text',
+                                  : 'border-border bg-surface text-text-soft hover:border-accent/50 hover:text-text',
                               )}
                             >
                               {option.label}
@@ -739,11 +758,11 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
             </div>
           </div>
 
-          <div className={cn('flex flex-col gap-3 border-t border-[rgba(255,255,255,0.1)] p-4 sm:flex-row sm:items-center sm:justify-end sm:p-5', isRtl && 'sm:flex-row-reverse')}>
+          <div className={cn('flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-end sm:p-5', isRtl && 'sm:flex-row-reverse')}>
             <button
               type="button"
               onClick={editRequest}
-              className="inline-flex min-h-[46px] items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.12)] bg-transparent px-5 text-sm font-semibold text-text transition hover:border-accent/40 hover:text-accent"
+              className="inline-flex min-h-[46px] items-center justify-center rounded-[14px] border border-border bg-transparent px-5 text-sm font-semibold text-text transition hover:border-accent/40 hover:text-accent"
             >
               {copy.edit}
             </button>
@@ -1658,6 +1677,47 @@ function HeroVisualScene({
   );
 }
 
+function Footer({ content }: { content: Content }) {
+  return (
+    <footer className="border-t border-border bg-surface">
+      <div className="mx-auto max-w-[1280px] px-5 py-10 sm:px-8 sm:py-12 lg:px-[72px]">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {content.footer.columns.map((col) => (
+            <div key={col.title}>
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                {col.title}
+              </div>
+              <ul className="space-y-2.5">
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-text-soft transition-colors hover:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-border pt-8 sm:flex-row sm:items-center">
+          <Link
+            href="/home"
+            className="font-[family:var(--font-instrument-serif)] text-xl font-semibold text-text transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2"
+          >
+            {content.brand.name}
+          </Link>
+          <p className="max-w-[52ch] text-xs leading-5 text-text-muted">
+            {content.footer.legalNote}
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export function Homepage() {
   const content = useMarketingHomeContent();
   const locale = useLocale();
@@ -1666,7 +1726,7 @@ export function Homepage() {
 
   return (
     <div
-      data-theme="zohal-dark"
+      data-theme="zohal-light"
       className="website-shell relative isolate min-h-screen overflow-x-hidden bg-[color:var(--bg)] font-[family:var(--font-plus-jakarta)]"
     >
       <Nav content={content} />
@@ -1675,20 +1735,31 @@ export function Homepage() {
         <Section className={cn('grid place-items-center py-8 transition-all duration-500 sm:py-10 lg:py-12', scoutActive ? 'min-h-[calc(100svh-78px)]' : 'min-h-[calc(100svh-78px)]')}>
           <div className="relative mx-auto w-full max-w-[1060px] text-center">
             <Reveal>
+              <div
+                className={cn(
+                  'mb-5 flex justify-center overflow-hidden transition-all duration-500',
+                  scoutActive ? 'max-h-0 opacity-0' : 'max-h-14 opacity-100',
+                )}
+              >
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 text-[11px] font-medium tracking-[0.06em] text-text-muted shadow-[var(--shadowSm)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                  {content.brand.tagline}
+                </span>
+              </div>
               <h1
                 className={cn(
-                  'mx-auto max-w-[13ch] overflow-hidden font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-normal text-text transition-all duration-500',
+                  'mx-auto max-w-[18ch] overflow-hidden font-[family:var(--font-instrument-serif)] font-semibold leading-[1.08] tracking-tight text-text transition-all duration-500',
                   scoutActive
                     ? 'max-h-0 text-[2rem] opacity-0'
-                    : 'max-h-[22rem] text-[2.85rem] opacity-100 sm:text-[4.2rem] lg:text-[5.1rem]',
+                    : 'max-h-[14rem] text-[2.4rem] opacity-100 sm:text-[3rem] lg:text-[3.6rem]',
                 )}
               >
                 {content.hero.headline}
               </h1>
               <p
                 className={cn(
-                  'mx-auto max-w-[43rem] overflow-hidden text-base leading-7 text-text-soft transition-all duration-500 sm:text-lg sm:leading-8',
-                  scoutActive ? 'mt-0 max-h-0 opacity-0' : 'mt-6 max-h-32 opacity-100',
+                  'mx-auto max-w-[40rem] overflow-hidden text-[0.95rem] leading-7 text-text-soft transition-all duration-500 sm:text-base sm:leading-8',
+                  scoutActive ? 'mt-0 max-h-0 opacity-0' : 'mt-5 max-h-32 opacity-100',
                 )}
               >
                 {content.hero.subhead}
@@ -1709,6 +1780,7 @@ export function Homepage() {
         </Section>
 
       </main>
+      <Footer content={content} />
     </div>
   );
 }
