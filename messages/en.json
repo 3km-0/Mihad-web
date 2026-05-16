@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Zohal",
+    "appName": "Mihad",
     "tagline": "AI STEM Notebook",
     "loading": "Loading...",
     "error": "An error occurred",
@@ -30,7 +30,7 @@
     "items": "{count} items",
     "empty": "Empty",
     "user": "User",
-    "zohalUser": "Zohal user",
+    "zohalUser": "Mihad user",
     "switchToArabic": "Switch to Arabic",
     "switchToEnglish": "Switch to English",
     "moreActions": "More actions"
@@ -69,8 +69,8 @@
     "continueWith": "Or continue with",
     "termsAgree": "By signing up, you agree to our",
     "and": "and",
-    "welcomeBack": "Welcome back to Zohal",
-    "joinZohal": "Join Zohal",
+    "welcomeBack": "Welcome back to Mihad",
+    "joinMihad": "Join Mihad",
     "fillAllFields": "Please fill in all fields",
     "fillRequiredFields": "Please fill in all required fields",
     "passwordsDoNotMatch": "Passwords do not match",
@@ -98,7 +98,7 @@
     "apple": "Apple",
     "google": "Google",
     "microsoft": "Microsoft",
-    "createAccount": "Create your Zohal account",
+    "createAccount": "Create your Mihad account",
     "acceptInvite": "Accept invite",
     "acceptInviteLoginRequired": "Please sign in (or create an account) to accept this invite.",
     "acceptingInvite": "Accepting invite…",
@@ -107,13 +107,13 @@
   },
   "landing": {
     "hero": {
-      "title": "Zohal",
+      "title": "Mihad",
       "subtitle": "The AI STEM notebook for students and engineers. Read PDFs, write by hand, and get intelligent explanations in the margin.",
       "downloadApp": "Download on App Store",
       "getSupport": "Get Support"
     },
     "features": {
-      "title": "What is Zohal?",
+      "title": "What is Mihad?",
       "pdfReader": {
         "title": "PDF Reader",
         "description": "Import and read your textbooks, papers, and documents with a clean, distraction-free interface."
@@ -344,7 +344,7 @@
   "askAgent": {
     "navTitle": "Search",
     "globalTitle": "Search",
-    "workspaceTitle": "Ask Zohal",
+    "workspaceTitle": "Ask Mihad",
     "globalPlaceholder": "Search, ask, or start acquisition work…",
     "workspacePlaceholder": "Ask anything in this workspace…",
     "activity": "Activity",
@@ -361,7 +361,7 @@
     "noConversations": "No conversations yet.",
     "emptyGlobalTitle": "Ask anything",
     "emptyWorkspaceTitle": "Ask anything",
-    "librarySource": "Zohal Library",
+    "librarySource": "Mihad Library",
     "errors": {
       "auth": "Sign in again to use Ask.",
       "history": "Unable to load that conversation.",
@@ -938,7 +938,7 @@
     "googleDrive": "Google Drive",
     "oneDrive": "OneDrive",
     "whatsapp": "WhatsApp",
-    "zohalLibrary": "Zohal Library",
+    "zohalLibrary": "Mihad Library",
     "whatsappTitle": "Import from WhatsApp",
     "whatsappLoading": "Checking WhatsApp setup...",
     "whatsappChannelStatus": "Channel status",
@@ -948,13 +948,13 @@
     "whatsappStatusAuthError": "Please sign in again to load WhatsApp status.",
     "whatsappStatusLoadError": "Unable to load WhatsApp status. Try again.",
     "whatsappLinkedPhone": "Linked phone number",
-    "whatsappBusinessNumber": "Zohal WhatsApp",
+    "whatsappBusinessNumber": "Mihad WhatsApp",
     "whatsappPhoneMissing": "Add your phone number in Settings before using WhatsApp import for this workspace.",
     "whatsappWorkspaceName": "Workspace name",
     "whatsappWorkspaceLinked": "This workspace is linked to your WhatsApp phone.",
     "whatsappWorkspaceNotLinked": "Link this workspace to your phone before using WhatsApp here.",
     "whatsappStep1": "Step 1: Link this workspace",
-    "whatsappStep1Desc": "This lets Zohal match your WhatsApp messages to the correct workspace without IDs or labels.",
+    "whatsappStep1Desc": "This lets Mihad match your WhatsApp messages to the correct workspace without IDs or labels.",
     "whatsappStep2": "Step 2: Choose your WhatsApp action",
     "whatsappStep2Desc": "Use one path to start or continue acquisition work, and the other to send evidence into the workspace.",
     "whatsappProjectAction": "Continue on WhatsApp",
@@ -986,7 +986,7 @@
     "editSubtitle": "Adjust the existing workspace shell without changing the saved acquisition mandate.",
     "eyebrow": "Acquisition mandate",
     "acquisitionTitle": "Create acquisition workspace",
-    "acquisitionSubtitle": "Define the investor buy box so Zohal can source, screen, verify, and turn serious opportunities into a live acquisition workspace.",
+    "acquisitionSubtitle": "Define the investor buy box so Mihad can source, screen, verify, and turn serious opportunities into a live acquisition workspace.",
     "name": "Mandate name",
     "namePlaceholder": "Riyadh North value-add mandate",
     "city": "City",
@@ -1010,10 +1010,10 @@
     "avoid": "Avoid",
     "avoidPlaceholder": "Structural issues, unclear title, overbuilt capex",
     "mandateNotes": "Operator notes",
-    "mandateNotesPlaceholder": "Anything Zohal should remember while sourcing and screening opportunities.",
+    "mandateNotesPlaceholder": "Anything Mihad should remember while sourcing and screening opportunities.",
     "budget": "Budget",
     "notSet": "Not set",
-    "buyBoxSubtitle": "The minimum mandate details Zohal needs before it starts sourcing and screening.",
+    "buyBoxSubtitle": "The minimum mandate details Mihad needs before it starts sourcing and screening.",
     "description": "Description (optional)",
     "descriptionPlaceholder": "Short operator summary for this workspace",
     "nameRequired": "Name is required",
@@ -1213,7 +1213,7 @@
     "activating": "Activating Your Subscription",
     "pleaseWait": "Please wait while we confirm your payment...",
     "welcome": "Welcome!",
-    "welcomeTo": "Welcome to Zohal {tier}!",
+    "welcomeTo": "Welcome to Mihad {tier}!",
     "subscriptionActive": "Your subscription is now active. Enjoy full access to {tier}.",
     "trialActive": "Your Team access is active.",
     "youNowHave": "You now have access to:",
@@ -1225,7 +1225,7 @@
     "teamCollaboration": "Shared workspaces and team controls",
     "renewsOn": "Your subscription will renew on {date}",
     "trialEndsOn": "Your trial ends on {date}",
-    "startUsing": "Start Using Zohal",
+    "startUsing": "Start Using Mihad",
     "viewDetails": "View Subscription Details"
   },
   "portfolioPage": {
@@ -1308,7 +1308,7 @@
     "whatsappDesc": "Link the phone number you will message from when sending sources into a workspace.",
     "whatsappPhoneLabel": "Your WhatsApp number",
     "whatsappPhonePlaceholder": "+9665XXXXXXXX",
-    "whatsappPhoneHint": "Use the same number you will use to message Zohal on WhatsApp.",
+    "whatsappPhoneHint": "Use the same number you will use to message Mihad on WhatsApp.",
     "whatsappPhoneSave": "Save WhatsApp number",
     "whatsappPhoneSaveSuccess": "WhatsApp number updated.",
     "whatsappPhoneSaveError": "Unable to save your WhatsApp number right now. Try again.",
@@ -1352,7 +1352,7 @@
       "presetsTitle": "Start from a preset",
       "presetsDescription": "Choose the closest starting point, then adjust only what this source needs.",
       "suggestedPaths": "Suggested paths",
-      "previewTitle": "Preview of what Zohal will use",
+      "previewTitle": "Preview of what Mihad will use",
       "previewDescription": "Test the connection here to confirm the response and refine the path before saving.",
       "previewPrompt": "Run a connection test to see a lightweight response preview here.",
       "previewEmpty": "No preview available yet.",
@@ -1365,11 +1365,11 @@
         },
         "auth": {
           "title": "Authentication",
-          "description": "Choose how Zohal should authenticate and only fill the fields this auth type needs."
+          "description": "Choose how Mihad should authenticate and only fill the fields this auth type needs."
         },
         "mapping": {
           "title": "Data Mapping",
-          "description": "Point Zohal to the useful data and optionally tune which fields matter most."
+          "description": "Point Mihad to the useful data and optionally tune which fields matter most."
         }
       },
       "presets": {
@@ -1507,7 +1507,7 @@
     "orgAppliesAllWorkspaces": "Applies to all organization workspaces ({count}).",
     "loading": "Loading data locality configuration...",
     "currentRegion": "Current Team/Enterprise region: {region}",
-    "sharedMode": "Current mode: shared platform infrastructure (Zohal-managed region)",
+    "sharedMode": "Current mode: shared platform infrastructure (Mihad-managed region)",
     "ineligibleTitle": "Region selection is not available",
     "ineligibleBody": "This feature is available only for Team and Enterprise organizations.",
     "orgIneligibleBody": "Region selection is available on Team plans and Enterprise contracts.",
@@ -1517,7 +1517,7 @@
     "regionLockedBody": "Region selection is permanent in v1. This organization is locked to its current region.",
     "reason": "Reason",
     "confirmTitle": "Provision region {region}",
-    "confirmBody": "This selection is permanent in v1. Zohal will create dedicated storage resources in {city}, {country}. Existing documents will not move.",
+    "confirmBody": "This selection is permanent in v1. Mihad will create dedicated storage resources in {city}, {country}. Existing documents will not move.",
     "compliance": "Compliance Coverage",
     "cancel": "Cancel",
     "confirmProvision": "Confirm & Provision",
@@ -1536,7 +1536,7 @@
       "title": "Published & Draft",
       "newNamePlaceholder": "New template name",
       "empty": "No templates yet.",
-      "zohalTemplates": "Zohal Templates",
+      "zohalTemplates": "Mihad Templates",
       "yourTemplates": "Your Templates",
       "loadingTemplates": "Loading templates...",
       "templatesAutoCreated": "Templates will be created automatically."
@@ -1551,7 +1551,7 @@
       "duplicateToEdit": "Duplicate to Edit",
       "confirmRemoveModule": "Remove this module from the template?",
       "confirmRemoveVariable": "Remove this variable from the template?",
-      "systemTemplateBanner": "This is a Zohal system template. Duplicate it to create your own editable version.",
+      "systemTemplateBanner": "This is a Mihad system template. Duplicate it to create your own editable version.",
       "viewModulesSystem": "View the extraction modules defined in this system template.",
       "viewVariablesSystem": "View the variables defined in this system template.",
       "sections": {
@@ -1701,7 +1701,7 @@
     "kindBadge": "Kind: {value}"
   },
   "zohalLibrary": {
-    "title": "Zohal Library",
+    "title": "Mihad Library",
     "close": "Close",
     "searchPlaceholder": "Search…",
     "import": "Import",
@@ -1747,7 +1747,7 @@
       "single": "Single document",
       "bundle": "Related documents",
       "related": "Related documents",
-      "help": "Add related documents for this run when you need cross-document context. Zohal remembers the last successful set for next time.",
+      "help": "Add related documents for this run when you need cross-document context. Mihad remembers the last successful set for next time.",
       "enforced": "This template requires scope"
     },
     "related": {
@@ -1793,7 +1793,7 @@
       "label": "Template",
       "default": "Automatic",
       "helperSelected": "Uses the selected template to gate variables/modules.",
-      "helperDefault": "Uses the recommended Zohal template for this document."
+      "helperDefault": "Uses the recommended Mihad template for this document."
     }
   },
   "contractAnalysis": {
@@ -1826,7 +1826,7 @@
       "manage": "Manage",
       "label": "Template",
       "defaultRenewalPack": "Automatic",
-      "zohalTemplates": "Zohal Templates",
+      "zohalTemplates": "Mihad Templates",
       "yourTemplates": "Your Templates",
       "loadingTemplates": "Loading templates...",
       "templatesAutoCreated": "Templates will be created automatically."
@@ -1863,7 +1863,7 @@
       "scopeDocset": "Related documents",
       "scopeEnforced": "This template enforces: {scope}",
       "title": "Related documents",
-      "help": "Add supporting documents for this run. Zohal remembers the last successful set automatically.",
+      "help": "Add supporting documents for this run. Mihad remembers the last successful set automatically.",
       "savedPickerPlaceholder": "Use remembered related documents",
       "manageSaved": "Manage",
       "unnamed": "Unnamed related set",
@@ -2310,10 +2310,10 @@
             "label": "Teams focus on mismatches instead of re-checking every page"
           }
         ],
-        "footnote": "Final judgment stays with your team. Zohal helps you move faster without hiding the source, the checks, or the review decisions behind each result."
+        "footnote": "Final judgment stays with your team. Mihad helps you move faster without hiding the source, the checks, or the review decisions behind each result."
       },
       "capabilities": {
-        "title": "What Zohal checks that generic AI does not.",
+        "title": "What Mihad checks that generic AI does not.",
         "tabs": [
           {
             "id": "verified-facts",
@@ -2342,7 +2342,7 @@
             "bullets": [
               "Bring in files from uploads, WhatsApp, Google Drive, and OneDrive",
               "Arabic and English documents can be reviewed together with translation and localization mismatches surfaced early",
-              "On supported web workflows, Zohal can process extracted document data without storing the original file"
+              "On supported web workflows, Mihad can process extracted document data without storing the original file"
             ]
           },
           {
@@ -2441,7 +2441,7 @@
         "rightCard": {
           "title": "Privacy and control in practice",
           "bullets": [
-            "On supported US web workflows, Zohal can process extracted document data without storing the original file on Zohal servers",
+            "On supported US web workflows, Mihad can process extracted document data without storing the original file on Mihad servers",
             "On iOS, files can stay on device for private workflows",
             "WhatsApp, Google Drive, and OneDrive fit how teams already receive and store files",
             "Outputs stay structured for review, sharing, and follow-up"
@@ -2511,7 +2511,7 @@
       },
       "insights": {
         "id": "insights",
-        "title": "Where teams use Zohal first.",
+        "title": "Where teams use Mihad first.",
         "subhead": "Common review jobs where proof matters more than another generic summary.",
         "items": [
           {
@@ -2553,8 +2553,8 @@
         "items": [
           {
             "id": "proof",
-            "q": "How does Zohal use AI on important documents?",
-            "a": "Zohal extracts the important fields from the document, links them back to the source, and runs a second verifier pass so weak or unsupported results stay marked for review."
+            "q": "How does Mihad use AI on important documents?",
+            "a": "Mihad extracts the important fields from the document, links them back to the source, and runs a second verifier pass so weak or unsupported results stay marked for review."
           },
           {
             "id": "locality",
@@ -2574,7 +2574,7 @@
           {
             "id": "bilingual",
             "q": "Does it support Arabic and English documents together?",
-            "a": "Yes. Zohal handles Arabic and English documents together, including scans, annexes, stamped pages, and translation or localization review."
+            "a": "Yes. Mihad handles Arabic and English documents together, including scans, annexes, stamped pages, and translation or localization review."
           },
           {
             "id": "outputs",
@@ -2685,14 +2685,14 @@
       },
       "ui": {
         "mentalModelLine": "Request -> Suitable Options -> Trusted Partner -> Next Step",
-        "beforeLabel": "Without Zohal",
-        "afterLabel": "With Zohal",
+        "beforeLabel": "Without Mihad",
+        "afterLabel": "With Mihad",
         "modal": {
           "openDemoLabel": "Watch demo",
           "demoTitle": "See documents become software",
           "demoPlaceholderBody": "Sample pack preview placeholder.",
           "demoShowsLabel": "In this demo",
-          "demoShowsBody": "see how Zohal turns a document collection into a living workspace with source-linked facts, live updates, and clear next actions for the team.",
+          "demoShowsBody": "see how Mihad turns a document collection into a living workspace with source-linked facts, live updates, and clear next actions for the team.",
           "close": "Close"
         },
         "mock": {
@@ -2758,7 +2758,7 @@
   },
   "workspaceCockpitPage": {
     "subtitle": "Decision cockpit for mandate fit, evidence, scenarios, open items, and next action",
-    "askZohal": "Ask Zohal",
+    "askMihad": "Ask Mihad",
     "workspaceFallback": "Cockpit",
     "sources": "Files",
     "openCommandDrawer": "Open command drawer",
@@ -2887,7 +2887,7 @@
     "risk": "Risk",
     "mandateFit": "Mandate Fit",
     "screeningPosture": "Current screening posture",
-    "emptyPosture": "Ask Zohal to screen a listing or run a mandate search to populate the acquisition cockpit.",
+    "emptyPosture": "Ask Mihad to screen a listing or run a mandate search to populate the acquisition cockpit.",
     "evidenceLayer": "Evidence Layer",
     "sourceDocuments": "{count} source documents in this workspace.",
     "openSources": "Open Sources",
@@ -2903,7 +2903,7 @@
     "capexBody": "Condition signals and estimated capex stay modeled until verified by inspection or quote.",
     "decisionBlockers": "Decision Blockers",
     "nextAction": "Next Action",
-    "nextActionReview": "Review the latest recommendation or ask Zohal to update assumptions.",
+    "nextActionReview": "Review the latest recommendation or ask Mihad to update assumptions.",
     "nextActionSearch": "Run search or paste a listing in Search.",
     "candidateSnapshot": "Candidate Snapshot",
     "candidateDescription": "Folded into the cockpit until a separate candidate result flow is needed.",
@@ -2945,7 +2945,7 @@
     "cancel": "Cancel",
     "notSet": "Not set",
     "mandateMonitoring": "Mandate & Monitoring",
-    "mandateMonitoringDescription": "The structured brief Zohal uses to search, screen, and notify.",
+    "mandateMonitoringDescription": "The structured brief Mihad uses to search, screen, and notify.",
     "buyBox": "Buy box",
     "buyBoxSubtitle": "Mandate controls for sourcing.",
     "editBuyBox": "Edit buy box",
@@ -2960,7 +2960,7 @@
     "rejectProperty": "Reject property",
     "manualPropertyEyebrow": "Manual intake",
     "manualPropertyTitle": "Add property",
-    "manualPropertyHint": "Create a deal from user-entered facts. Zohal will mark the source as manual and keep uploads attached to this property.",
+    "manualPropertyHint": "Create a deal from user-entered facts. Mihad will mark the source as manual and keep uploads attached to this property.",
     "manualPropertyName": "Property name",
     "manualPropertyNamePlaceholder": "Villa in Al Arid",
     "manualPropertyPrice": "Asking price",
@@ -3009,7 +3009,7 @@
     "marketAnalysisPriced": "Listing implies {asking}, {delta}% {direction} the local benchmark of {benchmark} across {sample} matched market records.",
     "marketAnalysisBenchmarkOnly": "Matched local benchmark is {benchmark} across {sample} market records. Add asking price and area to score the spread directly.",
     "marketAnalysisAskingOnly": "Listing implies {asking}. No matched neighborhood SAR/sqm benchmark was found for this deal yet.",
-    "marketAnalysisNeedsFacts": "Market records are available, but this deal still needs price and area facts before Zohal can score the SAR/sqm spread.",
+    "marketAnalysisNeedsFacts": "Market records are available, but this deal still needs price and area facts before Mihad can score the SAR/sqm spread.",
     "areaLarger": "larger",
     "areaSmaller": "smaller",
     "areaDeltaAnalysis": "Listed area is {delta}% {direction} than the matched market median of {median} m2.",
@@ -3061,7 +3061,7 @@
     "underwritingRunError": "Unable to run underwriting right now.",
     "underwritingBlocked": "Underwriting blocked",
     "underwritingNeedsAssumptions": "Add required deal assumptions",
-    "underwritingNeedsAssumptionsBody": "Purchase price and rent are required before Zohal can calculate returns.",
+    "underwritingNeedsAssumptionsBody": "Purchase price and rent are required before Mihad can calculate returns.",
     "recommendationSummary": "Recommendation summary",
     "medianIrr": "Median IRR",
     "targetProbability": "Target probability",
@@ -3215,11 +3215,11 @@
     "scheduleVisit": "Schedule visit",
     "pass": "Pass",
     "approvalRequestError": "Unable to queue this approval right now.",
-    "brokerageGateHint": "Buyer-side representation must be active before Zohal sends negotiation or offer actions.",
+    "brokerageGateHint": "Buyer-side representation must be active before Mihad sends negotiation or offer actions.",
     "buyerReadiness": {
       "title": "Buyer Readiness",
       "emptyTitle": "Readiness not started",
-      "emptyBody": "Upload proof of funds or a financing letter into the secure financing folder. Zohal records readiness evidence only; it does not underwrite credit.",
+      "emptyBody": "Upload proof of funds or a financing letter into the secure financing folder. Mihad records readiness evidence only; it does not underwrite credit.",
       "usePrimaryAction": "Use the action at the top of this page when this step is next.",
       "start": "Upload proof of funds",
       "starting": "Starting...",
@@ -3271,7 +3271,7 @@
       "consentInactive": "Consent inactive"
     },
     "activeMandateStrip": "Active mandate · Riyadh renovation-relevant residential · Investor control surface",
-    "brandSubtitle": "Zohal · Acquisition cockpit",
+    "brandSubtitle": "Mihad · Acquisition cockpit",
     "evidenceTruthTitle": "Facts never blend with assumptions",
     "sourceDrawer": "Source Drawer",
     "fetchedListing": "Fetched listing",

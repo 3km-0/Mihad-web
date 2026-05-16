@@ -10,7 +10,7 @@
 // Optional:
 //   ACQUISITION_SMOKE_MANDATE_ID=<mandate uuid>
 //   ACQUISITION_SMOKE_OPPORTUNITY_IDS=<comma-separated opportunity uuids>
-//   ACQUISITION_SMOKE_PUBLICATION_BASE_URL=https://experiences-publication-api.zohal.ai
+//   ACQUISITION_SMOKE_PUBLICATION_BASE_URL=https://experiences-publication-api.mihad.properties
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -24,7 +24,7 @@ const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || p
 const publicationBaseUrl = String(
   process.env.ACQUISITION_SMOKE_PUBLICATION_BASE_URL ||
     process.env.PUBLICATION_API_BASE_URL ||
-    "https://experiences-publication-api.zohal.ai",
+    "https://experiences-publication-api.mihad.properties",
 ).replace(/\/+$/, "");
 const reportEndpoint = String(process.env.ACQUISITION_SMOKE_REPORT_ENDPOINT || "acquisition-reports").trim() === "deal-desk"
   ? "deal-desk"

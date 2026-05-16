@@ -57,7 +57,7 @@ function syntheticEmailForAddress(channel, address) {
     .update(`${channel}:${normalizeAddress(channel, address)}`)
     .digest("hex")
     .slice(0, 24);
-  return `agent+${hash}@guest.zohal.app`;
+  return `agent+${hash}@guest.mihad.properties`;
 }
 
 function titleFromText(text, fallback = "Acquisition candidate") {

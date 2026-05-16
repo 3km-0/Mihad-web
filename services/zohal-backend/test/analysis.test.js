@@ -87,7 +87,7 @@ test("private live publication state extraction prefers active revision and sour
       publication_status: "private_live",
     },
     source_binding: {
-      public_url: "https://live.zohal.ai/live/doc_demo",
+      public_url: "https://live.mihad.properties/live/doc_demo",
       published_version_id: "canon_1",
     },
   });
@@ -98,7 +98,7 @@ test("private live publication state extraction prefers active revision and sour
     scaffoldStatus: "scaffolded",
     materializationStatus: "materialized",
     canonicalVersionId: "canon_1",
-    publicUrl: "https://live.zohal.ai/live/doc_demo",
+    publicUrl: "https://live.mihad.properties/live/doc_demo",
     activeRuntime: "generated_dispatch",
     publicationStatus: "private_live",
   });

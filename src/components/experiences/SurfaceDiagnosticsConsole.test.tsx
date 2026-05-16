@@ -96,7 +96,7 @@ function diagnostics(overrides: Partial<SurfaceDiagnostics> = {}): SurfaceDiagno
       active_runtime: 'generated_dispatch',
       active_revision_id: 'rev_demo',
       recovery_mode: 'normal',
-      live_url: 'https://live.zohal.ai/e/ct_demo',
+      live_url: 'https://live.mihad.properties/e/ct_demo',
     },
     candidate: {
       candidate_id: 'cand_demo',
@@ -119,10 +119,10 @@ function diagnostics(overrides: Partial<SurfaceDiagnostics> = {}): SurfaceDiagno
       failure: null,
     },
     path_binding: {
-      host: 'live.zohal.ai',
+      host: 'live.mihad.properties',
       path_family: 'e',
       path_key: 'ct_demo',
-      public_url: 'https://live.zohal.ai/e/ct_demo',
+      public_url: 'https://live.mihad.properties/e/ct_demo',
     },
     deployment: {
       ok: true,

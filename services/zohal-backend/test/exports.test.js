@@ -25,7 +25,7 @@ test("calendar export generates legacy ICS event shape", () => {
   ], "Lease");
 
   assert.match(ics, /BEGIN:VCALENDAR/);
-  assert.match(ics, /UID:analysis-action-action-1@zohal.ai/);
+  assert.match(ics, /UID:analysis-action-action-1@mihad.properties/);
   assert.match(ics, /DTSTART;VALUE=DATE:20260510/);
   assert.match(ics, /SUMMARY:Notice deadline: Tenant/);
   assert.match(ics, /TRIGGER:-P1D/);

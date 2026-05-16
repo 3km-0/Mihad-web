@@ -38,14 +38,14 @@ export default async function HomePage() {
       {
         '@type': 'Organization',
         '@id': absoluteUrl('/home#organization'),
-        name: 'Zohal',
+        name: 'Mihad',
         url: absoluteUrl('/home'),
         logo: absoluteUrl('/icon.png'),
       },
       {
         '@type': 'WebSite',
         '@id': absoluteUrl('/home#website'),
-        name: 'Zohal',
+        name: 'Mihad',
         url: absoluteUrl('/home'),
         description: t('metadata.description'),
         publisher: {
@@ -55,7 +55,7 @@ export default async function HomePage() {
       {
         '@type': 'SoftwareApplication',
         '@id': absoluteUrl('/home#application'),
-        name: 'Zohal',
+        name: 'Mihad',
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         description: t('metadata.description'),
@@ -64,7 +64,7 @@ export default async function HomePage() {
             '@type': 'Offer',
             price: '299',
             priceCurrency: 'SAR',
-            name: 'Zohal Core',
+            name: 'Mihad Core',
             url: absoluteUrl('/subscription'),
           },
         ],

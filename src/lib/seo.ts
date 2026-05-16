@@ -1,4 +1,4 @@
-export const SITE_URL = 'https://zohal.ai';
+export const SITE_URL = 'https://mihad.properties';
 
 export function absoluteUrl(path = '/') {
   const normalized = path.startsWith('/') ? path : `/${path}`;

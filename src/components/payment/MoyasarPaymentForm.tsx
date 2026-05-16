@@ -160,7 +160,7 @@ export function MoyasarPaymentForm({
         href="https://cdn.moyasar.com/mpf/1.14.0/moyasar.css"
       />
 
-      {/* Custom styling for Moyasar form to match Zohal theme */}
+      {/* Custom styling for Moyasar form to match Mihad theme */}
       <style jsx global>{`
         .moyasar-form {
           font-family: inherit;

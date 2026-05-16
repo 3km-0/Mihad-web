@@ -72,7 +72,7 @@ export async function openLiveExperience(state: LiveExperienceLinkState | null):
 export async function openPublishedInterface(state: PublishedInterfaceLinkState | null): Promise<SurfaceOpenResult> {
   const experienceId = safeTrim(state?.experience_id);
   const publishedUrl = safeTrim(state?.url);
-  const host = resolveHost(publishedUrl || '') || 'live.zohal.ai';
+  const host = resolveHost(publishedUrl || '') || 'live.mihad.properties';
 
   if (experienceId) {
     const response = await fetch('/api/experiences/v1/experiences/access/session', {

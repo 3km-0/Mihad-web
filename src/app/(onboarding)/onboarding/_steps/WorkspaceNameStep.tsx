@@ -21,7 +21,7 @@ export function WorkspaceNameStep({ data, setData }: StepProps) {
         onChange={(event) => setData({ workspaceName: event.target.value })}
       />
       <div className="rounded-zohal border border-border bg-surface-alt p-4 text-sm leading-6 text-text-soft">
-        This becomes your first acquisition workspace. Zohal will use the mandate to fetch and screen initial candidates.
+        This becomes your first acquisition workspace. Mihad will use the mandate to fetch and screen initial candidates.
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 /**
- * Error handling utilities for Zohal Web
+ * Error handling utilities for Mihad Web
  * Maps backend errors to user-friendly messages
  */
 

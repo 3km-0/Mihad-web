@@ -57,7 +57,7 @@ export function SupportPageClient() {
           💬
         </IconBox>
         <h1 className="text-4xl md:text-5xl font-bold text-text tracking-tight mb-4">
-          Support for Zohal
+          Support for Mihad
         </h1>
         <p className="text-xl text-text-soft max-w-2xl mx-auto">
           Get help with billing, onboarding, workflow setup, trials, or product issues.
@@ -132,24 +132,24 @@ export function SupportPageClient() {
           icon="📧"
           title="Email Support"
           description="Have a question or need assistance? Send us an email."
-          link="mailto:support@zohal.app"
-          linkText="support@zohal.app →"
+          link="mailto:support@mihad.properties"
+          linkText="support@mihad.properties →"
           responseTime="Usually responds within 24 hours"
         />
         <ContactCard
           icon="🐛"
           title="Report a Bug"
           description="Found something not working right? Let us know."
-          link="mailto:bugs@zohal.app"
-          linkText="bugs@zohal.app →"
+          link="mailto:bugs@mihad.properties"
+          linkText="bugs@mihad.properties →"
           responseTime="We prioritize bug fixes"
         />
         <ContactCard
           icon="💡"
           title="Feature Request"
-          description="Have an idea to make Zohal better? We review every serious request."
-          link="mailto:ideas@zohal.app"
-          linkText="ideas@zohal.app →"
+          description="Have an idea to make Mihad better? We review every serious request."
+          link="mailto:ideas@mihad.properties"
+          linkText="ideas@mihad.properties →"
           responseTime="Every idea is reviewed"
         />
       </div>
@@ -163,7 +163,7 @@ export function SupportPageClient() {
         <div className="space-y-3">
           <FAQItem
             icon="🚀"
-            question="How do I get started with Zohal?"
+            question="How do I get started with Mihad?"
             answer="Create an account on the web, upload your first document set, and start reviewing verified findings. If your team needs a guided rollout, contact us and we can help you set it up."
           />
           <FAQItem
@@ -182,8 +182,8 @@ export function SupportPageClient() {
           />
           <FAQItem
             icon="💼"
-            question="Who is Zohal built for?"
-            answer="Zohal is built for teams that review sensitive documents and need outputs that can be checked, trusted, and shared with evidence attached."
+            question="Who is Mihad built for?"
+            answer="Mihad is built for teams that review sensitive documents and need outputs that can be checked, trusted, and shared with evidence attached."
           />
           <FAQItem
             icon="🧾"
@@ -200,7 +200,7 @@ export function SupportPageClient() {
             question="How do subscriptions work?"
             answer={
               <>
-                Zohal offers a free starter plan and one public paid subscription: Core. Web
+                Mihad offers a free starter plan and one public paid subscription: Core. Web
                 billing is managed through Moyasar, while App Store billing remains
                 Apple-managed. See our{' '}
                 <Link href="/terms" className="text-accent hover:opacity-80">

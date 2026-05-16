@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Zohal Design System Colors
+        // Mihad Design System Colors
         background: 'var(--bg)',
         surface: {
           DEFAULT: 'var(--surface)',

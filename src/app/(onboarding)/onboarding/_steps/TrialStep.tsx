@@ -25,7 +25,7 @@ export function TrialStep({ data, setData, error }: StepProps & { error?: string
       <div className="rounded-2xl border border-accent/30 bg-accent/10 p-4">
         <p className="font-semibold text-text">7-day free trial. No charge today.</p>
         <p className="mt-2 text-sm leading-6 text-text-soft">
-          Your card is saved securely with Moyasar. If you do not cancel before the trial ends, Zohal will charge SAR 199/month.
+          Your card is saved securely with Moyasar. If you do not cancel before the trial ends, Mihad will charge SAR 199/month.
         </p>
       </div>
       {data.trialActivated ? (

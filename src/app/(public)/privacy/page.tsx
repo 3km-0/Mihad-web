@@ -5,7 +5,7 @@ export async function generateMetadata() {
   return {
     title: 'Privacy Policy',
     description:
-      'Learn what Zohal collects, how document and AI processing works, and which service providers process your data.',
+      'Learn what Mihad collects, how document and AI processing works, and which service providers process your data.',
     alternates: {
       canonical: absoluteUrl('/privacy'),
     },
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p className="text-xl text-text-soft max-w-2xl mx-auto">
-          This policy explains what data Zohal collects, how document and AI processing works, and
+          This policy explains what data Mihad collects, how document and AI processing works, and
           which service providers process data on our behalf.
         </p>
       </header>
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
       <main>
         <Section icon="🔒" title="Our Commitment to Privacy">
           <p>
-            Welcome to <strong className="text-text">Zohal</strong>. We believe your data belongs
+            Welcome to <strong className="text-text">Mihad</strong>. We believe your data belongs
             to you. We collect and process information only as needed to provide document analysis,
             retrieval, collaboration, billing, security, and support.
           </p>
@@ -144,7 +144,7 @@ export default function PrivacyPage() {
 
         <Section icon="🤖" title="AI Processing, Privacy Mode, and Consent">
           <p>
-            Zohal offers standard processing and Privacy Mode. In standard processing, some AI
+            Mihad offers standard processing and Privacy Mode. In standard processing, some AI
             features may send relevant document data to cloud AI processors after you give in-app
             permission. In Privacy Mode, the original PDF stays on your device and supported cloud
             features use sanitized content instead.
@@ -169,7 +169,7 @@ export default function PrivacyPage() {
               {
                 title: 'Model training',
                 description:
-                  'Client documents and AI request content are not used by Zohal to train third-party AI models.',
+                  'Client documents and AI request content are not used by Mihad to train third-party AI models.',
               },
             ]}
           />
@@ -237,7 +237,7 @@ export default function PrivacyPage() {
 
         <Section icon="🧩" title="Google API Services">
           <p>
-            Zohal uses Google API Services to provide sign-in and optional file import features.
+            Mihad uses Google API Services to provide sign-in and optional file import features.
             When you connect your Google account, we may access the following:
           </p>
           <BulletList
@@ -250,7 +250,7 @@ export default function PrivacyPage() {
               {
                 title: 'Google Drive',
                 description:
-                  'The files or folders you choose to import into Zohal. We do not access unrelated files in your Drive.',
+                  'The files or folders you choose to import into Mihad. We do not access unrelated files in your Drive.',
               },
               {
                 title: 'Google Calendar',
@@ -321,7 +321,7 @@ export default function PrivacyPage() {
 
         <Section icon="👶" title="Children&apos;s Privacy">
           <p>
-            Zohal is not intended for children under 13 years of age, and we do not knowingly
+            Mihad is not intended for children under 13 years of age, and we do not knowingly
             collect personal information from children under 13.
           </p>
         </Section>
@@ -339,8 +339,8 @@ export default function PrivacyPage() {
           <HighlightBox>
             <p className="text-sm">
               📧{' '}
-              <a href="mailto:support@zohal.app" className="text-accent hover:opacity-80">
-                support@zohal.app
+              <a href="mailto:support@mihad.properties" className="text-accent hover:opacity-80">
+                support@mihad.properties
               </a>{' '}
               or{' '}
               <a href="mailto:abdullah@watd.co" className="text-accent hover:opacity-80">

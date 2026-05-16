@@ -88,7 +88,7 @@ const steps = [
   },
   {
     eyebrow: 'Mandate focus',
-    title: 'What should Zohal screen first?',
+    title: 'What should Mihad screen first?',
     subtitle: 'Choose the asset and strategy that define the first acquisition search. Districts are optional; empty means any suitable district in the selected city.',
     backgroundImageSrc: '/onboarding/mandate.jpg',
   },
@@ -119,7 +119,7 @@ const steps = [
   {
     eyebrow: 'Launch',
     title: 'We are preparing your acquisition desk.',
-    subtitle: 'Zohal is creating the workspace and triggering the first browser-backed search run.',
+    subtitle: 'Mihad is creating the workspace and triggering the first browser-backed search run.',
     backgroundImageSrc: '/onboarding/launch.jpg',
   },
 ] as const;

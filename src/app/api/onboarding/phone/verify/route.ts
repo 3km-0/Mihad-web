@@ -29,7 +29,7 @@ function isTwilioMissingVerification(data: Record<string, unknown>, status: numb
 
 function phoneAlreadyInUseError() {
   return jsonError(
-    'This phone number is already saved on another Zohal account. Please sign in to that account or use a different number.',
+    'This phone number is already saved on another Mihad account. Please sign in to that account or use a different number.',
     409,
     'phone_already_in_use'
   );

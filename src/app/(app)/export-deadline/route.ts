@@ -49,7 +49,7 @@ function buildAllDayIcs(opts: { uid: string; title: string; description: string;
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Zohal//Deadlines//EN',
+    'PRODID:-//Mihad//Deadlines//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Make it an all-day event, like iOS does for deadlines.
-  const uid = `zohal-${documentId}-${key}-${Date.now()}@zohal.ai`;
+  const uid = `mihad-${documentId}-${key}-${Date.now()}@mihad.properties`;
   const ics = buildAllDayIcs({ uid, title, description, date });
 
   const safe = title
@@ -183,4 +183,3 @@ export async function GET(request: NextRequest) {
     },
   });
 }
-

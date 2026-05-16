@@ -95,7 +95,7 @@ export function generateICS(actions, docTitle) {
     description.push(`State: ${action.workflow_state || action.confidence_state || "extracted"}`);
 
     ics.push("BEGIN:VEVENT");
-    ics.push(`UID:analysis-action-${action.id}@zohal.ai`);
+    ics.push(`UID:analysis-action-${action.id}@mihad.properties`);
     ics.push(`DTSTAMP:${timestamp}`);
     ics.push(`DTSTART;VALUE=DATE:${dateStr}`);
     ics.push(`DTEND;VALUE=DATE:${dateStr}`);

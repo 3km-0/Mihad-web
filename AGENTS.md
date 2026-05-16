@@ -1,6 +1,6 @@
-# Zohal-web Agent Notes
+# Mihad Web Agent Notes
 
-This file is the repo-local workflow guide for `Zohal-web`.
+This file is the repo-local workflow guide for `Mihad-web`.
 
 ## Scope
 
@@ -9,16 +9,19 @@ This file is the repo-local workflow guide for `Zohal-web`.
 - Use this repo for Next.js UI work, client-side analysis surfaces, workspace
   pages, and web-only operator flows.
 - If the task changes iOS behavior, Supabase migrations, or core template
-  runtime semantics, start in `zohal-core/` instead.
+  runtime semantics, start in `mihad-ios/` instead.
 
 ## Read first
 
 - Start with `README.md`.
-- Then use `../zohal-platform/Documentation/README.md` for system docs and read only
+- Then use `../mihad-platform/Documentation/README.md` for system docs and read only
   the relevant topic docs.
 
 ## Product and architecture posture
 
+- Public product/app copy should say `Mihad`. Retain `Zohal` only for source,
+  route, storage, env, or compatibility identifiers until a migration plan
+  explicitly renames those surfaces.
 - The product model remains:
   `Document -> Template -> Run -> Snapshot -> Living Interface -> Automation`
 - Preserve the core loops:
@@ -34,7 +37,7 @@ This file is the repo-local workflow guide for `Zohal-web`.
 - Treat `Portal` and `Experience` as legacy compatibility terms unless a
   storage/runtime identifier or old operator/debug surface requires them.
 - For backend route ownership, read
-  `../zohal-platform/Documentation/Infrastructure/Backend_Runtime_Boundary.md`.
+  `../mihad-platform/Documentation/Infrastructure/Backend_Runtime_Boundary.md`.
   `services/zohal-backend/` is the default home for new server-side execution,
   orchestration, AI/OCR/embedding/search/chat/import/export, and pipeline API
   routes. Do not create new Supabase Edge Function dependencies from web code
@@ -76,6 +79,8 @@ This file is the repo-local workflow guide for `Zohal-web`.
 
 - Keep localization in sync. Do not add user-facing English-only strings unless
   explicitly approved.
+- Before changing canonical domains, auth redirects, payment callbacks, email
+  senders, or backend hostnames, use `docs/mihad-brand-domain-migration-audit.md`.
 - Prefer existing theme tokens and design-system primitives over ad-hoc styling.
 - Keep `Workspace`, analysis, and template types aligned with live DB/API
   contracts.

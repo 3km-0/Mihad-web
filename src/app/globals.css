@@ -5,11 +5,11 @@
 @tailwind utilities;
 
 /*
- * Mihad Design — Zohal Theme Design Language (CSS variables)
+ * Mihad Design — Saudi Authority Minimal (CSS variables)
  *
  * Two themes share the same token surface:
- *   - zohal-light  Architectural White & Signal Amber
- *   - zohal-dark   Charcoal & Gold Luxury
+ *   - zohal-light  Quiet Pearl / Single Green
+ *   - zohal-dark   Executive Graphite / Premium Gold
  *
  * Spec: zohal-platform/Documentation/Design/Mihad Design.md
  */
@@ -28,94 +28,94 @@
   --rPill: 999px;
 }
 
-/* Mihad Light — Architectural White & Signal Amber */
+/* Mihad Light — Quiet Pearl / Single Green */
 :root,
 [data-theme='zohal-light'] {
-  --bg: #f6f7f5;
+  --bg: #f7f8f5;
   --surface: #ffffff;
-  --surface-alt: #f7f7f4;
+  --surface-alt: #f1f3ef;
   --surface-active: #ffffff;
-  --surface-nested: #f1f2ef;
+  --surface-nested: #eef6f2;
   --text: #1f2528;
-  --text-soft: #4b5356;
-  --text-muted: #73777a;
-  --text-faint: #9a9b98;
-  --border: #d8dad4;
-  --border-strong: #b9bdb4;
-  --accent: #c47a22;
-  --accent-rgb: 196, 122, 34;
-  --accent-alt: #e29a38;
-  --highlight: #245c5a;
-  --highlight-rgb: 36, 92, 90;
+  --text-soft: #4d5653;
+  --text-muted: #7a7f79;
+  --text-faint: #9b9f98;
+  --border: #dde1d8;
+  --border-strong: #c6cbbf;
+  --accent: #073d32;
+  --accent-rgb: 7, 61, 50;
+  --accent-alt: #b8893d;
+  --highlight: #3f4846;
+  --highlight-rgb: 63, 72, 70;
   --success: #218c5a;
-  --error: #c0392b;
-  --error-rgb: 192, 57, 43;
-  --warning: #b86a16;
-  --warning-soft: rgba(184, 106, 22, 0.12);
-  --accent-soft: rgba(196, 122, 34, 0.1);
-  --accent-dim: rgba(196, 122, 34, 0.05);
+  --error: #c94a3a;
+  --error-rgb: 201, 74, 58;
+  --warning: #b8893d;
+  --warning-soft: rgba(184, 137, 61, 0.12);
+  --accent-soft: rgba(7, 61, 50, 0.1);
+  --accent-dim: rgba(7, 61, 50, 0.05);
   --accent-text: #ffffff;
-  --button-primary-bg: #c47a22;
-  --button-primary-bg-hover: #e29a38;
+  --button-primary-bg: #073d32;
+  --button-primary-bg-hover: #0b5143;
   --button-primary-text: #ffffff;
   --grid-color: rgba(31, 37, 40, 0.04);
   --grid-opacity: 0.42;
   --grid-size: 28px;
   --shadowSm: 0 1px 2px rgba(31, 37, 40, 0.04), 0 8px 24px rgba(31, 37, 40, 0.055);
   --shadowMd: 0 4px 12px rgba(31, 37, 40, 0.06), 0 18px 48px rgba(31, 37, 40, 0.08);
-  --nav-bg-top: rgba(246, 247, 245, 0.78);
-  --nav-bg-scrolled: rgba(246, 247, 245, 0.94);
+  --nav-bg-top: rgba(247, 248, 245, 0.78);
+  --nav-bg-scrolled: rgba(247, 248, 245, 0.94);
   --nav-border: rgba(31, 37, 40, 0.1);
   --console-bg:
-    radial-gradient(circle at 78% 16%, rgba(196, 122, 34, 0.045) 0%, transparent 38%),
-    radial-gradient(circle at 18% 72%, rgba(36, 92, 90, 0.035) 0%, transparent 42%),
-    linear-gradient(180deg, #f6f7f5 0%, #f1f2ef 100%);
-  --panel-bg: linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
+    radial-gradient(circle at 78% 16%, rgba(7, 61, 50, 0.045) 0%, transparent 38%),
+    radial-gradient(circle at 18% 72%, rgba(63, 72, 70, 0.035) 0%, transparent 42%),
+    linear-gradient(180deg, #f7f8f5 0%, #eeede7 100%);
+  --panel-bg: linear-gradient(180deg, #ffffff 0%, #f1f3ef 100%);
 }
 
-/* Mihad Dark — Charcoal & Gold Luxury */
+/* Mihad Dark — Executive Graphite / Premium Gold */
 [data-theme='dark'],
 [data-theme='zohal-dark'] {
-  --bg: #0c0c0c;
-  --surface: #121212;
-  --surface-alt: #161616;
-  --surface-active: #1a1a1a;
-  --surface-nested: #211a13;
-  --text: #f6f2e8;
-  --text-soft: #d8d0c2;
-  --text-muted: #a8a29a;
-  --text-faint: #78716c;
-  --border: #2a2a2a;
-  --border-strong: #3a3a3a;
-  --accent: #d4af37;
-  --accent-rgb: 212, 175, 55;
-  --accent-alt: #f2c96d;
-  --highlight: #c8a96a;
-  --highlight-rgb: 200, 169, 106;
+  --bg: #0d0e0c;
+  --surface: #151713;
+  --surface-alt: #1b1d19;
+  --surface-active: #20221e;
+  --surface-nested: #20221e;
+  --text: #f4f0e7;
+  --text-soft: #cbc4b8;
+  --text-muted: #918b82;
+  --text-faint: #6f6a62;
+  --border: #2d302a;
+  --border-strong: #3a3f35;
+  --accent: #d8b45c;
+  --accent-rgb: 216, 180, 92;
+  --accent-alt: #f0cf79;
+  --highlight: #073d32;
+  --highlight-rgb: 7, 61, 50;
   --success: #16a34a;
-  --error: #ef4c4c;
-  --error-rgb: 239, 76, 76;
-  --warning: #f59e0b;
-  --warning-soft: rgba(245, 158, 11, 0.12);
-  --accent-soft: rgba(212, 175, 55, 0.12);
-  --accent-dim: rgba(212, 175, 55, 0.055);
-  --accent-text: #0c0c0c;
-  --button-primary-bg: #d4af37;
-  --button-primary-bg-hover: #f2c96d;
-  --button-primary-text: #0c0c0c;
-  --grid-color: rgba(212, 175, 55, 0.025);
+  --error: #f06455;
+  --error-rgb: 240, 100, 85;
+  --warning: #d8b45c;
+  --warning-soft: rgba(216, 180, 92, 0.12);
+  --accent-soft: rgba(216, 180, 92, 0.12);
+  --accent-dim: rgba(216, 180, 92, 0.055);
+  --accent-text: #0d0e0c;
+  --button-primary-bg: #d8b45c;
+  --button-primary-bg-hover: #f0cf79;
+  --button-primary-text: #0d0e0c;
+  --grid-color: rgba(216, 180, 92, 0.025);
   --grid-opacity: 0.14;
   --grid-size: 48px;
   --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 36px rgba(0, 0, 0, 0.42);
   --shadowMd: 0 18px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --nav-bg-top: rgba(12, 12, 12, 0.82);
-  --nav-bg-scrolled: rgba(12, 12, 12, 0.94);
-  --nav-border: #2a2a2a;
+  --nav-bg-top: rgba(13, 14, 12, 0.82);
+  --nav-bg-scrolled: rgba(13, 14, 12, 0.94);
+  --nav-border: #2d302a;
   --console-bg:
-    radial-gradient(circle at 72% 18%, rgba(212, 175, 55, 0.07) 0%, transparent 36%),
-    radial-gradient(circle at 22% 70%, rgba(200, 169, 106, 0.04) 0%, transparent 40%),
-    linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 100%);
-  --panel-bg: linear-gradient(180deg, #1a1a1a 0%, #121212 100%);
+    radial-gradient(circle at 72% 18%, rgba(216, 180, 92, 0.07) 0%, transparent 36%),
+    radial-gradient(circle at 22% 70%, rgba(7, 61, 50, 0.045) 0%, transparent 40%),
+    linear-gradient(180deg, #0d0e0c 0%, #080907 100%);
+  --panel-bg: linear-gradient(180deg, #1b1d19 0%, #151713 100%);
 }
 
 /* Base Styles */
@@ -182,7 +182,7 @@ body {
   }
 }
 
-/* Zohal Component Base Styles */
+/* Mihad Component Base Styles */
 @layer components {
   /* Card */
   .zohal-card {

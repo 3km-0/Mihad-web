@@ -6,7 +6,7 @@ export async function generateMetadata() {
   return {
     title: 'Terms of Use',
     description:
-      'Read the terms that govern use of Zohal, including subscriptions, billing, account responsibilities, and service limits.',
+      'Read the terms that govern use of Mihad, including subscriptions, billing, account responsibilities, and service limits.',
     alternates: {
       canonical: absoluteUrl('/terms'),
     },
@@ -53,7 +53,7 @@ export default function TermsPage() {
           Terms of Use (EULA)
         </h1>
         <p className="text-xl text-text-soft max-w-lg mx-auto">
-          End User License Agreement for Zohal - Please read these terms carefully before using the
+          End User License Agreement for Mihad - Please read these terms carefully before using the
           app.
         </p>
       </header>
@@ -62,14 +62,14 @@ export default function TermsPage() {
       <main>
         <Section icon="📜" title="1. Acceptance of Terms">
           <p>
-            By downloading, installing, or using Zohal (&quot;the App&quot;), you agree to be bound
+            By downloading, installing, or using Mihad (&quot;the App&quot;), you agree to be bound
             by these Terms of Use (End User License Agreement). If you do not agree to these terms,
             do not use the App.
           </p>
           <HighlightBox>
             <p className="text-sm">
               <strong className="text-text">Important:</strong> This agreement is between you and
-              Zohal (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). Apple is not a party to this
+              Mihad (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). Apple is not a party to this
               agreement and has no obligation to provide maintenance or support for the App.
             </p>
           </HighlightBox>
@@ -94,12 +94,12 @@ export default function TermsPage() {
 
         <Section icon="🔄" title="3. Subscription Terms">
           <p>
-            Zohal offers one public auto-renewable subscription that provides access to paid
+            Mihad offers one public auto-renewable subscription that provides access to paid
             features:
           </p>
           <ul className="list-disc pl-6 my-4 space-y-2">
             <li>
-              <strong className="text-text">Zohal Core:</strong> SAR 299/month or SAR 2,999/year
+              <strong className="text-text">Mihad Core:</strong> SAR 299/month or SAR 2,999/year
               for 1 workspace, 1 user, and core document tools
             </li>
           </ul>
@@ -246,8 +246,8 @@ export default function TermsPage() {
           <HighlightBox>
             <p className="text-sm">
               📧 Email:{' '}
-              <a href="mailto:support@zohal.app" className="text-accent hover:opacity-80">
-                support@zohal.app
+              <a href="mailto:support@mihad.properties" className="text-accent hover:opacity-80">
+                support@mihad.properties
               </a>
               {' '}or{' '}
               <a href="mailto:abdullah@watd.co" className="text-accent hover:opacity-80">

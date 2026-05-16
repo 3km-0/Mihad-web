@@ -1,15 +1,15 @@
-# Zohal Web
+# Mihad Web
 
 Status: Active
 Last reviewed: 2026-05-11
 
-Web companion for the Zohal document and acquisition workspace platform. Built
+Web companion for the Mihad document and acquisition workspace platform. Built
 with Next.js 15, React 19, TypeScript, Tailwind, next-intl, and Supabase SSR
 auth.
 
 ## Repo Layout
 
-This is a separate git repository from `zohal-core/` and `zohal-platform/`.
+This is a separate git repository from `mihad-ios/` and `mihad-platform/`.
 Commit and push changes inside each repo.
 
 ## Quick Start
@@ -90,11 +90,12 @@ and prefer documented aliases over duplicate secrets.
 
 Start with:
 
-- `../zohal-platform/Documentation/README.md`
-- `../zohal-platform/Documentation/Architecture/architecture.md`
-- `../zohal-platform/Documentation/Templates/Document-Templates.md`
-- `../zohal-platform/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
-- `../zohal-platform/Documentation/Surface/README.md`
+- `../mihad-platform/Documentation/README.md`
+- `../mihad-platform/Documentation/Architecture/architecture.md`
+- `../mihad-platform/Documentation/Templates/Document-Templates.md`
+- `../mihad-platform/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
+- `../mihad-platform/Documentation/Surface/README.md`
 - `docs/acquisition-playwright-runtime.md`
+- `docs/mihad-brand-domain-migration-audit.md`
 
 For repo-local workflow rules, read `AGENTS.md`.

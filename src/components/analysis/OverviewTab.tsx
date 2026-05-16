@@ -266,7 +266,7 @@ export function OverviewTab({
               <div className="text-sm text-text-soft">Snapshot unavailable (re-run analysis to generate it).</div>
             )}
             <div className="text-xs text-text-soft pt-2 border-t border-border">
-              System: Zohal Evidence-Grade Analysis Platform
+              System: Mihad Evidence-Grade Analysis Platform
             </div>
           </CardContent>
         </Card>

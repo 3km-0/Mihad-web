@@ -213,7 +213,7 @@ export function resolvePrimaryAcquisitionAction(context: AcquisitionActionContex
       action_id: 'upload_financing_document',
       stage,
       label: 'Upload proof of funds',
-      result: 'Stores financing documents privately and starts buyer readiness. Zohal does not underwrite credit.',
+      result: 'Stores financing documents privately and starts buyer readiness. Mihad does not underwrite credit.',
       adapter: 'readiness',
       blocked: false,
       secondary_action_id: 'add_listing_evidence',

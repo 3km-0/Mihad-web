@@ -2124,7 +2124,7 @@ export default function WorkspaceCockpitPage() {
         await requestExternalAction('share_readiness_signal', {
           acquisition_action_id: 'share_financing_packet',
           consent_required: 'true',
-          disclaimer: 'Zohal records readiness evidence only and does not underwrite creditworthiness.',
+          disclaimer: 'Mihad records readiness evidence only and does not underwrite creditworthiness.',
         });
         return;
       case 'prepare_offer':
@@ -2458,7 +2458,7 @@ function BrandBlock() {
     <div className="mb-6 flex items-center gap-3">
       <div className="grid h-12 w-12 place-items-center rounded-[14px] border border-accent/30 bg-accent/10 text-xl font-semibold text-accent shadow-[0_0_28px_var(--accent-soft)]">ز</div>
       <div>
-        <h1 className="text-lg font-semibold text-text">Zohal</h1>
+        <h1 className="text-lg font-semibold text-text">Mihad</h1>
         <p className="text-xs text-text-muted">{t('brandSubtitle')}</p>
       </div>
     </div>

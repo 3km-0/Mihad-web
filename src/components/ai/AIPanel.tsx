@@ -69,10 +69,10 @@ const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 function shortenUrlLabel(url: string): string {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname === 'live.zohal.ai' && parsed.pathname.startsWith('/__access/redeem')) {
+    if (parsed.hostname === 'live.mihad.properties' && parsed.pathname.startsWith('/__access/redeem')) {
       return 'Open Live Interface';
     }
-    if (parsed.hostname === 'live.zohal.ai' && parsed.pathname.startsWith('/live/')) {
+    if (parsed.hostname === 'live.mihad.properties' && parsed.pathname.startsWith('/live/')) {
       const slug = parsed.pathname.split('/').filter(Boolean).pop() || 'live';
       return `Live Interface URL (${slug})`;
     }

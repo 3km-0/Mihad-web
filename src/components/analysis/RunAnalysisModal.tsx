@@ -221,9 +221,9 @@ export function RunAnalysisModal(props: {
         zohal_templates: 'القوالب',
         specializations: 'القوالب',
         custom: 'مخصص',
-        systemLabel: 'من زحل',
+        systemLabel: 'من مهاد',
         search: 'ابحث في القوالب…',
-        autoDescription: 'يختار زحل القالب الأنسب لمستندك.',
+        autoDescription: 'يختار مهاد القالب الأنسب لمستندك.',
         customTemplate: version ? `قالب مخصص • v${version}` : 'قالب مخصص',
       } as const;
       const en = {
@@ -233,7 +233,7 @@ export function RunAnalysisModal(props: {
         custom: 'Custom',
         systemLabel: 'System',
         search: 'Search templates…',
-        autoDescription: 'Zohal picks the best template for your document.',
+        autoDescription: 'Mihad picks the best template for your document.',
         customTemplate: version ? `Custom template • v${version}` : 'Custom template',
       } as const;
       return (isArabic ? ar : en)[key];

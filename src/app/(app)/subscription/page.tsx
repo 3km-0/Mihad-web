@@ -644,7 +644,7 @@ export default function SubscriptionPage() {
               ) : (
                 <MoyasarPaymentForm
                   amount={Math.round((getPrice(selectedPlan) || 0) * 100)}
-                  description={`Zohal ${selectedPlan.name} (${billingPeriod})`}
+                  description={`Mihad ${selectedPlan.name} (${billingPeriod})`}
                   tier={selectedPlan.tier}
                   period={billingPeriod}
                   callbackUrl={`${window.location.origin}/subscription/callback`}

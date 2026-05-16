@@ -207,13 +207,13 @@ const SOURCE_TYPE_CHOICES: Array<{
     id: 'mcp',
     icon: Database,
     title: 'Connect via MCP',
-    description: 'Use an MCP server and tool as a first-class source for Zohal runs.',
+    description: 'Use an MCP server and tool as a first-class source for Mihad runs.',
   },
   {
     id: 'finance_builtin',
     icon: ShieldCheck,
     title: 'Use Finance Connector',
-    description: 'Start from a curated finance-friendly connector and let Zohal map it for you.',
+    description: 'Start from a curated finance-friendly connector and let Mihad map it for you.',
   },
 ];
 
@@ -838,11 +838,11 @@ function ApiSourceWizardModal({
               <Card className="border border-border bg-surface-alt">
                 <CardHeader>
                   <CardTitle className="text-base">Review sample</CardTitle>
-                  <CardDescription>Zohal will test the source, propose the mapping, and save it when you continue.</CardDescription>
+                  <CardDescription>Mihad will test the source, propose the mapping, and save it when you continue.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-zohal border border-border bg-surface px-4 py-3 text-sm text-text-soft">
-                    Zohal will propose and save the data mapping after the sample fetch. You can refine it later without recreating the source.
+                    Mihad will propose and save the data mapping after the sample fetch. You can refine it later without recreating the source.
                   </div>
 
                   {suggestions.length > 0 ? (
@@ -931,7 +931,7 @@ function ApiSourceWizardModal({
                             ) : null}
                             {draft.mapping_proposal.mapping_summary_json.what_zohal_will_use?.length ? (
                               <div>
-                                <div className="font-medium text-text">What Zohal will use</div>
+                                <div className="font-medium text-text">What Mihad will use</div>
                                 <ul className="mt-1 list-disc pl-5">
                                   {draft.mapping_proposal.mapping_summary_json.what_zohal_will_use.map((item) => (
                                     <li key={item}>{item}</li>
@@ -1726,8 +1726,8 @@ export default function IntegrationsPage() {
             previewPrompt: t('apiSources.previewPrompt'),
             previewEmpty: t('apiSources.previewEmpty'),
             sourceTypesTitle: 'Source type',
-            mappingSummaryTitle: 'What Zohal will use',
-            mappingSummaryEmpty: 'Run a sample fetch and Zohal will propose a saved deterministic mapping.',
+            mappingSummaryTitle: 'What Mihad will use',
+            mappingSummaryEmpty: 'Run a sample fetch and Mihad will propose a saved deterministic mapping.',
             steps: {
               basics: {
                 title: t('apiSources.steps.basics.title'),

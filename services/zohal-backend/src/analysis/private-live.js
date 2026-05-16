@@ -1,7 +1,7 @@
 import { getExpectedInternalToken } from "../runtime/internal-auth.js";
 
 const DEFAULT_PUBLICATION_API_BASE_URL =
-  "https://experiences-publication-api.zohal.ai";
+  "https://experiences-publication-api.mihad.properties";
 
 function normalizeUuid(value) {
   return String(value || "").trim().toLowerCase();
@@ -453,7 +453,7 @@ export async function ensurePrivateLiveExperienceRefresh({
       summary:
         summary ||
         "Structured analysis completed. This private live experience now reflects the latest canonical snapshot.",
-      host: "live.zohal.ai",
+      host: "live.mihad.properties",
       visibility: access.visibility,
       org_restricted: access.org_restricted,
       materialization_mode: "refresh",

@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     const event = {
       summary: body.title || `Property visit: ${opportunity.title || opportunity.summary || 'Acquisition opportunity'}`,
       description: [
-        body.description || opportunity.summary || 'Zohal acquisition workspace visit.',
+        body.description || opportunity.summary || 'Mihad acquisition workspace visit.',
         `Workspace: ${workspaceId}`,
         `Opportunity: ${opportunityId}`,
       ].filter(Boolean).join('\n\n'),

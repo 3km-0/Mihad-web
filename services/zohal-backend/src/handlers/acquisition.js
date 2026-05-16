@@ -3634,7 +3634,7 @@ async function publishDealDeskReport({ report, payload, requestId }) {
     analysis_template_id: "acquisition_workspace",
     surface_family: "deal_desk",
     path_family: "deal-desk",
-    host: process.env.DEAL_DESK_LIVE_HOST || "live.zohal.ai",
+    host: process.env.DEAL_DESK_LIVE_HOST || "live.mihad.properties",
     visibility: "public_unlisted",
     publication_lane: "trusted_runtime",
     org_restricted: false,

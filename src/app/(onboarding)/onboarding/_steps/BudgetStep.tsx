@@ -94,7 +94,7 @@ export function BudgetStep({ data, setData }: StepProps) {
         helperText="You can change this later as readiness evidence improves."
       />
       <p className="text-sm leading-6 text-text-soft">
-        Zohal records readiness evidence and consent only. This is not underwriting or a credit decision.
+        Mihad records readiness evidence and consent only. This is not underwriting or a credit decision.
       </p>
     </div>
   );

@@ -19,8 +19,8 @@ test("team admin normalizers preserve legacy input behavior", () => {
 
 test("invite URL uses the web accept-invite contract", () => {
   assert.equal(
-    buildInviteUrl({ siteUrl: "https://app.zohal.ai/", token: "abc+/=" }),
-    "https://app.zohal.ai/auth/accept-invite?token=abc%2B%2F%3D",
+    buildInviteUrl({ siteUrl: "https://app.mihad.properties/", token: "abc+/=" }),
+    "https://app.mihad.properties/auth/accept-invite?token=abc%2B%2F%3D",
   );
 });
 

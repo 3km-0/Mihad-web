@@ -11,4 +11,4 @@ Use these filenames:
 - `trial.jpg`
 - `launch.jpg`
 
-If a file is missing, the onboarding screen keeps the default Zohal background.
+If a file is missing, the onboarding screen keeps the default Mihad background.

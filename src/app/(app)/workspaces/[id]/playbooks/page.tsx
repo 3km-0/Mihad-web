@@ -871,7 +871,7 @@ export default function WorkspacePlaybooksPage() {
                         <span>Template source</span>
                       </div>
                       <p className="text-sm text-text-soft">
-                        Describe what the template should do in natural language. Zohal compiles this source into the internal analysis template that runs behind the scenes.
+                        Describe what the template should do in natural language. Mihad compiles this source into the internal analysis template that runs behind the scenes.
                       </p>
                       <textarea
                         className="w-full min-h-[260px] rounded-zohal border border-border bg-surface px-3 py-3 text-sm text-text"

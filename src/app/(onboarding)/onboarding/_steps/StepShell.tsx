@@ -72,7 +72,7 @@ export function StepShell({
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8 lg:px-10">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">Zohal</p>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">Mihad</p>
             <p className="mt-1 text-sm text-text-soft">Acquisition onboarding</p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">

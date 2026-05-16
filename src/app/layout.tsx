@@ -46,12 +46,12 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(absoluteUrl('/')),
   title: {
-    default: 'Zohal',
-    template: '%s | Zohal',
+    default: 'Mihad',
+    template: '%s | Mihad',
   },
   description:
-    'Zohal helps Saudi real estate investors turn a buy box into serious acquisition candidates with evidence, scenarios, renovation exposure, and clear next steps.',
-  applicationName: 'Zohal',
+    'Mihad helps Saudi real estate investors turn a buy box into serious acquisition candidates with evidence, scenarios, renovation exposure, and clear next steps.',
+  applicationName: 'Mihad',
   keywords: [
     'real estate acquisition workflow',
     'Saudi real estate investors',
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
     'Arabic English document review',
     'invoice verification',
   ],
-  authors: [{ name: 'Zohal' }],
+  authors: [{ name: 'Mihad' }],
   icons: {
     icon: '/icon.png',
     apple: '/apple-icon.png',
@@ -73,11 +73,11 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: 'Zohal',
+    title: 'Mihad',
     description:
       'Verified document analysis with page-level evidence for teams that need work that stands up to review.',
     url: absoluteUrl('/home'),
-    siteName: 'Zohal',
+    siteName: 'Mihad',
     locale: 'en_US',
     type: 'website',
     images: [
@@ -85,13 +85,13 @@ export const metadata: Metadata = {
         url: absoluteUrl('/icon.png'),
         width: 512,
         height: 512,
-        alt: 'Zohal',
+        alt: 'Mihad',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Zohal',
+    title: 'Mihad',
     description:
       'Verified document analysis with page-level evidence for teams that need work that stands up to review.',
     images: [absoluteUrl('/icon.png')],

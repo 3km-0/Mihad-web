@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           href="/"
           className="text-2xl font-bold text-accent tracking-tight hover:opacity-80 transition-opacity"
         >
-          Zohal
+          Mihad
         </Link>
       </header>
 

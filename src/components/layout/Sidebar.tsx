@@ -105,7 +105,7 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
         <Link href="/workspaces" className="flex min-w-0 items-center gap-2">
           <Image
             src="/icon.png"
-            alt="Zohal"
+            alt="Mihad"
             width={32}
             height={32}
             className="h-8 w-8 rounded-zohal-sm"

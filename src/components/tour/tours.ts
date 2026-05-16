@@ -31,7 +31,7 @@ export function getTourSteps(tourId: TourId): TourStep[] {
           popover: {
             title: 'Upload a document',
             description:
-              'Start by uploading a PDF (or importing from Drive/OneDrive). Zohal indexes it in the background so search, evidence links, and analysis can work.',
+              'Start by uploading a PDF (or importing from Drive/OneDrive). Mihad indexes it in the background so search, evidence links, and analysis can work.',
             side: 'bottom',
             align: 'end',
           },

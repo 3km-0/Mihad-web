@@ -175,7 +175,7 @@ export function DeadlinesTab({
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-text">Connect Google to add calendar events</p>
             <p className="text-xs text-text-soft mt-0.5">
-              Grant calendar permissions so Zohal can create events directly in your Google Calendar.
+              Grant calendar permissions so Mihad can create events directly in your Google Calendar.
             </p>
           </div>
           <button
