@@ -5,10 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
-import {
-  Search,
-  Send,
-} from 'lucide-react';
+import { Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
@@ -536,11 +533,8 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
 
   return (
     <div className={cn('mx-auto w-full transition-all duration-500', result ? 'mt-5 max-w-[1000px]' : 'mt-8 max-w-[940px]')}>
-      <div className={cn('mb-3 flex items-center justify-center gap-2', isRtl && 'flex-row-reverse')}>
-        <span className="grid h-9 w-9 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent">
-          <Search className="h-4 w-4" />
-        </span>
-        <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.label}</span>
+      <div className="mb-3 flex items-center justify-center">
+        <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-muted">{copy.label}</span>
       </div>
       {!result ? (
         <form
@@ -578,7 +572,7 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
               type="button"
               onClick={() => applyExamplePrompt(example)}
               dir={isRtl ? 'rtl' : 'ltr'}
-              className="min-h-[44px] rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm leading-5 text-text-soft transition hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/10 hover:text-text"
+              className="min-h-[44px] rounded-full border border-border bg-surface-alt px-4 py-2 text-sm leading-5 text-text-soft transition hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/10 hover:text-text"
             >
               {example}
             </button>
