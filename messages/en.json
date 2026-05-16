@@ -2169,18 +2169,18 @@
             "href": "/auth/login"
           },
           "primaryCta": {
-          "label": "Start verified search",
+            "label": "Create my brief",
             "href": "/auth/signup"
           }
         }
       },
       "hero": {
-        "headline": "Find the right home without scrolling through noise.",
-        "subhead": "Describe what you want in Saudi Arabia, the UAE, or Turkey. Mihad captures the mandate first, then runs verified search and broker coordination after you prove intent.",
+        "headline": "Find the right property without scrolling through noise.",
+        "subhead": "Describe what you want. Mihad turns it into a buyer brief, searches verified options, and helps coordinate with the right broker.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start verified search",
+            "label": "Create my property brief",
             "href": "/auth/signup"
           },
           {

@@ -6,12 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight,
-  Languages,
-  Scale,
   Search,
   Send,
-  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
@@ -231,13 +227,13 @@ function scoutCopy(isRtl: boolean) {
     ? {
         label: 'كشاف عقاري ذكي',
         placeholder: 'صف ما تبحث عنه...',
-        submit: 'ابحث',
+        submit: 'أنشئ موجز الطلب',
         examples: [
-          'شقة ٣ غرف في شمال الرياض، قسطها أقل من ٧ آلاف',
-          'فيلا لعائلة قريبة من المدارس في الرياض',
-          'شقة استثمارية في دبي تحت ١.٥ مليون',
+          'شقة في شمال الرياض تحت ١.٥ مليون',
+          'فيلا لعائلة قريبة من المدارس',
+          'وحدة جاهزة في الرياض بقسط أقل من ٧ آلاف',
+          'شقة استثمارية بعائد إيجاري جيد',
         ],
-        chips: ['الرياض', 'جدة', 'دبي', 'إسطنبول', 'شقق', 'فلل', 'جاهز', 'على الخارطة', 'قسط أقل من ٧ آلاف'],
         preview: 'معاينة فقط. البحث المباشر يبدأ بعد التحقق.',
         livePreview: 'معاينة مباشرة محدودة',
         samplePreview: 'مسار بحث مقترح',
@@ -247,13 +243,13 @@ function scoutCopy(isRtl: boolean) {
     : {
         label: 'AI property scout',
         placeholder: 'Describe what you are looking for...',
-        submit: 'Find options',
+        submit: 'Create my property brief',
         examples: [
-          '3-bedroom apartment in North Riyadh under SAR 1.5M',
-          'Villa near international schools in Riyadh',
-          'Investment apartment in Dubai under 1.5M',
+          'Apartment in North Riyadh under SAR 1.5M',
+          'Villa near international schools for a family',
+          'Ready unit in Riyadh with monthly payment under SAR 7k',
+          'Investment apartment with good rental potential',
         ],
-        chips: ['Riyadh', 'Jeddah', 'Dubai', 'Istanbul', 'Apartments', 'Villas', 'Ready units', 'Off-plan', 'Monthly payment under 7k'],
         preview: 'Preview only. Live search starts after verification.',
         livePreview: 'Limited live preview',
         samplePreview: 'Suggested search lane',
@@ -333,15 +329,15 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
   };
 
   return (
-    <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur">
-      <div className={cn('mb-3 flex items-center gap-2', isRtl && 'flex-row-reverse')}>
-        <span className="grid h-8 w-8 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent">
+    <div className="mx-auto mt-8 w-full max-w-[880px] rounded-[28px] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.055)] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur sm:p-4">
+      <div className={cn('mb-3 flex items-center justify-center gap-2', isRtl && 'flex-row-reverse')}>
+        <span className="grid h-9 w-9 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent">
           <Search className="h-4 w-4" />
         </span>
         <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.label}</span>
       </div>
       <form
-        className={cn('flex gap-2 rounded-[18px] border border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.22)] p-2', isRtl && 'flex-row-reverse')}
+        className={cn('flex flex-col gap-2 rounded-[22px] border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.3)] p-2 sm:flex-row', isRtl && 'sm:flex-row-reverse')}
         onSubmit={(event) => {
           event.preventDefault();
           void submitPrompt();
@@ -352,37 +348,28 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
           onChange={(event) => setPrompt(event.target.value)}
           placeholder={copy.placeholder}
           dir={isRtl ? 'rtl' : 'ltr'}
-          className="min-h-[48px] min-w-0 flex-1 bg-transparent px-3 text-sm text-text outline-none placeholder:text-text-muted"
+          className="min-h-[58px] min-w-0 flex-1 bg-transparent px-4 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[64px]"
         />
         <button
           type="submit"
           disabled={loading || prompt.trim().length < 4}
-          className="inline-flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-[54px] shrink-0 items-center justify-center gap-2 rounded-[18px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[64px] sm:px-6"
         >
           <Send className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-          <span className="hidden sm:inline">{loading ? '...' : copy.submit}</span>
+          <span>{loading ? '...' : copy.submit}</span>
         </button>
       </form>
-      <div className={cn('mt-3 flex flex-wrap gap-2', isRtl && 'justify-end')}>
-        {copy.chips.map((chip) => (
-          <button
-            key={chip}
-            type="button"
-            onClick={() => setPrompt((current) => (current ? `${current}, ${chip}` : chip))}
-            className="rounded-full border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-xs text-text-soft transition hover:border-accent/40 hover:text-accent"
-          >
-            {chip}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {copy.examples.map((example) => (
           <button
             key={example}
             type="button"
             onClick={() => applyExamplePrompt(example)}
             dir={isRtl ? 'rtl' : 'ltr'}
-            className="min-h-[58px] rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-left text-xs leading-5 text-text-soft transition hover:border-accent/40 hover:text-text"
+            className={cn(
+              'min-h-[58px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-2 text-xs leading-5 text-text-soft transition hover:border-accent/40 hover:bg-accent/10 hover:text-text',
+              isRtl ? 'text-right' : 'text-left'
+            )}
           >
             {example}
           </button>
@@ -394,13 +381,13 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
         </p>
       ) : null}
       {result ? (
-        <div className="mt-4 rounded-[18px] border border-accent/20 bg-accent/8 p-4">
-          <p className="text-sm leading-6 text-text">{result.turn.text}</p>
+        <div className={cn('mt-4 rounded-[22px] border border-accent/20 bg-accent/8 p-4 sm:p-5', isRtl ? 'text-right' : 'text-left')}>
+          <p className="text-base leading-7 text-text">{result.turn.text}</p>
           {result.turn.next_question ? (
             <p className="mt-2 text-sm leading-6 text-text-soft">{result.turn.next_question}</p>
           ) : null}
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {result.preview_cards.slice(0, 2).map((card) => (
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {result.preview_cards.slice(0, 3).map((card) => (
               <div key={`${card.title}-${card.location}`} className="rounded-[12px] border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.18)] p-3">
                 <span className={cn(
                   'mb-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold',
@@ -1363,10 +1350,7 @@ export function Homepage() {
   const content = useMarketingHomeContent();
   const locale = useLocale();
   const isRtl = locale === 'ar';
-  const reducedMotion = useReducedMotion();
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
-  const heroPrimaryCta = content.hero.ctas.find((c) => c.type === 'primary');
-  const heroSecondaryCta = content.hero.ctas.find((c) => c.type === 'secondary');
 
   const proofItems = useMemo(() => splitProofLine(content.hero.proofLine), [content.hero.proofLine]);
   const pricingTabs = useMemo(
@@ -1376,7 +1360,6 @@ export function Homepage() {
     [content.pricing.toggleLabels]
   );
   const pricingCards = content.pricing.professional.filter((plan) => plan.id === 'pro');
-  const proofIcons = [ShieldCheck, Languages, Scale];
 
   return (
     <div
@@ -1386,81 +1369,36 @@ export function Homepage() {
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
-        <Section className="pt-4 sm:pt-6 lg:pt-8">
-          <div className="relative overflow-hidden rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(19,19,22,0.98),rgba(9,9,11,0.98))] px-5 py-6 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:px-7 sm:py-7 lg:px-10 lg:py-8">
+        <Section className="min-h-[calc(100svh-78px)] pt-4 sm:pt-6 lg:pt-8">
+          <div className="relative w-full overflow-hidden rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(19,19,22,0.98),rgba(9,9,11,0.98))] px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:px-8 sm:py-8 lg:px-12 lg:py-9">
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,rgba(9,9,11,0.08),rgba(9,9,11,0.28))]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(226,200,126,0.08),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(226,200,126,0.12),transparent_22%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.04),transparent_24%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(226,200,126,0.08),transparent_28%),radial-gradient(circle_at_50%_92%,rgba(255,255,255,0.035),transparent_24%)]" />
             </div>
-            <div
-              className={cn(
-                "relative z-10 grid gap-10",
-                isRtl
-                  ? "xl:grid-cols-[minmax(0,0.9fr),minmax(400px,1.08fr)] xl:items-start"
-                  : "lg:grid-cols-[minmax(0,0.9fr),minmax(380px,1.1fr)] lg:items-center"
-              )}
-            >
-              <Reveal className={cn(isRtl && 'lg:order-2')}>
-                <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
+            <div className="relative z-10 mx-auto max-w-[980px] text-center">
+              <Reveal>
+                <div className="mx-auto max-w-max rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-text-soft sm:text-[11px]">
                   {content.ui.mentalModelLine}
                 </div>
-                <h1 className="mt-4 max-w-[16ch] text-[2.9rem] font-[family:var(--font-instrument-serif)] font-bold leading-none tracking-normal text-text sm:max-w-[17ch] sm:text-[3.35rem] lg:max-w-[16ch] lg:text-[3.55rem] xl:text-[3.9rem]">
+                <h1 className="mx-auto mt-4 max-w-[18ch] text-[2.75rem] font-[family:var(--font-instrument-serif)] font-bold leading-none tracking-normal text-text sm:max-w-[20ch] sm:text-[3.65rem] lg:text-[4.05rem]">
                   {content.hero.headline}
                 </h1>
-                <p className="mt-4 max-w-[34rem] text-sm leading-6 text-text-soft sm:text-base sm:leading-7">
+                <p className="mx-auto mt-5 max-w-[47rem] text-base leading-7 text-text-soft sm:text-lg sm:leading-8">
                   {content.hero.subhead}
                 </p>
 
                 <MihadScoutBox isRtl={isRtl} />
 
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                  <PrimaryLinkButton
-                    href={heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href}
-                    onClick={() =>
-                      trackPrimaryCtaClick(
-                        'hero',
-                        heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href
-                      )
-                    }
-                  >
-                    {heroPrimaryCta?.label ?? content.nav.actions.primaryCta.label}
-                  </PrimaryLinkButton>
-                  <Link
-                    href={heroSecondaryCta?.href ?? '/support'}
-                    onClick={() => trackMarketingEvent('contact_click', { location: 'hero' })}
-                    className={cn(
-                      'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[var(--rSm)] border border-border px-5 py-2.5 font-semibold text-text transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                      'hover:border-highlight hover:text-highlight',
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                    )}
-                  >
-                    {heroSecondaryCta?.label}
-                    <ArrowRight className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-                  </Link>
+                <div className="mx-auto mt-5 flex max-w-[780px] flex-wrap items-center justify-center gap-2">
+                  {proofItems.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-xs leading-5 text-text-soft"
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
-
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {proofItems.map((item, index) => {
-                    const Icon = proofIcons[index] ?? ShieldCheck;
-                    return (
-                      <div
-                        key={item}
-                        className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] text-accent">
-                            <Icon className="h-4 w-4" />
-                          </span>
-                          <span className="text-sm leading-6 text-text-soft">{item}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Reveal>
-
-              <Reveal delayMs={100} className={cn(isRtl && 'lg:order-1')}>
-                <HeroVisualScene content={content} isRtl={isRtl} reducedMotion={reducedMotion} />
               </Reveal>
             </div>
           </div>
