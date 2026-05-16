@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Search,
   Send,
@@ -1067,20 +1067,7 @@ function Nav({ content }: { content: Content }) {
           {content.brand.name}
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
-          {content.nav.links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={cn(
-                'text-sm font-medium text-text-soft hover:text-text transition-colors duration-200',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-              )}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </div>
+        <div className="hidden md:block" aria-hidden="true" />
 
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden sm:block">
@@ -1176,20 +1163,6 @@ function Nav({ content }: { content: Content }) {
                 ✕
               </button>
             </div>
-            {content.nav.links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  'block rounded-[var(--rSm)] border border-border bg-surface px-4 py-3',
-                  'text-text hover:border-highlight hover:text-highlight transition-colors duration-200',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                )}
-              >
-                {l.label}
-              </Link>
-            ))}
             {user ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
                 <Link
@@ -1586,16 +1559,7 @@ export function Homepage() {
   const content = useMarketingHomeContent();
   const locale = useLocale();
   const isRtl = locale === 'ar';
-  const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
   const [scoutActive, setScoutActive] = useState(false);
-
-  const pricingTabs = useMemo(
-    () => [
-      { id: 'professional', label: content.pricing.toggleLabels[0] },
-    ],
-    [content.pricing.toggleLabels]
-  );
-  const pricingCards = content.pricing.professional.filter((plan) => plan.id === 'pro');
 
   return (
     <div
@@ -1641,273 +1605,6 @@ export function Homepage() {
           </div>
         </Section>
 
-        <Section id="product">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.78fr),minmax(320px,0.92fr)] lg:items-start">
-            <Reveal>
-              <div className="max-w-[44rem]">
-                <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                  {content.problem.title}
-                </h2>
-                <div className="mt-5 space-y-4 text-base leading-8 text-text-soft sm:text-lg">
-                  {content.problem.body.map((p) => (
-                    <p key={p}>{p}</p>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            <Reveal delayMs={100}>
-              <div className="rounded-[32px] border border-[rgba(255,255,255,0.07)] bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]">
-                <div className="text-[11px] tracking-[0.18em] uppercase text-text-soft">
-                  {content.problem.sideCard.title}
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[24px] border border-[rgba(212,107,85,0.28)] bg-[rgba(212,107,85,0.07)] p-5">
-                    <div className="text-sm font-semibold text-text">{content.ui.beforeLabel}</div>
-                    <ul className="mt-3 space-y-3 text-sm leading-6 text-text-soft">
-                      {content.problem.sideCard.before.map((b) => (
-                        <li key={b} className="flex gap-2">
-                          <span className="text-error">•</span>
-                          <span>{b}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="rounded-[24px] border border-[rgba(74,222,128,0.28)] bg-[rgba(74,222,128,0.07)] p-5">
-                    <div className="text-sm font-semibold text-text">{content.ui.afterLabel}</div>
-                    <ul className="mt-3 space-y-3 text-sm leading-6 text-text-soft">
-                      {content.problem.sideCard.after.map((b) => (
-                        <li key={b} className="flex gap-2">
-                          <span className="text-success">•</span>
-                          <span>{b}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-
-          <div id="how" className="mt-12">
-            <Reveal>
-              <div className="max-w-[40rem]">
-                <h3 className="text-2xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-3xl">
-                  {content.howItWorks.title}
-                </h3>
-                <p className="mt-3 text-base leading-7 text-text-soft">
-                  {content.howItWorks.subhead}
-                </p>
-              </div>
-            </Reveal>
-            <div className="mt-6 grid gap-4 lg:grid-cols-3">
-              {content.howItWorks.steps.map((step, idx) => (
-                <Reveal key={step.title} delayMs={idx * 80}>
-                  <div className="h-full rounded-[24px] border border-[rgba(226,200,126,0.24)] bg-[linear-gradient(180deg,rgba(226,200,126,0.10),rgba(255,255,255,0.02))] p-5 shadow-[var(--shadowSm)]">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.08)] text-sm font-semibold text-accent">
-                      {idx + 1}
-                    </div>
-                    <h4 className="mt-5 text-xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                      {step.title}
-                    </h4>
-                    <p className="mt-2 text-sm leading-6 text-text-soft">{step.body}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </Section>
-
-        <Section id="workflows" className="pt-0">
-          <Reveal>
-            <div className="max-w-[44rem]">
-              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                {content.applications.title}
-              </h2>
-              <p className="mt-4 text-base leading-8 text-text-soft sm:text-lg">
-                {content.applications.subhead}
-              </p>
-            </div>
-          </Reveal>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {content.applications.cards.map((card, index) => (
-              <Reveal key={card.id} delayMs={index * 80}>
-                <div className="h-full rounded-[24px] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 shadow-[var(--shadowSm)]">
-                  <div className="text-xs tracking-[0.10em] uppercase text-text-soft">{content.brand.name}</div>
-                  <h3 className="mt-2 text-lg font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                    {card.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-text-soft">{card.subtitle}</p>
-                  <ul className="mt-4 space-y-2 text-sm text-text-soft">
-                    {card.bullets.map((b) => (
-                      <li key={b} className="flex gap-2">
-                        <span className="mt-[2px] text-accent">•</span>
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </Section>
-
-        <Section id={content.pricing.id}>
-          <Reveal>
-            <div className="max-w-[38rem]">
-              <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                {content.pricing.title}
-              </h2>
-            </div>
-          </Reveal>
-
-          {pricingTabs.length > 1 ? (
-            <Reveal className="mt-8" delayMs={90}>
-              <PillTabs
-                tabs={pricingTabs}
-                activeId={pricingLane}
-                onChange={(id) => {
-                  setPricingLane(id as 'professional' | 'enterprise');
-                  trackMarketingEvent('pricing_toggle_change', { pricing_lane: id });
-                }}
-              />
-            </Reveal>
-          ) : null}
-
-          <div className="mt-8 grid max-w-xl gap-4">
-            {pricingCards.map((p, index) => (
-              <Reveal key={p.id} delayMs={index * 80}>
-                <div
-                  className={cn(
-                    'flex h-full flex-col rounded-[34px] border p-7 shadow-[var(--shadowMd)]',
-                    index === 0
-                      ? 'border-[color:rgba(226,200,126,0.28)] bg-[linear-gradient(180deg,rgba(19,19,22,0.97),rgba(19,19,22,0.99))]'
-                      : 'border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))]'
-                  )}
-                >
-                  <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
-                    {pricingLane === 'professional'
-                      ? content.pricing.toggleLabels[0]
-                      : content.pricing.toggleLabels[1]}
-                  </div>
-                  <div className="mt-4 flex items-baseline justify-between gap-4">
-                    <div className="text-2xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                      {p.name}
-                    </div>
-                    <div className="text-base text-text-soft">{p.price}</div>
-                  </div>
-                  <ul className="mt-5 space-y-3 text-sm leading-6 text-text-soft">
-                    {p.bullets.map((b) => (
-                      <li key={b} className="flex gap-2">
-                        <span className="mt-[2px] text-highlight">•</span>
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto pt-6">
-                    <PrimaryLinkButton
-                      href={p.cta.href}
-                      className="w-full"
-                      onClick={() => trackMarketingEvent('pricing_plan_click', { plan_id: p.id })}
-                    >
-                      {p.cta.label}
-                    </PrimaryLinkButton>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal className="mt-6" delayMs={120}>
-            <div className="rounded-[24px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.025)] p-6">
-              <div className="text-sm font-semibold text-text">{content.pricing.usageMeter.title}</div>
-              <div className="mt-2 text-sm leading-7 text-text-soft">{content.pricing.usageMeter.body}</div>
-            </div>
-          </Reveal>
-
-          <Reveal className="mt-10" delayMs={150}>
-            <div className="rounded-[38px] border border-[color:rgba(226,200,126,0.22)] bg-[radial-gradient(circle_at_top_right,rgba(226,200,126,0.14),transparent_26%),linear-gradient(135deg,rgba(24,24,27,0.97),rgba(19,19,22,0.99))] p-8 shadow-[var(--shadowSm)] sm:p-10">
-              <div className="max-w-[44rem]">
-                <h2 className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold tracking-tight text-text sm:text-4xl">
-                  {content.finalCta.title}
-                </h2>
-                <p className="mt-4 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg">
-                  {content.finalCta.subhead}
-                </p>
-                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                  <PrimaryLinkButton
-                    href={content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href}
-                    onClick={() =>
-                      trackPrimaryCtaClick(
-                        'final',
-                        content.finalCta.ctas[0]?.href ?? content.nav.actions.primaryCta.href
-                      )
-                    }
-                  >
-                    {content.finalCta.ctas[0]?.label ?? content.nav.actions.primaryCta.label}
-                  </PrimaryLinkButton>
-                  <Link
-                    href={content.finalCta.ctas[1]?.href ?? '/support'}
-                    onClick={() => trackMarketingEvent('contact_click')}
-                    className={cn(
-                      'inline-flex min-h-[44px] items-center justify-center rounded-[var(--rSm)] border border-border bg-transparent px-5 py-2.5 font-semibold text-text transition-colors duration-200',
-                      'hover:border-highlight hover:text-highlight',
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                    )}
-                  >
-                    {content.finalCta.ctas[1]?.label}
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </Section>
-
-        {/* Footer */}
-        <footer className="border-t border-border bg-[rgba(0,0,0,0.08)]">
-          <div className="max-w-[1280px] mx-auto px-5 sm:px-8 lg:px-[72px] py-14">
-            <div className="grid gap-10 lg:grid-cols-[2fr,10fr]">
-              <div>
-                <div className="text-3xl font-[family:var(--font-instrument-serif)] font-semibold text-text">
-                  {content.brand.name}
-                </div>
-                <div className="mt-2 text-text-soft">{content.brand.tagline}</div>
-              </div>
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                {content.footer.columns.map((col) => (
-                  <div key={col.title}>
-                    <div className="text-xs tracking-[0.14em] uppercase text-text-soft">{col.title}</div>
-                    <div className="mt-3 space-y-2">
-                      {col.links.map((l) => {
-                        const isExternal = /^https?:\/\//i.test(l.href);
-                        return (
-                        <Link
-                          key={l.href + l.label}
-                          href={l.href}
-                          target={isExternal ? '_blank' : undefined}
-                          rel={isExternal ? 'noreferrer noopener' : undefined}
-                          className={cn(
-                            'block text-sm text-text-soft hover:text-text transition-colors duration-200',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2'
-                          )}
-                        >
-                          {l.label}
-                        </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-text-soft">
-              <div>© {new Date().getFullYear()} Watd Information Technology Company</div>
-              <div>{content.footer.legalNote}</div>
-            </div>
-          </div>
-        </footer>
       </main>
     </div>
   );
