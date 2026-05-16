@@ -329,7 +329,7 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
   };
 
   return (
-    <div className="mx-auto mt-8 w-full max-w-[880px] rounded-[28px] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.055)] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur sm:p-4">
+    <div className="mx-auto mt-8 w-full max-w-[940px]">
       <div className={cn('mb-3 flex items-center justify-center gap-2', isRtl && 'flex-row-reverse')}>
         <span className="grid h-9 w-9 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent">
           <Search className="h-4 w-4" />
@@ -337,7 +337,7 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
         <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.label}</span>
       </div>
       <form
-        className={cn('flex flex-col gap-2 rounded-[22px] border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.3)] p-2 sm:flex-row', isRtl && 'sm:flex-row-reverse')}
+        className={cn('flex flex-col gap-2 rounded-[26px] border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.06)] p-2 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur sm:flex-row', isRtl && 'sm:flex-row-reverse')}
         onSubmit={(event) => {
           event.preventDefault();
           void submitPrompt();
@@ -348,18 +348,18 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
           onChange={(event) => setPrompt(event.target.value)}
           placeholder={copy.placeholder}
           dir={isRtl ? 'rtl' : 'ltr'}
-          className="min-h-[58px] min-w-0 flex-1 bg-transparent px-4 text-base text-text outline-none placeholder:text-text-muted sm:min-h-[64px]"
+          className="min-h-[64px] min-w-0 flex-1 bg-transparent px-5 text-lg text-text outline-none placeholder:text-text-muted sm:min-h-[72px]"
         />
         <button
           type="submit"
           disabled={loading || prompt.trim().length < 4}
-          className="inline-flex min-h-[54px] shrink-0 items-center justify-center gap-2 rounded-[18px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[64px] sm:px-6"
+          className="inline-flex min-h-[58px] shrink-0 items-center justify-center gap-2 rounded-[22px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[72px] sm:px-7"
         >
           <Send className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
           <span>{loading ? '...' : copy.submit}</span>
         </button>
       </form>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto mt-4 grid max-w-[900px] gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {copy.examples.map((example) => (
           <button
             key={example}
@@ -367,7 +367,7 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
             onClick={() => applyExamplePrompt(example)}
             dir={isRtl ? 'rtl' : 'ltr'}
             className={cn(
-              'min-h-[58px] rounded-[16px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-2 text-xs leading-5 text-text-soft transition hover:border-accent/40 hover:bg-accent/10 hover:text-text',
+              'min-h-[56px] rounded-[18px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm leading-5 text-text-soft transition hover:border-accent/40 hover:bg-accent/10 hover:text-text',
               isRtl ? 'text-right' : 'text-left'
             )}
           >
@@ -1352,7 +1352,6 @@ export function Homepage() {
   const isRtl = locale === 'ar';
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
 
-  const proofItems = useMemo(() => splitProofLine(content.hero.proofLine), [content.hero.proofLine]);
   const pricingTabs = useMemo(
     () => [
       { id: 'professional', label: content.pricing.toggleLabels[0] },
@@ -1369,48 +1368,23 @@ export function Homepage() {
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
-        <Section className="min-h-[calc(100svh-78px)] pt-4 sm:pt-6 lg:pt-8">
-          <div className="relative w-full overflow-hidden rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(19,19,22,0.98),rgba(9,9,11,0.98))] px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:px-8 sm:py-8 lg:px-12 lg:py-9">
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,rgba(9,9,11,0.08),rgba(9,9,11,0.28))]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(226,200,126,0.08),transparent_28%),radial-gradient(circle_at_50%_92%,rgba(255,255,255,0.035),transparent_24%)]" />
-            </div>
-            <div className="relative z-10 mx-auto max-w-[980px] text-center">
-              <Reveal>
-                <div className="mx-auto max-w-max rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-text-soft sm:text-[11px]">
-                  {content.ui.mentalModelLine}
-                </div>
-                <h1 className="mx-auto mt-4 max-w-[18ch] text-[2.75rem] font-[family:var(--font-instrument-serif)] font-bold leading-none tracking-normal text-text sm:max-w-[20ch] sm:text-[3.65rem] lg:text-[4.05rem]">
-                  {content.hero.headline}
-                </h1>
-                <p className="mx-auto mt-5 max-w-[47rem] text-base leading-7 text-text-soft sm:text-lg sm:leading-8">
-                  {content.hero.subhead}
-                </p>
+        <Section className="grid min-h-[calc(100svh-78px)] place-items-center py-8 sm:py-10 lg:py-12">
+          <div className="relative mx-auto w-full max-w-[1060px] text-center">
+            <Reveal>
+              <h1 className="mx-auto max-w-[13ch] text-[3.3rem] font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-normal text-text sm:text-[5.2rem] lg:text-[6.4rem]">
+                {content.hero.headline}
+              </h1>
+              <p className="mx-auto mt-6 max-w-[43rem] text-base leading-7 text-text-soft sm:text-lg sm:leading-8">
+                {content.hero.subhead}
+              </p>
 
-                <MihadScoutBox isRtl={isRtl} />
+              <MihadScoutBox isRtl={isRtl} />
 
-                <div className="mx-auto mt-5 flex max-w-[780px] flex-wrap items-center justify-center gap-2">
-                  {proofItems.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] px-3 py-1.5 text-xs leading-5 text-text-soft"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </Reveal>
-            </div>
+              <p className="mx-auto mt-5 max-w-[42rem] text-xs leading-6 text-text-muted sm:text-sm">
+                {content.hero.proofLine}
+              </p>
+            </Reveal>
           </div>
-
-          <Reveal className="mt-6" delayMs={150}>
-            <PartnerLogoStrip
-              title={content.partners.title}
-              subhead={content.partners.subhead}
-              items={content.partners.items}
-            />
-          </Reveal>
-
         </Section>
 
         <Section id="product">

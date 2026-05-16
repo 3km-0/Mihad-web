@@ -2175,8 +2175,8 @@
         }
       },
       "hero": {
-        "headline": "Find the right property without scrolling through noise.",
-        "subhead": "Describe what you want. Mihad turns it into a buyer brief, searches verified options, and helps coordinate with the right broker.",
+        "headline": "Tell Mihad what you are looking for.",
+        "subhead": "Describe the property you want. Mihad turns it into a buyer brief, shows a safe preview, and continues into verified search when you are ready.",
         "ctas": [
           {
             "type": "primary",
