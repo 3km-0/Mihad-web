@@ -2,17 +2,25 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Languages,
   Scale,
+  Search,
+  Send,
   ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackMarketingEvent } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  intentToOnboardingDraft,
+  MIHAD_SCOUT_INTENT_STORAGE_KEY,
+  type MihadScoutIntentResponse,
+} from '@/lib/mihad-scout';
 
 type Content = {
   brand: { name: string; tagline: string; theme: string };
@@ -216,6 +224,216 @@ function trackPrimaryCtaClick(location: string, href: string) {
   }
 
   trackMarketingEvent('cta_start_free_click', { location });
+}
+
+function scoutCopy(isRtl: boolean) {
+  return isRtl
+    ? {
+        label: 'كشاف عقاري ذكي',
+        placeholder: 'صف ما تبحث عنه...',
+        submit: 'ابحث',
+        examples: [
+          'شقة ٣ غرف في شمال الرياض، قسطها أقل من ٧ آلاف',
+          'فيلا لعائلة قريبة من المدارس في الرياض',
+          'شقة استثمارية في دبي تحت ١.٥ مليون',
+        ],
+        chips: ['الرياض', 'جدة', 'دبي', 'إسطنبول', 'شقق', 'فلل', 'جاهز', 'على الخارطة', 'قسط أقل من ٧ آلاف'],
+        preview: 'معاينة فقط. البحث المباشر يبدأ بعد التحقق.',
+        livePreview: 'معاينة مباشرة محدودة',
+        samplePreview: 'مسار بحث مقترح',
+        continue: 'تابع للبحث الموثق',
+        error: 'تعذر فهم الطلب الآن. جرّب بصياغة عقارية أوضح.',
+      }
+    : {
+        label: 'AI property scout',
+        placeholder: 'Describe what you are looking for...',
+        submit: 'Find options',
+        examples: [
+          '3-bedroom apartment in North Riyadh under SAR 1.5M',
+          'Villa near international schools in Riyadh',
+          'Investment apartment in Dubai under 1.5M',
+        ],
+        chips: ['Riyadh', 'Jeddah', 'Dubai', 'Istanbul', 'Apartments', 'Villas', 'Ready units', 'Off-plan', 'Monthly payment under 7k'],
+        preview: 'Preview only. Live search starts after verification.',
+        livePreview: 'Limited live preview',
+        samplePreview: 'Suggested search lane',
+        continue: 'Continue to verified search',
+        error: 'I could not parse that request yet. Try describing a property search.',
+      };
+}
+
+function getScoutSessionId() {
+  if (typeof window === 'undefined') return 'server';
+  const key = 'mihad_scout_session_v1';
+  const existing = window.sessionStorage.getItem(key);
+  if (existing) return existing;
+  const next = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.sessionStorage.setItem(key, next);
+  return next;
+}
+
+function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
+  const router = useRouter();
+  const copy = scoutCopy(isRtl);
+  const [prompt, setPrompt] = useState('');
+  const [result, setResult] = useState<MihadScoutIntentResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState('server');
+
+  useEffect(() => {
+    setSessionId(getScoutSessionId());
+  }, []);
+
+  const submitPrompt = async (nextPrompt = prompt) => {
+    const cleanPrompt = nextPrompt.trim();
+    if (!cleanPrompt || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/mihad/intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: cleanPrompt, locale: isRtl ? 'ar' : 'en', session_id: sessionId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || copy.error);
+      setResult(payload as MihadScoutIntentResponse);
+      trackMarketingEvent('mihad_scout_intent_parsed', {
+        gate_state: payload?.turn?.gate_state,
+        missing_count: payload?.intent?.missing_fields?.length ?? 0,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : copy.error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyExamplePrompt = (value: string) => {
+    setPrompt(value);
+    void submitPrompt(value);
+  };
+
+  const continueToAuth = () => {
+    if (typeof window !== 'undefined' && result?.intent) {
+      const draft = intentToOnboardingDraft(result.intent);
+      window.sessionStorage.setItem(
+        MIHAD_SCOUT_INTENT_STORAGE_KEY,
+        JSON.stringify({ prompt, result, draft, savedAt: new Date().toISOString() }),
+      );
+      window.sessionStorage.setItem('zohal_onboarding_draft_v1', JSON.stringify(draft));
+    }
+    trackMarketingEvent('mihad_scout_continue_verified_search', {
+      gate_state: result?.turn?.gate_state ?? 'unknown',
+    });
+    router.push('/auth/signup');
+  };
+
+  return (
+    <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur">
+      <div className={cn('mb-3 flex items-center gap-2', isRtl && 'flex-row-reverse')}>
+        <span className="grid h-8 w-8 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent">
+          <Search className="h-4 w-4" />
+        </span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.label}</span>
+      </div>
+      <form
+        className={cn('flex gap-2 rounded-[18px] border border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.22)] p-2', isRtl && 'flex-row-reverse')}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submitPrompt();
+        }}
+      >
+        <input
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          placeholder={copy.placeholder}
+          dir={isRtl ? 'rtl' : 'ltr'}
+          className="min-h-[48px] min-w-0 flex-1 bg-transparent px-3 text-sm text-text outline-none placeholder:text-text-muted"
+        />
+        <button
+          type="submit"
+          disabled={loading || prompt.trim().length < 4}
+          className="inline-flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Send className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
+          <span className="hidden sm:inline">{loading ? '...' : copy.submit}</span>
+        </button>
+      </form>
+      <div className={cn('mt-3 flex flex-wrap gap-2', isRtl && 'justify-end')}>
+        {copy.chips.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            onClick={() => setPrompt((current) => (current ? `${current}, ${chip}` : chip))}
+            className="rounded-full border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-xs text-text-soft transition hover:border-accent/40 hover:text-accent"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {copy.examples.map((example) => (
+          <button
+            key={example}
+            type="button"
+            onClick={() => applyExamplePrompt(example)}
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="min-h-[58px] rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-left text-xs leading-5 text-text-soft transition hover:border-accent/40 hover:text-text"
+          >
+            {example}
+          </button>
+        ))}
+      </div>
+      {error ? (
+        <p className="mt-3 rounded-[12px] border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          {error}
+        </p>
+      ) : null}
+      {result ? (
+        <div className="mt-4 rounded-[18px] border border-accent/20 bg-accent/8 p-4">
+          <p className="text-sm leading-6 text-text">{result.turn.text}</p>
+          {result.turn.next_question ? (
+            <p className="mt-2 text-sm leading-6 text-text-soft">{result.turn.next_question}</p>
+          ) : null}
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {result.preview_cards.slice(0, 2).map((card) => (
+              <div key={`${card.title}-${card.location}`} className="rounded-[12px] border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.18)] p-3">
+                <span className={cn(
+                  'mb-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                  card.preview_kind === 'live_preview'
+                    ? 'border-accent/30 text-accent'
+                    : 'border-[rgba(255,255,255,0.12)] text-text-muted',
+                )}>
+                  {card.preview_kind === 'live_preview' ? copy.livePreview : copy.samplePreview}
+                </span>
+                <p className="text-sm font-semibold text-text">{card.title}</p>
+                <p className="mt-1 text-xs text-text-muted">{card.location}</p>
+                <p className="mt-2 text-xs leading-5 text-text-soft">{card.note || copy.preview}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] leading-5 text-text-muted">
+            {result.preview_status?.live_preview
+              ? copy.preview
+              : result.preview_status?.reason === 'anonymous_preview_limit'
+                ? (isRtl ? 'استخدمت المعاينة المباشرة المحدودة لهذه الجلسة. سجّل الدخول للبحث الكامل.' : 'You used the limited live preview for this session. Sign in for the full search.')
+                : copy.preview}
+          </p>
+          <button
+            type="button"
+            onClick={continueToAuth}
+            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-[14px] bg-accent px-4 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 sm:w-auto"
+          >
+            {copy.continue}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function useScrolled(thresholdPx = 12) {
@@ -1168,23 +1386,11 @@ export function Homepage() {
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
-        <Section className="pt-8 sm:pt-12 lg:pt-16">
-          <div className="relative overflow-hidden rounded-[40px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(19,19,22,0.98),rgba(9,9,11,0.98))] px-6 py-8 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+        <Section className="pt-4 sm:pt-6 lg:pt-8">
+          <div className="relative overflow-hidden rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(19,19,22,0.98),rgba(9,9,11,0.98))] px-5 py-6 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:px-7 sm:py-7 lg:px-10 lg:py-8">
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_30%),linear-gradient(180deg,rgba(9,9,11,0.08),rgba(9,9,11,0.28))]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(226,200,126,0.08),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(226,200,126,0.12),transparent_22%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.04),transparent_24%)]" />
-              <div
-                className={cn(
-                  'absolute top-[12%] h-[420px] w-[420px] rounded-full bg-[rgba(226,200,126,0.07)] blur-3xl',
-                  isRtl ? 'left-[-110px]' : 'right-[-110px]'
-                )}
-              />
-              <div
-                className={cn(
-                  'absolute bottom-[-120px] h-[320px] w-[320px] rounded-full bg-[rgba(226,200,126,0.1)] blur-3xl',
-                  isRtl ? 'right-[-110px]' : 'left-[-110px]'
-                )}
-              />
             </div>
             <div
               className={cn(
@@ -1198,14 +1404,16 @@ export function Homepage() {
                 <div className="text-[11px] tracking-[0.22em] uppercase text-text-soft">
                   {content.ui.mentalModelLine}
                 </div>
-                <h1 className="mt-5 max-w-[12ch] text-[3.45rem] font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-normal text-text sm:max-w-[13ch] sm:text-[4.1rem] lg:max-w-[12ch] lg:text-[4.45rem] xl:text-[4.8rem]">
+                <h1 className="mt-4 max-w-[16ch] text-[2.9rem] font-[family:var(--font-instrument-serif)] font-bold leading-none tracking-normal text-text sm:max-w-[17ch] sm:text-[3.35rem] lg:max-w-[16ch] lg:text-[3.55rem] xl:text-[3.9rem]">
                   {content.hero.headline}
                 </h1>
-                <p className="mt-6 max-w-[34rem] text-base leading-8 text-text-soft sm:text-lg sm:leading-8">
+                <p className="mt-4 max-w-[34rem] text-sm leading-6 text-text-soft sm:text-base sm:leading-7">
                   {content.hero.subhead}
                 </p>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <MihadScoutBox isRtl={isRtl} />
+
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                   <PrimaryLinkButton
                     href={heroPrimaryCta?.href ?? content.nav.actions.primaryCta.href}
                     onClick={() =>

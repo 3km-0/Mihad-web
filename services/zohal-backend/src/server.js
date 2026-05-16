@@ -93,8 +93,11 @@ import {
   handleTemplatesPublish,
 } from "./handlers/templates.js";
 import { handleWhatsappOrchestrate } from "./handlers/whatsapp.js";
+import { parseMihadScoutIntentWithModel } from "./mihad/intent.js";
+import { buildMihadAnonymousPreview } from "./mihad/preview.js";
 import { sendJson, sendOptions, getRequestId, readJsonBody } from "./runtime/http.js";
 import { createLogger } from "./runtime/logging.js";
+import { requireInternalCaller } from "./runtime/internal-auth.js";
 
 const port = Number(process.env.PORT || 8080);
 
@@ -308,6 +311,38 @@ const server = createServer(async (req, res) => {
         log,
         readJsonBody,
       });
+    }
+
+    if (req.method === "POST" && url.pathname === "/internal/acquisition/intent/parse") {
+      requireInternalCaller(req.headers);
+      const body = await readJsonBody(req);
+      const prompt = String(body?.prompt || body?.text || "").trim();
+      if (prompt.length < 4) {
+        return sendJson(res, 400, { request_id: requestId, error: "prompt_too_short" });
+      }
+      if (prompt.length > 1200) {
+        return sendJson(res, 413, { request_id: requestId, error: "prompt_too_long" });
+      }
+      const result = await parseMihadScoutIntentWithModel(body, { requestId });
+      if (!result.accepted) {
+        return sendJson(res, 422, { request_id: requestId, error: "unsupported_intent", ...result });
+      }
+      return sendJson(res, 200, { request_id: requestId, ...result });
+    }
+
+    if (req.method === "POST" && url.pathname === "/internal/acquisition/intent/preview") {
+      requireInternalCaller(req.headers);
+      const body = await readJsonBody(req);
+      const intent = body?.intent && typeof body.intent === "object" ? body.intent : null;
+      if (!intent) {
+        return sendJson(res, 400, { request_id: requestId, error: "intent_required" });
+      }
+      const result = await buildMihadAnonymousPreview({
+        intent,
+        locale: body.locale === "ar" ? "ar" : "en",
+        requestId,
+      });
+      return sendJson(res, 200, { request_id: requestId, ...result });
     }
 
     if (url.pathname.startsWith("/internal/acquisition/")) {

@@ -6,7 +6,9 @@ export type MarketingEventName =
   | 'tab_change'
   | 'application_card_click'
   | 'faq_open'
-  | 'contact_click';
+  | 'contact_click'
+  | 'mihad_scout_intent_parsed'
+  | 'mihad_scout_continue_verified_search';
 
 type EventProps = Record<string, string | number | boolean | null | undefined>;
 
@@ -51,4 +53,3 @@ export function trackMarketingEvent(name: MarketingEventName, props?: EventProps
     // Never break UI due to analytics.
   }
 }
-

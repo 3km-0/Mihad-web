@@ -2125,13 +2125,13 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Zohal — Buy property abroad with confidence",
-      "description": "Tell Zohal your target country, budget, and property type. We will review your request, send suitable overseas property options, and help you move forward with trusted local partners when you are ready."
+      "title": "Mihad — AI property scout for serious buyers",
+      "description": "Describe what you want in Saudi Arabia, the UAE, or Turkey. Mihad turns your request into a buyer mandate, searches verified options after signup, and helps you coordinate with the right broker when you are ready."
     },
     "content": {
       "brand": {
-        "name": "Zohal",
-        "tagline": "Buy property abroad with confidence.",
+        "name": "Mihad",
+        "tagline": "AI property scout for serious buyers.",
         "theme": "acquisition-operator"
       },
       "nav": {
@@ -2145,7 +2145,7 @@
             "href": "#workflows"
           },
           {
-            "label": "Why Zohal?",
+            "label": "Why Mihad?",
             "href": "#product"
           },
           {
@@ -2169,18 +2169,18 @@
             "href": "/auth/login"
           },
           "primaryCta": {
-            "label": "Start for free",
+          "label": "Start verified search",
             "href": "/auth/signup"
           }
         }
       },
       "hero": {
-        "headline": "Buying property abroad? Start with Zohal.",
-        "subhead": "Tell us your target country, budget, and property type. We will review your request, send suitable options, and help you move forward with trusted local partners when you are ready.",
+        "headline": "Find the right home without scrolling through noise.",
+        "subhead": "Describe what you want in Saudi Arabia, the UAE, or Turkey. Mihad captures the mandate first, then runs verified search and broker coordination after you prove intent.",
         "ctas": [
           {
             "type": "primary",
-            "label": "Start for free",
+            "label": "Start verified search",
             "href": "/auth/signup"
           },
           {
@@ -2189,7 +2189,7 @@
             "href": "#how"
           }
         ],
-        "proofLine": "Tell us what you want • Get suitable options • Move forward when ready",
+        "proofLine": "Mandate first • Verified search after signup • Broker outreach only with consent",
         "mock": {
           "title": "Buyer Request",
           "panels": [
@@ -2200,10 +2200,10 @@
         }
       },
       "credibilityStrip": {
-        "label": "Built for Saudi buyers exploring property abroad",
+        "label": "Built for serious buyers in Saudi Arabia, the UAE, and Turkey",
         "items": [
           "Start with a simple request: country, budget, property type, and purpose",
-          "Receive selected overseas property options instead of random listings",
+          "Receive selected property options instead of random listings",
           "Move forward with trusted local partners when an option fits",
           "Before partner introductions, we may ask for a simple confirmation of buying ability"
         ]
@@ -2242,7 +2242,7 @@
         ]
       },
       "problem": {
-        "title": "Why use Zohal?",
+        "title": "Why use Mihad?",
         "body": [
           "We start with what you want, not random listings.",
           "We filter options before sending them to you. If an option fits, we help coordinate the next step with trusted local partners."
@@ -2257,7 +2257,7 @@
           "after": [
             "Your request becomes the starting point",
             "Selected options are reviewed before they reach you",
-            "When you are ready, Zohal helps with the serious next step"
+            "When you are ready, Mihad helps with the serious next step"
           ]
         }
       },
@@ -2370,8 +2370,21 @@
       },
       "applications": {
         "title": "Markets we focus on",
-        "subhead": "We focus on overseas markets where Saudi buyers commonly compare lifestyle, family, investment, and longer-term plans.",
+        "subhead": "Launch-facing search focuses on Saudi Arabia, the UAE, and Turkey, with old markets kept for legacy workspaces only.",
         "cards": [
+          {
+            "id": "saudi",
+            "title": "Saudi Arabia",
+            "subtitle": "Local search with buyer-side clarity.",
+            "bullets": [
+              "Useful for Riyadh and Jeddah buyers comparing districts, payment range, and readiness",
+              "Best for families and investors who want a clearer path from request to broker next step"
+            ],
+            "cta": {
+              "label": "See Saudi options",
+              "href": "#product"
+            }
+          },
           {
             "id": "uae",
             "title": "UAE",
@@ -2395,45 +2408,6 @@
             ],
             "cta": {
               "label": "See Turkey options",
-              "href": "#product"
-            }
-          },
-          {
-            "id": "greece",
-            "title": "Greece",
-            "subtitle": "Attractive European options.",
-            "bullets": [
-              "European lifestyle and investment appeal",
-              "Useful for buyers comparing residency-oriented goals"
-            ],
-            "cta": {
-              "label": "See Greece options",
-              "href": "#product"
-            }
-          },
-          {
-            "id": "spain",
-            "title": "Spain",
-            "subtitle": "Lifestyle and long-term investment.",
-            "bullets": [
-              "Good fit for long-term use and second-home planning",
-              "Useful for buyers comparing city, coast, and budget"
-            ],
-            "cta": {
-              "label": "See Spain options",
-              "href": "#product"
-            }
-          },
-          {
-            "id": "uk",
-            "title": "UK",
-            "subtitle": "For specific requests and higher budgets.",
-            "bullets": [
-              "Best for focused requests with clear budget bands",
-              "Useful for buyers with education, family, or long-term plans"
-            ],
-            "cta": {
-              "label": "See UK options",
               "href": "#product"
             }
           }
@@ -2625,8 +2599,8 @@
         }
       },
       "finalCta": {
-        "title": "Buying property abroad? Start with Zohal.",
-        "subhead": "Tell us your target country, budget, and property type. We will review your request, send suitable options, and help you move forward with trusted local partners when you are ready.",
+        "title": "Find property with Mihad.",
+        "subhead": "Tell us your target city, budget, and property type in Saudi Arabia, the UAE, or Turkey. We capture the mandate, show a safe preview, then continue into verified search when you are ready.",
         "ctas": [
           {
             "type": "primary",
@@ -2663,15 +2637,15 @@
             "title": "Markets",
             "links": [
               {
+                "label": "Saudi Arabia",
+                "href": "#workflows"
+              },
+              {
                 "label": "UAE",
                 "href": "#workflows"
               },
               {
                 "label": "Turkey",
-                "href": "#workflows"
-              },
-              {
-                "label": "Greece, Spain, UK",
                 "href": "#workflows"
               }
             ]
@@ -2729,7 +2703,7 @@
           "verifiedStatus": "Suitable",
           "reviewStatus": "Check",
           "sampleGoverningLawLabel": "Target country",
-          "sampleGoverningLawValue": "UAE, Turkey, Greece, Spain, or UK",
+          "sampleGoverningLawValue": "Saudi Arabia, UAE, or Turkey",
           "samplePartyALabel": "Budget",
           "samplePartyAValue": "Shared by buyer",
           "sampleEffectiveDateLabel": "Property type",

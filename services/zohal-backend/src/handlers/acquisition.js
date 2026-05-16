@@ -16,6 +16,8 @@ import { runRenovationCapexAgent } from "../renovation/agent.js";
 import { assertWorkspaceWriteAccess } from "../renovation/catalog.js";
 import { runAndPersistUnderwriting } from "../underwriting/persistence.js";
 import { computeInvestmentScore } from "../market/investment-scorer.js";
+import { planMihadBrokerAgentTurn } from "../mihad/agent.js";
+import { executeMihadToolCall, mihadToolDefinitions } from "../mihad/agent-tools.js";
 
 const SEARCH_TASK_QUEUE = String(
   process.env.GCP_ACQUISITION_SEARCH_TASK_QUEUE || "acquisition-search-runs",
@@ -4675,12 +4677,271 @@ async function expireVerifications(supabase) {
   return { expired };
 }
 
+async function maybeSingleRow(query, label = "row") {
+  const { data, error } = await query.maybeSingle();
+  if (error) throw new Error(`Failed to load ${label}: ${error.message}`);
+  return data || null;
+}
+
+async function loadMihadAgentWorkspaceContext(supabase, { workspaceId, userId, selectedOpportunityId = null }) {
+  const workspace = await maybeSingleRow(
+    supabase
+      .from("workspaces")
+      .select("id, name, workspace_kind, owner_id, org_id, analysis_brief, description")
+      .eq("id", workspaceId),
+    "workspace",
+  );
+  if (!workspace) {
+    const error = new Error("workspace_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (workspace.workspace_kind !== "mihad_buyer_desk") {
+    const error = new Error("mihad_buyer_desk_required");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const [
+    mandates,
+    searchRuns,
+    candidates,
+    opportunities,
+    readinessProfiles,
+    buyerPackets,
+    sharingGrants,
+  ] = await Promise.all([
+    selectRows(supabase.from("acquisition_mandates").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(3), "acquisition_mandates"),
+    selectRows(supabase.from("acquisition_search_runs").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(5), "acquisition_search_runs"),
+    selectRows(supabase.from("acquisition_candidate_opportunities").select("*").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(10), "acquisition_candidate_opportunities"),
+    selectRows(supabase.from("acquisition_opportunities").select("*").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(10), "acquisition_opportunities"),
+    selectRows(supabase.from("buyer_readiness_profiles").select("*").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(3), "buyer_readiness_profiles"),
+    selectRows(supabase.from("buyer_packets").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(5), "buyer_packets"),
+    selectRows(supabase.from("document_sharing_grants").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(10), "document_sharing_grants"),
+  ]);
+
+  const mandate = mandates[0] || null;
+  const readinessProfile = readinessProfiles[0] || null;
+  const activePacket = (buyerPackets || []).find((packet) => packet.status === "active") || null;
+  return {
+    supabase,
+    workspace_id: workspaceId,
+    user_id: userId,
+    selected_opportunity_id: selectedOpportunityId,
+    workspace,
+    mandate,
+    search_runs: searchRuns,
+    candidates,
+    opportunities,
+    readiness_profile: readinessProfile,
+    buyer_packets: buyerPackets,
+    active_packet: activePacket,
+    sharing_grants: sharingGrants,
+    default_sources: ["aqar", "bayut", "property_finder"],
+  };
+}
+
+async function upsertMihadAgentConversation(supabase, { workspaceId, userId, mandateId }) {
+  const externalThreadId = `mihad_buyer_desk:${workspaceId}:${userId}`;
+  const existing = await maybeSingleRow(
+    supabase
+      .from("agent_conversations")
+      .select("*")
+      .eq("channel", "web")
+      .eq("external_thread_id", externalThreadId),
+    "agent_conversations",
+  );
+  const payload = {
+    channel: "web",
+    external_thread_id: externalThreadId,
+    workspace_id: workspaceId,
+    mandate_id: mandateId || null,
+    linked_profile_id: userId,
+    mode: "workspace_coordination",
+    last_message_at: new Date().toISOString(),
+  };
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .from("agent_conversations")
+      .update({
+        ...payload,
+        state_json: {
+          ...(existing.state_json || {}),
+          agent_surface: "mihad_buyer_desk",
+        },
+      })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (error || !data) throw new Error(`Failed to update Mihad agent conversation: ${error?.message || "unknown"}`);
+    return data;
+  }
+  const { data, error } = await supabase
+    .from("agent_conversations")
+    .insert({
+      ...payload,
+      state_json: { agent_surface: "mihad_buyer_desk" },
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to create Mihad agent conversation: ${error?.message || "unknown"}`);
+  return data;
+}
+
+async function insertAgentEvent(supabase, payload) {
+  const { data, error } = await supabase
+    .from("agent_events")
+    .insert(payload)
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(`Failed to insert agent event: ${error?.message || "unknown"}`);
+  return data;
+}
+
+async function runMihadBrokerAgentTurn({ supabase, req, requestId, workspaceId, userId, body = {} }) {
+  await assertWorkspaceWriteAccess(supabase, workspaceId, userId);
+  const message = normalizeText(body.message || body.text);
+  if (!message) {
+    const error = new Error("message is required");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (message.length > 3000) {
+    const error = new Error("message is too long");
+    error.statusCode = 413;
+    throw error;
+  }
+
+  const context = await loadMihadAgentWorkspaceContext(supabase, {
+    workspaceId,
+    userId,
+    selectedOpportunityId: normalizeUuid(body.selected_opportunity_id),
+  });
+  context.message = message;
+  const conversation = await upsertMihadAgentConversation(supabase, {
+    workspaceId,
+    userId,
+    mandateId: context.mandate?.id || null,
+  });
+  const inboundEvent = await insertAgentEvent(supabase, {
+    conversation_id: conversation.id,
+    workspace_id: workspaceId,
+    opportunity_id: normalizeUuid(body.selected_opportunity_id),
+    channel: "web",
+    direction: "inbound",
+    event_type: "mihad_buyer_message",
+    safe_payload_json: {
+      text_excerpt: message.slice(0, 500),
+      selected_opportunity_id: normalizeUuid(body.selected_opportunity_id),
+    },
+  });
+
+  const plan = await planMihadBrokerAgentTurn({
+    message,
+    context: {
+      workspace_id: workspaceId,
+      workspace_kind: context.workspace.workspace_kind,
+      selected_opportunity_id: context.selected_opportunity_id,
+      mandate: context.mandate,
+      search_runs: context.search_runs,
+      candidates: context.candidates,
+      opportunities: context.opportunities,
+      readiness_profile: context.readiness_profile,
+      buyer_packets: context.buyer_packets,
+      active_packet: context.active_packet,
+      sharing_grants: context.sharing_grants,
+      default_sources: context.default_sources,
+    },
+    requestId,
+  });
+
+  const deps = {
+    clarifyMandate,
+    createWorkspaceSearchRun,
+    promoteCandidate,
+    createReadinessProfile,
+    createBuyerPacket,
+    listBrokerPartners,
+    grantBuyerPacketToBroker,
+    createExternalActionApproval,
+    insertAcquisitionEvent: insertEvent,
+  };
+  const toolResults = [];
+  for (const call of plan.tool_calls || []) {
+    try {
+      const result = await executeMihadToolCall({
+        call,
+        deps,
+        context,
+        req,
+        requestId,
+      });
+      toolResults.push(result);
+    } catch (error) {
+      toolResults.push({
+        tool: call.tool,
+        status: "failed",
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  await insertAgentEvent(supabase, {
+    conversation_id: conversation.id,
+    workspace_id: workspaceId,
+    opportunity_id: normalizeUuid(body.selected_opportunity_id),
+    channel: "web",
+    direction: "outbound",
+    event_type: "mihad_agent_turn",
+    safe_payload_json: {
+      in_reply_to_event_id: inboundEvent.id,
+      assistant_message: normalizeText(plan.assistant_message).slice(0, 1200),
+      reasoning_summary: normalizeText(plan.reasoning_summary).slice(0, 1200),
+      planner: plan.planner || null,
+      model: plan.model || null,
+      tool_results: toolResults.map((result) => ({
+        tool: result.tool,
+        status: result.status,
+        reason: result.reason || null,
+      })),
+    },
+  });
+
+  const nextContext = await loadMihadAgentWorkspaceContext(supabase, {
+    workspaceId,
+    userId,
+    selectedOpportunityId: normalizeUuid(body.selected_opportunity_id),
+  });
+  return {
+    conversation_id: conversation.id,
+    assistant_message: plan.assistant_message,
+    reasoning_summary: plan.reasoning_summary,
+    planner: plan.planner,
+    model: plan.model || null,
+    next_state: plan.next_state,
+    tools: mihadToolDefinitions(),
+    tool_calls: plan.tool_calls || [],
+    tool_results: toolResults,
+    context: {
+      mandate: nextContext.mandate,
+      search_runs: nextContext.search_runs,
+      candidates: nextContext.candidates,
+      opportunities: nextContext.opportunities,
+      readiness_profile: nextContext.readiness_profile,
+      buyer_packets: nextContext.buyer_packets,
+      active_packet: nextContext.active_packet,
+      sharing_grants: nextContext.sharing_grants,
+    },
+  };
+}
+
 function matchRoute(method, pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "api" || parts[1] !== "acquisition" || parts[2] !== "v1") return null;
   if (method === "POST" && parts[3] === "mandates" && parts.length === 4) return { name: "createMandate" };
   if (method === "POST" && parts[3] === "mandates" && parts[5] === "search-runs") return { name: "createSearchRun", mandateId: parts[4] };
   if (method === "POST" && parts[3] === "workspaces" && parts[5] === "search-runs" && parts.length === 6) return { name: "createWorkspaceSearchRun", workspaceId: parts[4] };
+  if (method === "POST" && parts[3] === "workspaces" && parts[5] === "mihad-agent" && parts[6] === "turn" && parts.length === 7) return { name: "mihadAgentTurn", workspaceId: parts[4] };
   if (method === "GET" && parts[3] === "search-runs" && parts.length === 5) return { name: "getSearchRun", searchRunId: parts[4] };
   if (method === "GET" && parts[3] === "search-runs" && parts[5] === "candidates") return { name: "listSearchCandidates", searchRunId: parts[4] };
   if (method === "POST" && parts[3] === "intake" && parts[4] === "listing") return { name: "intakeListing" };
@@ -4871,6 +5132,35 @@ export async function handleAcquisitionApi(req, res, { requestId, log, readJsonB
         body,
       });
       return sendJson(res, 202, buildEnvelope(requestId, result));
+    }
+    if (route.name === "mihadAgentTurn") {
+      const body = await readJsonBody(req);
+      const allowInternal = isInternalCaller(req.headers);
+      let userId = normalizeUuid(body.user_id);
+      if (!allowInternal) {
+        const token = bearerToken(req.headers);
+        if (!token) {
+          const error = new Error("not_authenticated");
+          error.statusCode = 401;
+          throw error;
+        }
+        const verified = await verifySupabaseJwt(token);
+        if (!verified.payload?.sub) {
+          const error = new Error("invalid_user_token");
+          error.statusCode = 401;
+          throw error;
+        }
+        userId = normalizeUuid(verified.payload.sub);
+      }
+      const result = await runMihadBrokerAgentTurn({
+        supabase,
+        req,
+        requestId,
+        workspaceId: normalizeUuid(route.workspaceId),
+        userId,
+        body,
+      });
+      return sendJson(res, 200, buildEnvelope(requestId, result));
     }
     if ([
       "createDiscoverIntake",
@@ -5163,6 +5453,7 @@ export const __test = {
   resolvePrimaryAcquisitionAction,
   screenCandidate,
   runWeeklyAcquisitionReports,
+  runMihadBrokerAgentTurn,
   updateOpportunityStage,
   upsertCandidateDraft,
   updateReadinessProfile,

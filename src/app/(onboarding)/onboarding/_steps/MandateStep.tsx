@@ -5,11 +5,9 @@ import { ChoiceGrid } from './StepShell';
 import type { LiquidityClass, MandatePurpose, MihadCountryCode, StepProps } from './types';
 
 const COUNTRIES: Array<{ value: MihadCountryCode; title: string; body: string }> = [
+  { value: 'SA', title: 'Saudi Arabia', body: 'Riyadh, Jeddah, and other domestic search mandates.' },
   { value: 'AE', title: 'United Arab Emirates', body: 'Dubai, Abu Dhabi, and surrounding emirates.' },
   { value: 'TR', title: 'Türkiye', body: 'Istanbul, Antalya, Bodrum, Izmir.' },
-  { value: 'GR', title: 'Greece', body: 'Athens, Thessaloniki, and the Greek islands.' },
-  { value: 'ES', title: 'Spain', body: 'Madrid, Barcelona, Costa del Sol, and the Balearics.' },
-  { value: 'SA', title: 'Saudi Arabia (domestic)', body: 'Riyadh and other Saudi cities.' },
 ];
 
 const PURPOSES: Array<{ value: MandatePurpose; title: string; body: string }> = [
@@ -41,7 +39,7 @@ export function MandateStep({ data, setData }: StepProps) {
       <section className="space-y-3">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-text-soft">Target market</h3>
-          <p className="text-sm text-text-soft">Pick one or more launch markets. UAE, Türkiye, Greece, and Spain are live; Saudi domestic is included for legacy continuity.</p>
+          <p className="text-sm text-text-soft">Pick one or more launch markets. Saudi Arabia, the UAE, and Türkiye are the public Mihad flow; older markets remain available only for existing workspaces.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {COUNTRIES.map((country) => {

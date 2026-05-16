@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PENDING_TRIAL_SETUP_STORAGE_KEY } from '@/components/payment/MoyasarTrialSetupForm';
 import type { BuyBoxInput } from '@/lib/acquisition-workspace';
+import { MIHAD_SCOUT_INTENT_STORAGE_KEY, type MihadScoutIntent } from '@/lib/mihad-scout';
 import { StepShell } from './_steps/StepShell';
 import { PersonaStep } from './_steps/PersonaStep';
 import { IdentityStep } from './_steps/IdentityStep';
@@ -131,6 +132,7 @@ export default function OnboardingPage() {
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [mihadScoutIntent, setMihadScoutIntent] = useState<MihadScoutIntent | null>(null);
 
   const setData = useCallback((patch: Partial<OnboardingData>) => {
     setDataState((current) => ({ ...current, ...patch }));
@@ -138,8 +140,19 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const hydrateScoutIntent = () => {
+      const scoutRaw = sessionStorage.getItem(MIHAD_SCOUT_INTENT_STORAGE_KEY);
+      if (!scoutRaw) return;
+      try {
+        const scout = JSON.parse(scoutRaw) as { intent?: MihadScoutIntent };
+        if (scout.intent) setMihadScoutIntent(scout.intent);
+      } catch {
+        sessionStorage.removeItem(MIHAD_SCOUT_INTENT_STORAGE_KEY);
+      }
+    };
     const raw = sessionStorage.getItem(ONBOARDING_DRAFT_STORAGE_KEY);
     if (!raw) {
+      hydrateScoutIntent();
       setHydrated(true);
       return;
     }
@@ -154,6 +167,7 @@ export default function OnboardingPage() {
     } catch {
       sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
     } finally {
+      hydrateScoutIntent();
       setHydrated(true);
     }
   }, []);
@@ -261,6 +275,7 @@ export default function OnboardingPage() {
             max: data.budgetMax,
             currency: data.budgetCurrency,
           },
+          mihad_scout_intent: mihadScoutIntent,
           preferences: {
             asset_type: data.assetType,
             risk_appetite: data.riskAppetite,
@@ -275,6 +290,7 @@ export default function OnboardingPage() {
       if (!response.ok) throw new Error(payload?.error || 'Failed to complete onboarding');
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+        sessionStorage.removeItem(MIHAD_SCOUT_INTENT_STORAGE_KEY);
         sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
       }
       router.replace(`/workspaces/${payload.workspace_id}`);

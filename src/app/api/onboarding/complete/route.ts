@@ -8,6 +8,7 @@ import {
   type MihadMandateTimeline,
   type MihadPurpose,
 } from '@/lib/acquisition-workspace';
+import type { MihadScoutIntent } from '@/lib/mihad-scout';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { zohalBackendUrl } from '@/lib/zohal-backend';
 import { NextResponse } from 'next/server';
@@ -24,6 +25,7 @@ type CompleteOnboardingRequest = {
   budget_currency?: MihadBudgetCurrency | null;
   budget_range?: { min?: number | string | null; max?: number | string | null; currency?: string | null };
   preferences?: Record<string, unknown>;
+  mihad_scout_intent?: MihadScoutIntent | null;
 };
 
 function jsonError(message: string, status: number, code?: string, extra?: Record<string, unknown>) {
@@ -186,7 +188,7 @@ export async function POST(request: Request) {
   const targetCountryCodes = Array.isArray(body.target_country_codes) && body.target_country_codes.length
     ? (body.target_country_codes as MihadCountryCode[])
     : ['SA'] as MihadCountryCode[];
-  const isMihadIntake = targetCountryCodes.some((code) => code !== 'SA');
+  const isMihadIntake = Boolean(body.mihad_scout_intent) || targetCountryCodes.some((code) => code !== 'SA');
   const existingWorkspace = await findExistingOnboardingWorkspace(service, session.user.id);
   const workspaceResult = existingWorkspace
     ? {
@@ -199,7 +201,7 @@ export async function POST(request: Request) {
         name: workspaceName,
         description: null,
         buyBox: body.buy_box || {},
-        seedSource: 'onboarding_acquisition_journey',
+        seedSource: body.mihad_scout_intent ? 'mihad_home_scout' : 'onboarding_acquisition_journey',
         workspaceKind: isMihadIntake ? 'mihad_buyer_desk' : 'investor_cockpit',
         mihad: {
           targetCountryCodes,
@@ -207,7 +209,27 @@ export async function POST(request: Request) {
           mandateTimeline: body.timeline ?? null,
           liquidityClass: body.liquidity_class ?? null,
           budgetCurrency: (body.budget_currency || 'SAR') as MihadBudgetCurrency,
-          preferences: body.preferences ?? null,
+          preferences: {
+            ...(body.preferences ?? {}),
+            scout_intent: body.mihad_scout_intent
+              ? {
+                  target_country_codes: body.mihad_scout_intent.target_country_codes,
+                  city: body.mihad_scout_intent.city,
+                  districts: body.mihad_scout_intent.districts,
+                  property_type: body.mihad_scout_intent.property_type,
+                  budget_min: body.mihad_scout_intent.budget_min,
+                  budget_max: body.mihad_scout_intent.budget_max,
+                  monthly_payment_max: body.mihad_scout_intent.monthly_payment_max,
+                  currency: body.mihad_scout_intent.currency,
+                  purpose: body.mihad_scout_intent.purpose,
+                  readiness: body.mihad_scout_intent.readiness,
+                  financing_posture: body.mihad_scout_intent.financing_posture,
+                  timeline: body.mihad_scout_intent.timeline,
+                  confidence: body.mihad_scout_intent.confidence,
+                  missing_fields: body.mihad_scout_intent.missing_fields,
+                }
+              : null,
+          },
         },
       });
 

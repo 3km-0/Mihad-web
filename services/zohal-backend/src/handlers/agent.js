@@ -3,7 +3,7 @@ import { requireInternalCaller } from "../runtime/internal-auth.js";
 import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 
-const CHANNELS = new Set(["whatsapp", "email", "slack", "telegram", "sms", "other"]);
+const CHANNELS = new Set(["web", "whatsapp", "email", "slack", "telegram", "sms", "other"]);
 const CONTACT_ROLES = new Set(["seller", "broker", "source", "lawyer", "contractor", "inspector", "valuer", "advisor", "operator", "other"]);
 const OUTBOX_STATUSES = new Set(["pending", "blocked_consent_required", "blocked_approval_required", "blocked_template_required", "ready", "sent", "failed", "cancelled"]);
 const GUEST_CANDIDATE_LIMIT = 2;

@@ -300,6 +300,35 @@ type BrokerPartnerRow = {
   response_sla_minutes?: number | null;
 };
 
+type MihadAgentToolResult = {
+  tool: string;
+  status: 'completed' | 'blocked' | 'failed' | 'skipped' | string;
+  reason?: string | null;
+};
+
+type MihadAgentTurn = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  toolResults?: MihadAgentToolResult[];
+};
+
+type MihadAgentTurnResponse = {
+  assistant_message?: string;
+  reasoning_summary?: string;
+  planner?: string;
+  next_state?: string;
+  tool_results?: MihadAgentToolResult[];
+  context?: {
+    mandate?: AcquisitionMandateRow | null;
+    search_runs?: AcquisitionSearchRunRow[];
+    opportunities?: OpportunityRow[];
+    readiness_profile?: BuyerReadinessProfileRow | null;
+    buyer_packets?: BuyerPacketRow[];
+    sharing_grants?: DocumentSharingGrantRow[];
+  };
+};
+
 type ScenarioState = {
   strategy: 'rent_hold' | 'flip';
   price: number;
@@ -1195,6 +1224,7 @@ export default function WorkspaceCockpitPage() {
   const [brokerPartners, setBrokerPartners] = useState<BrokerPartnerRow[]>([]);
   const [mihadActionBusy, setMihadActionBusy] = useState<string | null>(null);
   const [mihadActionError, setMihadActionError] = useState<string | null>(null);
+  const [mihadAgentTurns, setMihadAgentTurns] = useState<MihadAgentTurn[]>([]);
   const [pendingShareBrokerId, setPendingShareBrokerId] = useState<string | null>(null);
 
   const agentScope: AgentScope = { kind: 'workspace', workspaceId };
@@ -1349,6 +1379,7 @@ export default function WorkspaceCockpitPage() {
   });
   const currentBlocker = primaryAction.label;
   const hasActionBlocker = ['upload_financing_document', 'request_missing_documents', 'activate_buyer_broker', 'share_financing_packet'].includes(primaryAction.action_id);
+  const isMihadBuyerDesk = workspace?.workspace_kind === 'mihad_buyer_desk';
 
   useEffect(() => {
     const stored = window.localStorage.getItem('acquisition_workspace_drawer_width');
@@ -1653,6 +1684,50 @@ export default function WorkspaceCockpitPage() {
       setApprovalBusy(null);
     }
   }, [loadWorkspace, sourcingInstruction, sourcingSources, supabase, t, workspace, workspaceId]);
+
+  const runMihadAgentTurn = useCallback(async () => {
+    const message = sourcingInstruction.trim();
+    if (!message) {
+      setMihadActionError(t('mihad.errorAgentMessageRequired', { default: 'Tell Mihad what you want to do next.' }));
+      return;
+    }
+    const userTurn: MihadAgentTurn = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      text: message,
+    };
+    setMihadAgentTurns((current) => [...current, userTurn].slice(-8));
+    setMihadActionBusy('agent_turn');
+    setMihadActionError(null);
+    try {
+      const response = await invokeZohalBackendJson<MihadAgentTurnResponse>(
+        supabase,
+        `/api/acquisition/v1/workspaces/${workspaceId}/mihad-agent/turn`,
+        {
+          message,
+          selected_opportunity_id: selectedOpportunityId,
+        },
+      );
+      const assistantTurn: MihadAgentTurn = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        text: response.assistant_message || t('mihad.agentFallbackReply', { default: 'I handled the available workspace actions for this step.' }),
+        toolResults: response.tool_results || [],
+      };
+      setMihadAgentTurns((current) => [...current, assistantTurn].slice(-8));
+      if (response.context?.mandate) setMandate(response.context.mandate);
+      if (response.context?.search_runs) setSearchRuns(response.context.search_runs);
+      if (response.context?.opportunities) setOpportunities(response.context.opportunities);
+      if (response.context?.readiness_profile !== undefined) setReadinessProfile(response.context.readiness_profile ?? null);
+      if (response.context?.buyer_packets) setBuyerPackets(response.context.buyer_packets);
+      if (response.context?.sharing_grants) setSharingGrants(response.context.sharing_grants);
+      await loadWorkspace();
+    } catch (error) {
+      setMihadActionError(error instanceof Error ? error.message : t('mihad.errorAgentTurn', { default: 'Mihad could not complete that turn.' }));
+    } finally {
+      setMihadActionBusy(null);
+    }
+  }, [loadWorkspace, selectedOpportunityId, sourcingInstruction, supabase, t, workspaceId]);
 
   const requestBuyerPacket = useCallback(async () => {
     if (!readinessProfile) {
@@ -2117,7 +2192,10 @@ export default function WorkspaceCockpitPage() {
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_-10%,rgba(var(--highlight-rgb),.04),transparent_36rem),radial-gradient(circle_at_88%_16%,rgba(var(--accent-rgb),.055),transparent_28rem),radial-gradient(circle_at_10%_84%,rgba(var(--highlight-rgb),.035),transparent_24rem)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[var(--grid-opacity)] [background-image:linear-gradient(var(--grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--grid-color)_1px,transparent_1px)] [background-size:var(--grid-size)_var(--grid-size)]" />
 
-        <aside className="relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-[image:var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block">
+        <aside className={cn(
+          'relative hidden h-full w-[328px] shrink-0 overflow-y-auto border-r border-border bg-[image:var(--panel-bg)] bg-surface p-5 shadow-[var(--shadowSm)] backdrop-blur xl:block',
+          isMihadBuyerDesk && 'xl:hidden',
+        )}>
           <BrandBlock />
           <BuyBoxCard
             workspace={workspace}
@@ -2143,7 +2221,7 @@ export default function WorkspaceCockpitPage() {
               </div>
             ) : (
               <section className="min-w-0 flex-1 space-y-5">
-                <div className="xl:hidden">
+                {!isMihadBuyerDesk ? <div className="xl:hidden">
                   <OpportunityRail
                     opportunities={opportunities}
                     selectedId={selectedOpportunity?.id ?? null}
@@ -2155,9 +2233,9 @@ export default function WorkspaceCockpitPage() {
                     pursueCount={pursueCount}
                     compact
                   />
-                </div>
+                </div> : null}
 
-                <div className="xl:hidden">
+                {!isMihadBuyerDesk ? <div className="xl:hidden">
                   <ProgressTracker
                     opportunity={selectedOpportunity}
                     opportunityCount={opportunities.length}
@@ -2170,23 +2248,55 @@ export default function WorkspaceCockpitPage() {
                     onOpenDrawer={openDrawer}
                     onRequestVisit={() => void scheduleVisit()}
                   />
-                </div>
+                </div> : null}
 
                 <div className="min-h-[380px] space-y-5">
-                  <CockpitHero
-                    opportunity={selectedOpportunity}
-                    missingCount={selectedMissing.length}
-                    documentCount={documentCount}
-                    latestUpdate={latestUpdate}
-                    mapOpen={heroMapOpen}
-                    onToggleMap={() => setHeroMapOpen((open) => !open)}
-                    onOpenDrawer={openDrawer}
-                  />
-                  <PrimaryWorkspaceTabs
-                    active={activePrimaryTab}
-                    onChange={setActivePrimaryTab}
-                  />
-                  {activePrimaryTab === 'overview' ? (
+                  {isMihadBuyerDesk ? (
+                    <MihadBrokerAgentWorkspace
+                      workspace={workspace}
+                      mandate={mandate}
+                      opportunities={opportunities}
+                      selectedOpportunity={selectedOpportunity}
+                      selectedOpportunityId={selectedOpportunityId}
+                      searchRuns={searchRuns}
+                      readinessProfile={readinessProfile}
+                      buyerPackets={buyerPackets}
+                      brokerPartners={brokerPartners}
+                      sharingGrants={sharingGrants}
+                      sourcingInstruction={sourcingInstruction}
+                      sourcingSources={sourcingSources}
+                      sourcingBusy={approvalBusy === 'run_sourcing'}
+                      agentTurns={mihadAgentTurns}
+                      agentBusy={mihadActionBusy === 'agent_turn'}
+                      mihadActionBusy={mihadActionBusy}
+                      mihadActionError={mihadActionError}
+                      onSelectOpportunity={setSelectedOpportunityId}
+                      onSourcingInstructionChange={setSourcingInstruction}
+                      onSourcingSourcesChange={setSourcingSources}
+                      onRunAgentTurn={() => void runMihadAgentTurn()}
+                      onRunSourcing={() => void runSourcing()}
+                      onOpenEvidence={() => openDrawer('evidence')}
+                      onRequestPacket={() => void requestBuyerPacket()}
+                      onShareWithBroker={(brokerId) => requestShareWithBroker(brokerId)}
+                      onRevokeShare={(grantId) => void revokeShareWithBroker(grantId)}
+                      onAddManual={() => setManualPropertyOpen(true)}
+                    />
+                  ) : (
+                    <>
+                      <CockpitHero
+                        opportunity={selectedOpportunity}
+                        missingCount={selectedMissing.length}
+                        documentCount={documentCount}
+                        latestUpdate={latestUpdate}
+                        mapOpen={heroMapOpen}
+                        onToggleMap={() => setHeroMapOpen((open) => !open)}
+                        onOpenDrawer={openDrawer}
+                      />
+                      <PrimaryWorkspaceTabs
+                        active={activePrimaryTab}
+                        onChange={setActivePrimaryTab}
+                      />
+                      {activePrimaryTab === 'overview' ? (
                     <OverviewModule
                       opportunity={selectedOpportunity}
                       marketObservations={marketObservations}
@@ -2235,13 +2345,15 @@ export default function WorkspaceCockpitPage() {
                       onRunUnderwriting={runUnderwriting}
                     />
                   ) : null}
+                    </>
+                  )}
                 </div>
               </section>
             )}
           </div>
         </main>
 
-        {!loading ? (
+        {!loading && !isMihadBuyerDesk ? (
           <LiveFeedRail
             events={events}
             opportunity={selectedOpportunity}
@@ -3888,6 +4000,343 @@ function OverviewModule({
             {intelligenceItems.map((item) => (
               <IntelligenceSignal key={item.label} label={item.label} value={item.value} tone={item.tone} />
             ))}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function MihadBrokerAgentWorkspace({
+  workspace,
+  mandate,
+  opportunities,
+  selectedOpportunity,
+  searchRuns,
+  readinessProfile,
+  buyerPackets,
+  brokerPartners,
+  sharingGrants,
+  sourcingInstruction,
+  sourcingSources,
+  sourcingBusy,
+  agentTurns,
+  agentBusy,
+  mihadActionBusy,
+  mihadActionError,
+  onSelectOpportunity,
+  onSourcingInstructionChange,
+  onSourcingSourcesChange,
+  onRunAgentTurn,
+  onRunSourcing,
+  onOpenEvidence,
+  onRequestPacket,
+  onShareWithBroker,
+  onRevokeShare,
+  onAddManual,
+}: {
+  workspace: WorkspaceRow | null;
+  mandate: AcquisitionMandateRow | null;
+  opportunities: OpportunityRow[];
+  selectedOpportunity: OpportunityRow | null;
+  selectedOpportunityId: string | null;
+  searchRuns: AcquisitionSearchRunRow[];
+  readinessProfile: BuyerReadinessProfileRow | null;
+  buyerPackets: BuyerPacketRow[];
+  brokerPartners: BrokerPartnerRow[];
+  sharingGrants: DocumentSharingGrantRow[];
+  sourcingInstruction: string;
+  sourcingSources: string[];
+  sourcingBusy: boolean;
+  agentTurns: MihadAgentTurn[];
+  agentBusy: boolean;
+  mihadActionBusy: string | null;
+  mihadActionError: string | null;
+  onSelectOpportunity: (id: string) => void;
+  onSourcingInstructionChange: (value: string) => void;
+  onSourcingSourcesChange: (value: string[]) => void;
+  onRunAgentTurn: () => void;
+  onRunSourcing: () => void;
+  onOpenEvidence: () => void;
+  onRequestPacket: () => void;
+  onShareWithBroker: (brokerPartnerId: string) => void;
+  onRevokeShare: (grantId: string) => void;
+  onAddManual: () => void;
+}) {
+  const t = useTranslations('workspaceCockpitPage');
+  const targetCountryCodes = (mandate?.target_country_codes ?? []).map((code) => code.toUpperCase());
+  const activeRun = searchRuns.find((run) => run.status === 'queued' || run.status === 'running') ?? null;
+  const activePacket = buyerPackets.find((packet) => packet.status === 'active') ?? null;
+  const latestRun = searchRuns[0] ?? null;
+  const selectedFacts = dealFacts(selectedOpportunity);
+  const selectedMissing = missingInfoList(selectedOpportunity?.missing_info_json);
+  const sourceOptions = [
+    { id: 'aqar', label: 'Aqar' },
+    { id: 'bayut', label: 'Bayut' },
+    { id: 'property_finder', label: 'Property Finder' },
+  ];
+  const toggleSource = (source: string) => {
+    const next = new Set(sourcingSources);
+    if (next.has(source)) next.delete(source); else next.add(source);
+    onSourcingSourcesChange(next.size ? Array.from(next) : ['aqar', 'bayut']);
+  };
+  const mandateSummary = [
+    targetCountryCodes.map((code) => MIHAD_COUNTRY_LABELS[code as MihadCountryCode] || code).join(', '),
+    mandate?.purpose ? humanize(mandate.purpose) : null,
+    mandate?.timeline ? humanize(mandate.timeline) : null,
+  ].filter(Boolean).join(' · ');
+  return (
+    <div className="grid gap-5 [@media(min-width:1280px)]:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.24fr)_minmax(300px,0.78fr)]">
+      <div className="space-y-5">
+        <Panel className="p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
+            {t('mihad.agentEyebrow', { default: 'Mihad broker agent' })}
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold text-text">
+            {workspace?.name || t('mihad.agentTitle', { default: 'Buyer mandate' })}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-text-soft">
+            {mandateSummary || t('mihad.agentSubtitle', {
+              default: 'Tell Mihad what to search, then run verified sourcing after the mandate is clear.',
+            })}
+          </p>
+          <div className="mt-4 grid gap-2">
+            <textarea
+              value={sourcingInstruction}
+              onChange={(event) => onSourcingInstructionChange(event.target.value)}
+              placeholder={t('mihad.agentPlaceholder', {
+                default: 'Example: prioritize family villas in North Riyadh near schools under SAR 2.5M',
+              })}
+              className="min-h-[118px] resize-none rounded-[14px] border border-border bg-surface-alt px-3 py-3 text-sm leading-6 text-text outline-none placeholder:text-text-muted focus:border-accent"
+            />
+            <div className="max-h-[220px] space-y-2 overflow-y-auto rounded-[14px] border border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 p-3">
+              {agentTurns.length ? agentTurns.map((turn) => (
+                <div
+                  key={turn.id}
+                  className={cn(
+                    'rounded-[12px] px-3 py-2 text-sm leading-6',
+                    turn.role === 'user'
+                      ? 'ml-6 bg-accent/10 text-text'
+                      : 'mr-6 border border-border bg-surface text-text-soft',
+                  )}
+                >
+                  <p>{turn.text}</p>
+                  {turn.toolResults?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {turn.toolResults.map((result, index) => (
+                        <span
+                          key={`${result.tool}-${index}`}
+                          className={cn(
+                            'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                            result.status === 'completed'
+                              ? 'border-accent/25 text-accent'
+                              : result.status === 'failed'
+                                ? 'border-warning/30 text-warning'
+                                : 'border-border text-text-muted',
+                          )}
+                        >
+                          {result.tool.replace(/Tool\.|_/g, ' ')} · {humanize(result.status)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )) : (
+                <p className="text-xs leading-5 text-text-muted">
+                  {t('mihad.agentEmptyThread', {
+                    default: 'Ask Mihad to clarify the mandate, run sourcing, prepare readiness, or set up broker activation.',
+                  })}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {sourceOptions.map((source) => (
+                <button
+                  key={source.id}
+                  type="button"
+                  onClick={() => toggleSource(source.id)}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                    sourcingSources.includes(source.id)
+                      ? 'border-accent bg-accent/10 text-accent'
+                      : 'border-border text-text-soft hover:border-accent/40 hover:text-accent',
+                  )}
+                >
+                  {source.label}
+                </button>
+              ))}
+            </div>
+            <Button onClick={onRunAgentTurn} isLoading={agentBusy} className="w-full">
+              <Send className="h-4 w-4" />
+              {t('mihad.askAgent', { default: 'Ask Mihad agent' })}
+            </Button>
+            <Button onClick={onRunSourcing} isLoading={sourcingBusy} className="w-full">
+              <Search className="h-4 w-4" />
+              {activeRun
+                ? t('mihad.searchRunning', { default: 'Search running' })
+                : t('mihad.searchRun', { default: 'Run verified search' })}
+            </Button>
+            <Button variant="secondary" onClick={onAddManual} className="w-full">
+              <Plus className="h-4 w-4" />
+              {t('mihad.addManualCandidate', { default: 'Add a sourced option' })}
+            </Button>
+          </div>
+        </Panel>
+        <Panel className="p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-soft">
+            {t('mihad.searchStatus', { default: 'Search status' })}
+          </p>
+          <div className="mt-3 space-y-3">
+            {searchRuns.length ? searchRuns.slice(0, 3).map((run) => (
+              <div key={run.id} className="rounded-[14px] border border-border bg-surface-alt p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="line-clamp-1 text-sm font-semibold text-text">{run.query_description || t('mihad.searchRunFallback', { default: 'Verified search run' })}</p>
+                  <TrustPill label={humanize(run.status) || t('notSet')} tone={run.status === 'completed' ? 'lime' : run.status === 'failed' ? 'amber' : 'cyan'} />
+                </div>
+                <p className="mt-2 text-xs text-text-muted">
+                  {t('mihad.searchCandidateCount', {
+                    default: '{count} candidates',
+                    count: run.candidate_count ?? 0,
+                  })}
+                </p>
+                {run.error_summary ? <p className="mt-2 text-xs text-warning">{run.error_summary}</p> : null}
+              </div>
+            )) : (
+              <p className="rounded-[14px] border border-border bg-surface-alt p-4 text-sm leading-6 text-text-soft">
+                {t('mihad.searchEmpty', { default: 'No live search has run yet. The agent can start once your mandate is clear.' })}
+              </p>
+            )}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="space-y-5">
+        <Panel className="overflow-hidden p-0">
+          <div className="border-b border-[rgba(var(--accent-rgb),0.14)] bg-surface-alt/70 px-5 py-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
+                  {t('mihad.shortlistEyebrow', { default: 'Ranked shortlist' })}
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold text-text">
+                  {opportunities.length
+                    ? t('mihad.shortlistTitle', { default: 'Best options for this mandate' })
+                    : t('mihad.shortlistEmptyTitle', { default: 'Your shortlist will appear here' })}
+                </h2>
+              </div>
+              {latestRun ? <TrustPill label={humanize(latestRun.status) || t('notSet')} tone={latestRun.status === 'completed' ? 'lime' : 'cyan'} /> : null}
+            </div>
+          </div>
+          <div className="grid gap-3 p-5">
+            {opportunities.length ? opportunities.map((opportunity, index) => {
+              const selected = selectedOpportunity?.id === opportunity.id;
+              const facts = dealFacts(opportunity);
+              const location = locationLabelForOpportunity(opportunity);
+              return (
+                <button
+                  key={opportunity.id}
+                  type="button"
+                  onClick={() => onSelectOpportunity(opportunity.id)}
+                  className={cn(
+                    'rounded-[16px] border p-4 text-left transition',
+                    selected ? 'border-accent bg-accent/8 shadow-[0_0_0_1px_rgba(var(--accent-rgb),0.32)]' : 'border-border bg-surface-alt hover:border-accent/40',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                        {t('mihad.rank', { default: 'Rank' })} {index + 1}
+                      </p>
+                      <h3 className="mt-1 line-clamp-2 text-lg font-semibold text-text">
+                        {displayTitleForOpportunity(opportunity)}
+                      </h3>
+                      <p className="mt-1 text-sm text-text-soft">{location || t('notSet')}</p>
+                    </div>
+                    <TrustPill label={`${Math.round(rawScoreFor(opportunity) ?? 0)}/100`} tone="lime" />
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <IntelligenceMetric label={t('intelligence.price')} value={facts.price || t('notSet')} />
+                    <IntelligenceMetric label={t('intelligence.area')} value={facts.area || t('notSet')} />
+                    <IntelligenceMetric label={t('recommendation')} value={humanize(recommendationFor(opportunity)) || t('notSet')} />
+                  </div>
+                </button>
+              );
+            }) : (
+              <div className="grid min-h-[360px] place-items-center rounded-[18px] border border-dashed border-border bg-surface-alt p-8 text-center">
+                <div>
+                  <MessageSquare className="mx-auto h-8 w-8 text-accent" />
+                  <p className="mt-4 text-lg font-semibold text-text">
+                    {t('mihad.shortlistEmpty', { default: 'Run a verified search to build the first shortlist.' })}
+                  </p>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-text-soft">
+                    {t('mihad.shortlistEmptyBody', {
+                      default: 'Mihad stores only mandate-scoped options with source attribution. This is not a public listing feed.',
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </Panel>
+        {selectedOpportunity ? (
+          <Panel className="p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-soft">
+                  {t('mihad.selectedOption', { default: 'Selected option' })}
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-text">{displayTitleForOpportunity(selectedOpportunity)}</h3>
+              </div>
+              <TrustPill label={humanize(confidenceFor(selectedOpportunity)) || t('notSet')} tone="cyan" />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-text-soft">
+              {investmentThesisFor(selectedOpportunity, t('heroAnalystThesis'))}
+            </p>
+            {selectedMissing.length ? (
+              <div className="mt-4 rounded-[14px] border border-warning/25 bg-warning/8 p-3">
+                <p className="text-sm font-semibold text-warning">{t('mihad.missingInfo', { default: 'Needs verification' })}</p>
+                <p className="mt-1 text-xs leading-5 text-text-soft">{selectedMissing.slice(0, 3).join(', ')}</p>
+              </div>
+            ) : null}
+          </Panel>
+        ) : null}
+      </div>
+
+      <div className="space-y-5">
+        <MihadVerifyBuyerCard
+          mandate={mandate}
+          readinessProfile={readinessProfile}
+          onOpenEvidence={onOpenEvidence}
+        />
+        <MihadBrokersPanel
+          mandate={mandate}
+          readinessProfile={readinessProfile}
+          buyerPackets={buyerPackets}
+          brokerPartners={brokerPartners}
+          sharingGrants={sharingGrants}
+          actionBusy={mihadActionBusy}
+          actionError={mihadActionError}
+          onRequestPacket={onRequestPacket}
+          onShareWithBroker={onShareWithBroker}
+          onRevokeShare={onRevokeShare}
+        />
+        <Panel className="p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-soft">
+            {t('mihad.buyerPacket', { default: 'Buyer packet' })}
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-text">
+            {activePacket
+              ? t('mihad.packetReady', { default: 'Derived signals ready' })
+              : t('mihad.packetPending', { default: 'Qualification pending' })}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-text-soft">
+            {t('mihad.packetPrivacy', {
+              default: 'Brokers receive derived readiness signals only. Raw documents stay in the buyer vault unless a separate consent flow allows more.',
+            })}
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <IntelligenceMetric label={t('mihad.readinessLevel', { default: 'Readiness' })} value={String(readinessProfile?.readiness_level ?? 0)} />
+            <IntelligenceMetric label={t('mihad.activeGrants', { default: 'Active grants' })} value={String(activeGrantCount(sharingGrants))} />
           </div>
         </Panel>
       </div>

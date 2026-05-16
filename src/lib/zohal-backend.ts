@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-const PRODUCTION_ZOHAL_BACKEND_URL = 'https://zohal-backend-dgmvbnnmaa-wx.a.run.app';
+const PRODUCTION_ZOHAL_BACKEND_URL = 'https://zohal-backend-f6hcmeo7ha-wx.a.run.app';
 
 export function getZohalBackendBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_ZOHAL_BACKEND_URL ||

@@ -31,9 +31,9 @@ describe('zohal backend client', () => {
   it('falls back to the production backend when deployment env is missing', () => {
     delete process.env.NEXT_PUBLIC_ZOHAL_BACKEND_URL;
 
-    expect(getZohalBackendBaseUrl()).toBe('https://zohal-backend-dgmvbnnmaa-wx.a.run.app');
+    expect(getZohalBackendBaseUrl()).toBe('https://zohal-backend-f6hcmeo7ha-wx.a.run.app');
     expect(zohalBackendUrl('/ingestion/start')).toBe(
-      'https://zohal-backend-dgmvbnnmaa-wx.a.run.app/ingestion/start'
+      'https://zohal-backend-f6hcmeo7ha-wx.a.run.app/ingestion/start'
     );
   });
 
