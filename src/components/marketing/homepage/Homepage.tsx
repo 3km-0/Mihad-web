@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   intentToOnboardingDraft,
   MIHAD_SCOUT_INTENT_STORAGE_KEY,
+  type MihadScoutIntent,
   type MihadScoutIntentResponse,
 } from '@/lib/mihad-scout';
 
@@ -234,11 +235,61 @@ function scoutCopy(isRtl: boolean) {
           'وحدة جاهزة في الرياض بقسط أقل من ٧ آلاف',
           'شقة استثمارية بعائد إيجاري جيد',
         ],
-        preview: 'معاينة فقط. البحث المباشر يبدأ بعد التحقق.',
+        preview: 'لم يبدأ البحث المباشر بعد. هذا موجز طلب فقط.',
         livePreview: 'معاينة مباشرة محدودة',
         samplePreview: 'مسار بحث مقترح',
         continue: 'تابع للبحث الموثق',
         error: 'تعذر فهم الطلب الآن. جرّب بصياغة عقارية أوضح.',
+        briefTitle: 'موجز طلبك',
+        understood: 'فهم مهاد أنك تبحث عن:',
+        questionsTitle: 'أسئلة سريعة قبل البحث الموثق',
+        readyTitle: 'جاهز للبحث عن خيارات موثقة',
+        readyBody: 'للحفاظ على جودة النتائج، يبدأ البحث المباشر بعد تأكيد الجدية.',
+        update: 'حدّث الموجز',
+        status: 'تم التقاط الطلب',
+        edit: 'عدّل الطلب',
+        extracted: 'مستخرج من طلبك',
+        beforeSearch: 'قبل البحث الموثق',
+        searchStatus: 'حالة البحث',
+        notRun: 'لم يبدأ بعد',
+        fields: {
+          property: 'نوع العقار',
+          location: 'الموقع',
+          budget: 'الميزانية',
+          monthly: 'القسط الشهري',
+          purpose: 'الهدف',
+          timeline: 'المدة',
+        },
+        fallback: 'غير محدد بعد',
+        questionGroups: [
+          {
+            key: 'financing_posture',
+            label: 'طريقة الشراء؟',
+            options: [
+              { label: 'كاش', value: 'cash_ready' },
+              { label: 'تمويل', value: 'needs_financing_guidance' },
+              { label: 'غير متأكد', value: 'not_sure' },
+            ],
+          },
+          {
+            key: 'readiness',
+            label: 'جاهز أم على الخارطة؟',
+            options: [
+              { label: 'جاهز', value: 'ready' },
+              { label: 'على الخارطة مناسب', value: 'off_plan' },
+              { label: 'اعرض الاثنين', value: 'both' },
+            ],
+          },
+          {
+            key: 'timeline',
+            label: 'متى تريد الشراء؟',
+            options: [
+              { label: 'قريبًا', value: 'immediate' },
+              { label: '٣ إلى ٦ أشهر', value: '3_to_6_months' },
+              { label: 'أستكشف', value: 'exploring' },
+            ],
+          },
+        ],
       }
     : {
         label: 'AI property scout',
@@ -250,12 +301,96 @@ function scoutCopy(isRtl: boolean) {
           'Ready unit in Riyadh with monthly payment under SAR 7k',
           'Investment apartment with good rental potential',
         ],
-        preview: 'Preview only. Live search starts after verification.',
+        preview: 'Live search has not run yet. This is your request brief only.',
         livePreview: 'Limited live preview',
         samplePreview: 'Suggested search lane',
         continue: 'Continue to verified search',
         error: 'I could not parse that request yet. Try describing a property search.',
+        briefTitle: 'Your property brief',
+        understood: 'Mihad understood you are looking for:',
+        questionsTitle: 'A few questions before verified search',
+        readyTitle: 'Ready to search verified options',
+        readyBody: 'To protect result quality, Mihad runs live search after confirming buyer intent.',
+        update: 'Update brief',
+        status: 'Mandate captured',
+        edit: 'Edit request',
+        extracted: 'Extracted from your prompt',
+        beforeSearch: 'Before verified search',
+        searchStatus: 'Search status',
+        notRun: 'Not run yet',
+        fields: {
+          property: 'Property type',
+          location: 'Location',
+          budget: 'Budget',
+          monthly: 'Monthly payment',
+          purpose: 'Purpose',
+          timeline: 'Timeline',
+        },
+        fallback: 'Not specified yet',
+        questionGroups: [
+          {
+            key: 'financing_posture',
+            label: 'How are you planning to buy?',
+            options: [
+              { label: 'Cash', value: 'cash_ready' },
+              { label: 'Financing', value: 'needs_financing_guidance' },
+              { label: 'Not sure yet', value: 'not_sure' },
+            ],
+          },
+          {
+            key: 'readiness',
+            label: 'Ready unit or off-plan?',
+            options: [
+              { label: 'Ready unit', value: 'ready' },
+              { label: 'Off-plan ok', value: 'off_plan' },
+              { label: 'Show both', value: 'both' },
+            ],
+          },
+          {
+            key: 'timeline',
+            label: 'When do you want to buy?',
+            options: [
+              { label: 'Soon', value: 'immediate' },
+              { label: '3-6 months', value: '3_to_6_months' },
+              { label: 'Exploring', value: 'exploring' },
+            ],
+          },
+        ],
       };
+}
+
+type ScoutQualificationKey = 'financing_posture' | 'readiness' | 'timeline';
+type ScoutQualificationAnswers = Partial<Record<ScoutQualificationKey, string>>;
+
+function formatScoutAmount(value: number | null, currency: string, isRtl: boolean) {
+  if (!value) return null;
+  return new Intl.NumberFormat(isRtl ? 'ar-SA' : 'en-US', {
+    maximumFractionDigits: 0,
+  }).format(value) + ` ${currency}`;
+}
+
+function prettifyScoutValue(value: string | null | undefined) {
+  if (!value) return null;
+  return value.replace(/_/g, ' ');
+}
+
+function getScoutBriefItems(intent: MihadScoutIntent, copy: ReturnType<typeof scoutCopy>, isRtl: boolean) {
+  const location = [...intent.districts, ...intent.city].filter(Boolean).join(', ');
+  const budget = intent.budget_max
+    ? `${isRtl ? 'تحت' : 'Under'} ${formatScoutAmount(intent.budget_max, intent.currency, isRtl)}`
+    : formatScoutAmount(intent.budget_min, intent.currency, isRtl);
+  const monthly = intent.monthly_payment_max
+    ? `${isRtl ? 'تحت' : 'Under'} ${formatScoutAmount(intent.monthly_payment_max, intent.currency, isRtl)}`
+    : null;
+
+  return [
+    { label: copy.fields.property, value: prettifyScoutValue(intent.property_type) },
+    { label: copy.fields.location, value: location || null },
+    { label: copy.fields.budget, value: budget },
+    { label: copy.fields.monthly, value: monthly },
+    { label: copy.fields.purpose, value: prettifyScoutValue(intent.purpose) },
+    { label: copy.fields.timeline, value: prettifyScoutValue(intent.timeline) },
+  ].filter((item) => item.value);
 }
 
 function getScoutSessionId() {
@@ -270,11 +405,12 @@ function getScoutSessionId() {
   return next;
 }
 
-function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
+function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChange?: (active: boolean) => void }) {
   const router = useRouter();
   const copy = scoutCopy(isRtl);
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState<MihadScoutIntentResponse | null>(null);
+  const [qualification, setQualification] = useState<ScoutQualificationAnswers>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState('server');
@@ -297,6 +433,8 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || copy.error);
       setResult(payload as MihadScoutIntentResponse);
+      setQualification({});
+      onActiveChange?.(true);
       trackMarketingEvent('mihad_scout_intent_parsed', {
         gate_state: payload?.turn?.gate_state,
         missing_count: payload?.intent?.missing_fields?.length ?? 0,
@@ -314,11 +452,28 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
   };
 
   const continueToAuth = () => {
+    const enrichedIntent = result?.intent
+      ? {
+          ...result.intent,
+          financing_posture: qualification.financing_posture || result.intent.financing_posture,
+          readiness: qualification.readiness === 'ready' || qualification.readiness === 'off_plan'
+            ? qualification.readiness
+            : result.intent.readiness,
+          timeline: qualification.timeline || result.intent.timeline,
+        }
+      : null;
+
     if (typeof window !== 'undefined' && result?.intent) {
-      const draft = intentToOnboardingDraft(result.intent);
+      const draft = intentToOnboardingDraft(enrichedIntent ?? result.intent);
       window.sessionStorage.setItem(
         MIHAD_SCOUT_INTENT_STORAGE_KEY,
-        JSON.stringify({ prompt, result, draft, savedAt: new Date().toISOString() }),
+        JSON.stringify({
+          prompt,
+          qualification,
+          result: { ...result, intent: enrichedIntent ?? result.intent },
+          draft,
+          savedAt: new Date().toISOString(),
+        }),
       );
       window.sessionStorage.setItem('zohal_onboarding_draft_v1', JSON.stringify(draft));
     }
@@ -328,96 +483,177 @@ function MihadScoutBox({ isRtl }: { isRtl: boolean }) {
     router.push('/auth/signup');
   };
 
+  const editRequest = () => {
+    setResult(null);
+    setQualification({});
+    onActiveChange?.(false);
+  };
+
+  const briefItems = result?.intent ? getScoutBriefItems(result.intent, copy, isRtl) : [];
+  const selectedAnswerCount = Object.values(qualification).filter(Boolean).length;
+  const isReadyForAuth = Boolean(result && selectedAnswerCount >= 2);
+
   return (
-    <div className="mx-auto mt-8 w-full max-w-[940px]">
+    <div className={cn('mx-auto w-full transition-all duration-500', result ? 'mt-5 max-w-[1000px]' : 'mt-8 max-w-[940px]')}>
       <div className={cn('mb-3 flex items-center justify-center gap-2', isRtl && 'flex-row-reverse')}>
         <span className="grid h-9 w-9 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent">
           <Search className="h-4 w-4" />
         </span>
         <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.label}</span>
       </div>
-      <form
-        className={cn('flex flex-col gap-2 rounded-[26px] border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.06)] p-2 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur sm:flex-row', isRtl && 'sm:flex-row-reverse')}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submitPrompt();
-        }}
-      >
-        <input
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          placeholder={copy.placeholder}
-          dir={isRtl ? 'rtl' : 'ltr'}
-          className="min-h-[64px] min-w-0 flex-1 bg-transparent px-5 text-lg text-text outline-none placeholder:text-text-muted sm:min-h-[72px]"
-        />
-        <button
-          type="submit"
-          disabled={loading || prompt.trim().length < 4}
-          className="inline-flex min-h-[58px] shrink-0 items-center justify-center gap-2 rounded-[22px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[72px] sm:px-7"
+      {!result ? (
+        <form
+          className={cn(
+            'flex flex-col gap-2 rounded-[26px] border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.06)] p-2 shadow-[0_24px_90px_rgba(0,0,0,0.32)] backdrop-blur transition-all sm:flex-row',
+            isRtl && 'sm:flex-row-reverse',
+          )}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitPrompt();
+          }}
         >
-          <Send className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
-          <span>{loading ? '...' : copy.submit}</span>
-        </button>
-      </form>
-      <div className="mx-auto mt-4 grid max-w-[900px] gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {copy.examples.map((example) => (
-          <button
-            key={example}
-            type="button"
-            onClick={() => applyExamplePrompt(example)}
+          <input
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            placeholder={copy.placeholder}
             dir={isRtl ? 'rtl' : 'ltr'}
-            className={cn(
-              'min-h-[56px] rounded-[18px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm leading-5 text-text-soft transition hover:border-accent/40 hover:bg-accent/10 hover:text-text',
-              isRtl ? 'text-right' : 'text-left'
-            )}
+            className="min-h-[64px] min-w-0 flex-1 bg-transparent px-5 text-lg text-text outline-none placeholder:text-text-muted transition-all sm:min-h-[72px]"
+          />
+          <button
+            type="submit"
+            disabled={loading || prompt.trim().length < 4}
+            className="inline-flex min-h-[58px] shrink-0 items-center justify-center gap-2 rounded-[22px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[72px] sm:px-7"
           >
-            {example}
+            <Send className={cn('h-4 w-4', isRtl && 'rtl-flip')} />
+            <span>{loading ? '...' : copy.submit}</span>
           </button>
-        ))}
-      </div>
+        </form>
+      ) : null}
+      {!result ? (
+        <div className="mx-auto mt-4 flex max-w-[900px] flex-wrap justify-center gap-2">
+          {copy.examples.map((example) => (
+            <button
+              key={example}
+              type="button"
+              onClick={() => applyExamplePrompt(example)}
+              dir={isRtl ? 'rtl' : 'ltr'}
+              className="min-h-[44px] rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm leading-5 text-text-soft transition hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/10 hover:text-text"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {error ? (
         <p className="mt-3 rounded-[12px] border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
           {error}
         </p>
       ) : null}
       {result ? (
-        <div className={cn('mt-4 rounded-[22px] border border-accent/20 bg-accent/8 p-4 sm:p-5', isRtl ? 'text-right' : 'text-left')}>
-          <p className="text-base leading-7 text-text">{result.turn.text}</p>
-          {result.turn.next_question ? (
-            <p className="mt-2 text-sm leading-6 text-text-soft">{result.turn.next_question}</p>
-          ) : null}
-          <div className="mt-4 grid gap-2 md:grid-cols-3">
-            {result.preview_cards.slice(0, 3).map((card) => (
-              <div key={`${card.title}-${card.location}`} className="rounded-[12px] border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.18)] p-3">
-                <span className={cn(
-                  'mb-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                  card.preview_kind === 'live_preview'
-                    ? 'border-accent/30 text-accent'
-                    : 'border-[rgba(255,255,255,0.12)] text-text-muted',
-                )}>
-                  {card.preview_kind === 'live_preview' ? copy.livePreview : copy.samplePreview}
-                </span>
-                <p className="text-sm font-semibold text-text">{card.title}</p>
-                <p className="mt-1 text-xs text-text-muted">{card.location}</p>
-                <p className="mt-2 text-xs leading-5 text-text-soft">{card.note || copy.preview}</p>
-              </div>
-            ))}
+        <section
+          aria-live="polite"
+          className={cn(
+            'mt-3 overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.14)] bg-[rgba(14,14,13,0.94)] text-left shadow-[0_28px_90px_rgba(0,0,0,0.38)] backdrop-blur animate-in fade-in slide-in-from-bottom-3 duration-500',
+            isRtl && 'text-right',
+          )}
+        >
+          <div className={cn('flex flex-col justify-between gap-4 border-b border-[rgba(255,255,255,0.1)] p-4 sm:p-5 lg:flex-row', isRtl && 'lg:flex-row-reverse')}>
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.briefTitle}</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-normal text-text sm:text-3xl">{copy.understood}</h2>
+              <p className="mt-2 max-w-[42rem] text-sm leading-6 text-text-soft">
+                {result.turn.next_question || result.turn.text}
+              </p>
+            </div>
+            <span className="w-fit shrink-0 self-start whitespace-nowrap rounded-full bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[color:var(--accent-text)]">
+              {copy.status}
+            </span>
           </div>
-          <p className="mt-3 text-[11px] leading-5 text-text-muted">
-            {result.preview_status?.live_preview
-              ? copy.preview
-              : result.preview_status?.reason === 'anonymous_preview_limit'
-                ? (isRtl ? 'استخدمت المعاينة المباشرة المحدودة لهذه الجلسة. سجّل الدخول للبحث الكامل.' : 'You used the limited live preview for this session. Sign in for the full search.')
-                : copy.preview}
-          </p>
-          <button
-            type="button"
-            onClick={continueToAuth}
-            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-[14px] bg-accent px-4 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 sm:w-auto"
-          >
-            {copy.continue}
-          </button>
-        </div>
+
+          <div className={cn('grid gap-4 p-4 sm:p-5 lg:grid-cols-[0.9fr,1.1fr]', isRtl && 'lg:grid-cols-[1.1fr,0.9fr]')}>
+            <div className="rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
+                {copy.extracted}
+              </p>
+              <div className="divide-y divide-[rgba(255,255,255,0.08)]">
+                {briefItems.length ? briefItems.map((item) => (
+                  <div key={item.label} className={cn('flex items-center justify-between gap-4 py-2.5', isRtl && 'flex-row-reverse')}>
+                    <span className="text-sm text-text-muted">{item.label}</span>
+                    <span className={cn('text-sm font-bold text-text', isRtl ? 'text-left' : 'text-right')}>
+                      {item.value || copy.fallback}
+                    </span>
+                  </div>
+                )) : (
+                  <p className="py-3 text-sm leading-6 text-text-soft">{result.turn.text}</p>
+                )}
+                <div className={cn('flex items-center justify-between gap-4 py-2.5', isRtl && 'flex-row-reverse')}>
+                  <span className="text-sm text-text-muted">{copy.searchStatus}</span>
+                  <span className={cn('text-sm font-bold text-text', isRtl ? 'text-left' : 'text-right')}>{copy.notRun}</span>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-text-muted">{copy.preview}</p>
+            </div>
+
+            <div className="rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
+                {copy.beforeSearch}
+              </p>
+              <h3 className="text-xl font-semibold tracking-normal text-text">
+                {isReadyForAuth ? copy.readyTitle : copy.questionsTitle}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-text-soft">
+                {isReadyForAuth ? copy.readyBody : (result.turn.next_question || result.turn.text)}
+              </p>
+
+              <div className="mt-3 space-y-3">
+                {copy.questionGroups.map((group) => (
+                  <div key={group.key}>
+                    <p className="mb-2 text-sm font-semibold text-text">{group.label}</p>
+                    <div className={cn('flex flex-wrap gap-2', isRtl && 'justify-end')}>
+                      {group.options.map((option) => {
+                        const answerKey = group.key as ScoutQualificationKey;
+                        const selected = qualification[answerKey] === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setQualification((current) => ({ ...current, [answerKey]: option.value }))}
+                            className={cn(
+                              'min-h-[36px] rounded-full border px-3.5 text-sm font-semibold transition',
+                              selected
+                                ? 'border-accent bg-accent text-[color:var(--accent-text)]'
+                                : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.035)] text-text-soft hover:border-accent/50 hover:text-text',
+                            )}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className={cn('flex flex-col gap-3 border-t border-[rgba(255,255,255,0.1)] p-4 sm:flex-row sm:items-center sm:justify-end sm:p-5', isRtl && 'sm:flex-row-reverse')}>
+            <button
+              type="button"
+              onClick={editRequest}
+              className="inline-flex min-h-[46px] items-center justify-center rounded-[14px] border border-[rgba(255,255,255,0.12)] bg-transparent px-5 text-sm font-semibold text-text transition hover:border-accent/40 hover:text-accent"
+            >
+              {copy.edit}
+            </button>
+            <button
+              type="button"
+              onClick={continueToAuth}
+              disabled={!isReadyForAuth}
+              className="inline-flex min-h-[46px] items-center justify-center rounded-[14px] bg-accent px-5 text-sm font-bold text-[color:var(--accent-text)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {copy.continue}
+            </button>
+          </div>
+        </section>
       ) : null}
     </div>
   );
@@ -1351,6 +1587,7 @@ export function Homepage() {
   const locale = useLocale();
   const isRtl = locale === 'ar';
   const [pricingLane, setPricingLane] = useState<'professional' | 'enterprise'>('professional');
+  const [scoutActive, setScoutActive] = useState(false);
 
   const pricingTabs = useMemo(
     () => [
@@ -1368,19 +1605,36 @@ export function Homepage() {
       <Nav content={content} />
 
       <main className="relative z-10 pt-[78px]">
-        <Section className="grid min-h-[calc(100svh-78px)] place-items-center py-8 sm:py-10 lg:py-12">
+        <Section className={cn('grid place-items-center py-8 transition-all duration-500 sm:py-10 lg:py-12', scoutActive ? 'min-h-[calc(100svh-78px)]' : 'min-h-[calc(100svh-78px)]')}>
           <div className="relative mx-auto w-full max-w-[1060px] text-center">
             <Reveal>
-              <h1 className="mx-auto max-w-[13ch] text-[3.3rem] font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-normal text-text sm:text-[5.2rem] lg:text-[6.4rem]">
+              <h1
+                className={cn(
+                  'mx-auto max-w-[13ch] overflow-hidden font-[family:var(--font-instrument-serif)] font-bold leading-[0.96] tracking-normal text-text transition-all duration-500',
+                  scoutActive
+                    ? 'max-h-0 text-[2rem] opacity-0'
+                    : 'max-h-[22rem] text-[2.85rem] opacity-100 sm:text-[4.2rem] lg:text-[5.1rem]',
+                )}
+              >
                 {content.hero.headline}
               </h1>
-              <p className="mx-auto mt-6 max-w-[43rem] text-base leading-7 text-text-soft sm:text-lg sm:leading-8">
+              <p
+                className={cn(
+                  'mx-auto max-w-[43rem] overflow-hidden text-base leading-7 text-text-soft transition-all duration-500 sm:text-lg sm:leading-8',
+                  scoutActive ? 'mt-0 max-h-0 opacity-0' : 'mt-6 max-h-32 opacity-100',
+                )}
+              >
                 {content.hero.subhead}
               </p>
 
-              <MihadScoutBox isRtl={isRtl} />
+              <MihadScoutBox isRtl={isRtl} onActiveChange={setScoutActive} />
 
-              <p className="mx-auto mt-5 max-w-[42rem] text-xs leading-6 text-text-muted sm:text-sm">
+              <p
+                className={cn(
+                  'mx-auto max-w-[42rem] overflow-hidden text-xs leading-6 text-text-muted transition-all duration-500 sm:text-sm',
+                  scoutActive ? 'mt-0 max-h-0 opacity-0' : 'mt-5 max-h-14 opacity-100',
+                )}
+              >
                 {content.hero.proofLine}
               </p>
             </Reveal>

@@ -3,11 +3,7 @@ import { NextResponse } from 'next/server';
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 8;
-const PREVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MAX_PREVIEWS_PER_WINDOW = 1;
-const PREVIEW_COOKIE = 'mihad_preview_seen';
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
-const previewLimit = new Map<string, { count: number; resetAt: number }>();
 
 function jsonError(message: string, status: number, code?: string) {
   return NextResponse.json({ error: message, code }, { status });
@@ -44,35 +40,6 @@ function isRateLimited(key: string) {
   }
   existing.count += 1;
   return existing.count > MAX_REQUESTS_PER_WINDOW;
-}
-
-function canRunPreview(key: string) {
-  const now = Date.now();
-  const existing = previewLimit.get(key);
-  if (!existing || existing.resetAt <= now) {
-    previewLimit.set(key, { count: 1, resetAt: now + PREVIEW_WINDOW_MS });
-    return true;
-  }
-  existing.count += 1;
-  return existing.count <= MAX_PREVIEWS_PER_WINDOW;
-}
-
-function hasPreviewCookie(request: Request) {
-  return request.headers
-    .get('cookie')
-    ?.split(';')
-    .some((part) => part.trim().startsWith(`${PREVIEW_COOKIE}=`)) ?? false;
-}
-
-function markPreviewAttempt(response: NextResponse) {
-  response.cookies.set(PREVIEW_COOKIE, '1', {
-    httpOnly: true,
-    maxAge: PREVIEW_WINDOW_MS / 1000,
-    path: '/',
-    sameSite: 'lax',
-    secure: true,
-  });
-  return response;
 }
 
 export async function POST(request: Request) {
@@ -112,44 +79,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const previewAllowed = !hasPreviewCookie(request) && canRunPreview(key);
-  if (!previewAllowed) {
-    return NextResponse.json({
-      ...payload,
-      preview_status: {
-        live_preview: false,
-        reason: 'anonymous_preview_limit',
-      },
-    });
-  }
-
-  const previewResponse = await fetch(zohalBackendUrl('/internal/acquisition/intent/preview'), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ intent: payload.intent, locale }),
-    cache: 'no-store',
-  }).catch(() => null);
-  if (!previewResponse?.ok) {
-    return markPreviewAttempt(NextResponse.json({
-      ...payload,
-      preview_status: {
-        live_preview: false,
-        reason: previewResponse ? `preview_${previewResponse.status}` : 'preview_failed',
-      },
-    }));
-  }
-  const previewPayload = await previewResponse.json().catch(() => ({}));
-  return markPreviewAttempt(NextResponse.json({
+  return NextResponse.json({
     ...payload,
-    preview_cards: Array.isArray(previewPayload.preview_cards) && previewPayload.preview_cards.length
-      ? previewPayload.preview_cards
-      : payload.preview_cards,
     preview_status: {
-      live_preview: Boolean(previewPayload.live_preview),
-      reason: previewPayload.reason || null,
-      cached: Boolean(previewPayload.cached),
-      source: previewPayload.source || null,
-      adapter_runs: previewPayload.adapter_runs || [],
+      live_preview: false,
+      reason: 'intent_only',
     },
-  }));
+  });
 }

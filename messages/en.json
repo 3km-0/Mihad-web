@@ -2176,7 +2176,7 @@
       },
       "hero": {
         "headline": "Tell Mihad what you are looking for.",
-        "subhead": "Describe the property you want. Mihad turns it into a buyer brief, shows a safe preview, and continues into verified search when you are ready.",
+        "subhead": "Describe the property you want. Mihad turns it into a buyer brief, asks the right qualifying questions, then continues into verified search when you are ready.",
         "ctas": [
           {
             "type": "primary",
@@ -2600,7 +2600,7 @@
       },
       "finalCta": {
         "title": "Find property with Mihad.",
-        "subhead": "Tell us your target city, budget, and property type in Saudi Arabia, the UAE, or Turkey. We capture the mandate, show a safe preview, then continue into verified search when you are ready.",
+        "subhead": "Tell us your target city, budget, and property type in Saudi Arabia, the UAE, or Turkey. We capture the mandate, clarify buyer intent, then continue into verified search when you are ready.",
         "ctas": [
           {
             "type": "primary",
