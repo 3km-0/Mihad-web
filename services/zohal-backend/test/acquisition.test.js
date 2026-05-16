@@ -7,6 +7,7 @@ import {
   normalizeSources,
   __test,
 } from "../src/handlers/acquisition.js";
+import { computeInvestmentScore } from "../src/market/investment-scorer.js";
 import { runAndPersistUnderwriting } from "../src/underwriting/persistence.js";
 
 function makeId(prefix) {
@@ -84,6 +85,11 @@ class Query {
     return this;
   }
 
+  ilike(field, pattern) {
+    this.filters.push({ field, pattern, op: "ilike" });
+    return this;
+  }
+
   order() {
     return this;
   }
@@ -97,6 +103,13 @@ class Query {
     return this.filters.every((filter) => {
       if (filter.op === "in") return filter.values.has(row[filter.field]);
       if (filter.op === "neq") return row[filter.field] !== filter.value;
+      if (filter.op === "ilike") {
+        const escaped = String(filter.pattern || "")
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/%/g, ".*")
+          .replace(/_/g, ".");
+        return new RegExp(`^${escaped}$`, "i").test(String(row[filter.field] || ""));
+      }
       return row[filter.field] === filter.value;
     });
   }
@@ -745,6 +758,82 @@ test("manual listing intake records manual source metadata", async () => {
   assert.equal(promoted.opportunity.metadata_json.source, "manual_operator");
   assert.equal(promoted.opportunity.metadata_json.source_fingerprint, result.candidate.source_fingerprint);
   assert.equal(result.candidate.limited_evidence_snapshot_json.intake_mode, "manual_user_entry");
+});
+
+test("marketplace promotion preserves portal source channel", async () => {
+  const supabase = createMockSupabase();
+  const result = await __test.createListingCandidate(supabase, {
+    workspace_id: "ws_1",
+    source: "property_finder",
+    source_url: "https://www.propertyfinder.ae/en/plp/buy/apartment-for-sale-dubai-marina-12345678.html",
+    title: "Dubai Marina apartment",
+    asking_price: 2200000,
+    city: "Dubai",
+    district: "Dubai Marina",
+    property_type: "apartment",
+    area_sqm: 110,
+  });
+
+  const promoted = await __test.promoteCandidate(supabase, result.candidate.id);
+
+  assert.equal(promoted.opportunity.source_channel, "property_finder");
+  assert.equal(promoted.opportunity.metadata_json.original_source_channel, "property_finder");
+});
+
+test("investment scorer reads country and currency from limited evidence snapshot", async () => {
+  const supabase = createMockSupabase({
+    acquisition_market_observations: [
+      {
+        district: "Dubai Marina",
+        year_number: 2025,
+        quarter_number: 4,
+        average_price_per_sqm: 48000,
+        min_price_per_sqm: 42000,
+        max_price_per_sqm: 56000,
+        transaction_count: 85,
+        property_type: "apartment",
+        country_code: "AE",
+      },
+      {
+        district: "Dubai Marina",
+        year_number: 2026,
+        quarter_number: 1,
+        average_price_per_sqm: 50000,
+        min_price_per_sqm: 44000,
+        max_price_per_sqm: 59000,
+        transaction_count: 110,
+        property_type: "apartment",
+        country_code: "AE",
+      },
+    ],
+  });
+
+  const score = await computeInvestmentScore({
+    supabase,
+    candidate: {
+      source_url: "https://www.propertyfinder.ae/en/plp/buy/apartment-for-sale-dubai-marina-12345678.html",
+      asking_price: 2_200_000,
+      area_sqm: 110,
+      district: "Dubai Marina",
+      property_type: "apartment",
+      photo_refs_json: ["https://example.com/photo-1.jpg", "https://example.com/photo-2.jpg", "https://example.com/photo-3.jpg"],
+      limited_evidence_snapshot_json: {
+        country_code: "AE",
+        currency: "AED",
+        asking_price_native: 2_200_000,
+      },
+    },
+    mandate: {
+      target_country_codes: ["AE", "ES"],
+      budget_currency: "AED",
+      budget_range_json: { min: 1_800_000, max: 3_000_000 },
+    },
+  });
+
+  assert.equal(score.country_code, "AE");
+  assert.equal(score.listing_currency, "AED");
+  assert.equal(score.breakdown.p1_price_efficiency.market_avg_psm_sar, 51000);
+  assert.equal(score.breakdown.p5_budget_position.budget_currency, "AED");
 });
 
 test("rejecting an opportunity archives its candidate so future upserts stay suppressed", async () => {

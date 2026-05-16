@@ -607,6 +607,7 @@ test("PropertyFinder adapter prefers NEXT_DATA hydration payload over text regex
   );
   assert.equal(candidate.asking_price, "38000000");
   assert.equal(candidate.limited_evidence_snapshot_json.currency, "AED");
+  assert.equal(candidate.limited_evidence_snapshot_json.asking_price_native, 38000000);
   assert.equal(candidate.limited_evidence_snapshot_json.price_source, "property_finder_next_data");
   // 2611 sqft -> 243 sqm (rounded).
   assert.equal(candidate.area_sqm, 243);
@@ -802,6 +803,7 @@ test("parsePriceWithCurrency handles European thousand separators and AED", asyn
   assert.deepEqual(parsePriceWithCurrency("Price 1,800,000 AED"), { amount: 1800000, currency: "AED" });
   assert.deepEqual(parsePriceWithCurrency("1.500.000 TL"), { amount: 1500000, currency: "TRY" });
   assert.deepEqual(parsePriceWithCurrency("£450,000 in London"), { amount: 450000, currency: "GBP" });
-  assert.deepEqual(parsePriceWithCurrency("Reference 12345 in description", { defaultCurrency: "EUR" }), { amount: 12345, currency: "EUR" });
+  assert.deepEqual(parsePriceWithCurrency("Price 650.000", { defaultCurrency: "EUR" }), { amount: 650000, currency: "EUR" });
+  assert.deepEqual(parsePriceWithCurrency("Reference 12345 in description", { defaultCurrency: "EUR" }), { amount: null, currency: null });
   assert.deepEqual(parsePriceWithCurrency("no price here"), { amount: null, currency: null });
 });

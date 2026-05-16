@@ -457,6 +457,10 @@ function linearInterp(x, anchors) {
 function resolveCountryCode(candidate, mandate) {
   const fromCandidate = candidate?.country_code || candidate?.countryCode || null;
   if (fromCandidate) return String(fromCandidate).toUpperCase();
+  const snapshot = candidate?.limited_evidence_snapshot_json && typeof candidate.limited_evidence_snapshot_json === "object"
+    ? candidate.limited_evidence_snapshot_json
+    : {};
+  if (snapshot.country_code) return String(snapshot.country_code).toUpperCase();
   const targets = Array.isArray(mandate?.target_country_codes) ? mandate.target_country_codes : [];
   if (targets.length === 1 && targets[0]) return String(targets[0]).toUpperCase();
   return "SA";
@@ -464,6 +468,10 @@ function resolveCountryCode(candidate, mandate) {
 
 function resolveListingCurrency(candidate, countryCode) {
   if (candidate?.currency) return String(candidate.currency).toUpperCase();
+  const snapshot = candidate?.limited_evidence_snapshot_json && typeof candidate.limited_evidence_snapshot_json === "object"
+    ? candidate.limited_evidence_snapshot_json
+    : {};
+  if (snapshot.currency) return String(snapshot.currency).toUpperCase();
   switch ((countryCode || "SA").toUpperCase()) {
     case "AE": return "AED";
     case "TR": return "TRY";
@@ -494,7 +502,10 @@ export async function computeInvestmentScore({ candidate, mandate, supabase }) {
   const listingCurrency = resolveListingCurrency(candidate, countryCode);
   const fxRateToSAR = getFxRateToSAR(listingCurrency) ?? 1;
 
-  const askingPriceNative = Number(candidate.asking_price || 0);
+  const snapshot = candidate?.limited_evidence_snapshot_json && typeof candidate.limited_evidence_snapshot_json === "object"
+    ? candidate.limited_evidence_snapshot_json
+    : {};
+  const askingPriceNative = Number(candidate.asking_price ?? snapshot.asking_price_native ?? 0);
   const askingPriceSAR = convertToSAR(askingPriceNative, listingCurrency) ?? askingPriceNative;
   const areaSqm = Number(candidate.area_sqm || 0);
   const dealPsmSAR = askingPriceSAR > 0 && areaSqm > 0 ? askingPriceSAR / areaSqm : null;

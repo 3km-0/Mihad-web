@@ -391,6 +391,7 @@ export function applyPropertyFinderStructured(candidate, property, defaultCurren
     candidate.limited_evidence_snapshot_json = {
       ...candidate.limited_evidence_snapshot_json,
       currency,
+      asking_price_native: Number(priceValue),
       price_source: "property_finder_next_data",
     };
   }

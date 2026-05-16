@@ -246,6 +246,20 @@ export function parsePriceWithCurrency(text, { defaultCurrency = null } = {}) {
     return Number.isFinite(num) ? num : null;
   }
 
+  function parseLabelledPrice(value, currency) {
+    const labelPatterns = [
+      /(?:asking\s+price|asking|list(?:ed)?\s+price|listed\s+at|price|precio|preço|prix|السعر)\s*[:\-]?\s*([\d.,\s]{4,})/i,
+      /([\d.,\s]{4,})\s*(?:asking\s+price|asking|list(?:ed)?\s+price|price|precio|preço|prix)/i,
+    ];
+    for (const pattern of labelPatterns) {
+      const match = String(value || "").match(pattern);
+      if (!match) continue;
+      const numeric = normalizeNumeric(match[1], currency);
+      if (Number.isFinite(numeric) && numeric > 1_000) return numeric;
+    }
+    return null;
+  }
+
   // Look for "1.5m" / "2 million" first. The (?![\dA-Za-z²³]) lookahead
   // prevents matching "120 m²" (area) or "100 mb" (bedrooms/etc) — the
   // multiplier suffix must be followed by whitespace, punctuation, or
@@ -277,7 +291,7 @@ export function parsePriceWithCurrency(text, { defaultCurrency = null } = {}) {
   }
 
   if (defaultCurrency) {
-    const amount = parsePrice(raw);
+    const amount = parseLabelledPrice(raw, defaultCurrency);
     if (Number.isFinite(amount) && amount > 0) {
       return { amount, currency: defaultCurrency };
     }

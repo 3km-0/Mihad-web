@@ -53,6 +53,9 @@ const OPPORTUNITY_SOURCE_CHANNELS = new Set([
   "manual_operator",
   "operator",
   "api",
+  "fotocasa",
+  "idealista",
+  "property_finder",
 ]);
 const CANDIDATE_STATUSES = new Set([
   "submitted",
