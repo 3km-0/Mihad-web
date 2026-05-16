@@ -252,6 +252,17 @@ function scoutCopy(isRtl: boolean) {
         beforeSearch: 'قبل البحث الموثق',
         searchStatus: 'حالة البحث',
         notRun: 'لم يبدأ بعد',
+        you: 'أنت',
+        agent: 'مهاد',
+        stepsTitle: 'ما يعمل عليه مهاد الآن',
+        stepParse: 'فهم الطلب وتحويله إلى موجز شراء',
+        stepBrief: 'تنظيم المدينة والميزانية ونوع العقار',
+        stepPreview: 'جلب معاينة محدودة بحدود حماية',
+        stepQualify: 'تجهيز أسئلة التأهيل قبل البحث الكامل',
+        previewTitle: 'معاينة داخل المحادثة',
+        previewUnavailable: 'لا توجد معاينة مباشرة لهذه الجلسة. أكمل التأهيل للبحث الموثق.',
+        previewLimit: 'استخدمت المعاينة المحدودة لهذه الجلسة. أكمل التأهيل للبحث الكامل.',
+        replyTitle: 'ردودك',
         fields: {
           property: 'نوع العقار',
           location: 'الموقع',
@@ -318,6 +329,17 @@ function scoutCopy(isRtl: boolean) {
         beforeSearch: 'Before verified search',
         searchStatus: 'Search status',
         notRun: 'Not run yet',
+        you: 'You',
+        agent: 'Mihad',
+        stepsTitle: 'What Mihad is doing',
+        stepParse: 'Understand the request and turn it into a buyer brief',
+        stepBrief: 'Structure city, budget, and property type',
+        stepPreview: 'Fetch a limited preview with guardrails',
+        stepQualify: 'Ask qualification questions before full search',
+        previewTitle: 'Preview inside the conversation',
+        previewUnavailable: 'No live preview is available for this session. Continue qualification for verified search.',
+        previewLimit: 'You used the limited preview for this session. Continue qualification for the full search.',
+        replyTitle: 'Your replies',
         fields: {
           property: 'Property type',
           location: 'Location',
@@ -391,6 +413,20 @@ function getScoutBriefItems(intent: MihadScoutIntent, copy: ReturnType<typeof sc
     { label: copy.fields.purpose, value: prettifyScoutValue(intent.purpose) },
     { label: copy.fields.timeline, value: prettifyScoutValue(intent.timeline) },
   ].filter((item) => item.value);
+}
+
+function getQualificationReplyLabels(
+  qualification: ScoutQualificationAnswers,
+  copy: ReturnType<typeof scoutCopy>,
+) {
+  return copy.questionGroups
+    .map((group) => {
+      const key = group.key as ScoutQualificationKey;
+      const value = qualification[key];
+      const option = group.options.find((item) => item.value === value);
+      return option ? { question: group.label, answer: option.label } : null;
+    })
+    .filter(Boolean) as Array<{ question: string; answer: string }>;
 }
 
 function getScoutSessionId() {
@@ -490,6 +526,11 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
   };
 
   const briefItems = result?.intent ? getScoutBriefItems(result.intent, copy, isRtl) : [];
+  const qualificationReplies = getQualificationReplyLabels(qualification, copy);
+  const previewCards = result?.preview_cards?.slice(0, 3) ?? [];
+  const previewStatusText = result?.preview_status?.reason === 'anonymous_preview_limit'
+    ? copy.previewLimit
+    : copy.previewUnavailable;
   const selectedAnswerCount = Object.values(qualification).filter(Boolean).length;
   const isReadyForAuth = Boolean(result && selectedAnswerCount >= 2);
 
@@ -557,81 +598,149 @@ function MihadScoutBox({ isRtl, onActiveChange }: { isRtl: boolean; onActiveChan
             isRtl && 'text-right',
           )}
         >
-          <div className={cn('flex flex-col justify-between gap-4 border-b border-[rgba(255,255,255,0.1)] p-4 sm:p-5 lg:flex-row', isRtl && 'lg:flex-row-reverse')}>
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.briefTitle}</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-normal text-text sm:text-3xl">{copy.understood}</h2>
-              <p className="mt-2 max-w-[42rem] text-sm leading-6 text-text-soft">
-                {result.turn.next_question || result.turn.text}
-              </p>
+          <div className="border-b border-[rgba(255,255,255,0.1)] p-4 sm:p-5">
+            <div className={cn('flex items-center justify-between gap-4', isRtl && 'flex-row-reverse')}>
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.agent}</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-normal text-text sm:text-3xl">
+                  {isReadyForAuth ? copy.readyTitle : copy.questionsTitle}
+                </h2>
+              </div>
+              <span className="w-fit shrink-0 self-start whitespace-nowrap rounded-full bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[color:var(--accent-text)]">
+                {copy.status}
+              </span>
             </div>
-            <span className="w-fit shrink-0 self-start whitespace-nowrap rounded-full bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[color:var(--accent-text)]">
-              {copy.status}
-            </span>
           </div>
 
-          <div className={cn('grid gap-4 p-4 sm:p-5 lg:grid-cols-[0.9fr,1.1fr]', isRtl && 'lg:grid-cols-[1.1fr,0.9fr]')}>
-            <div className="rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
-                {copy.extracted}
-              </p>
-              <div className="divide-y divide-[rgba(255,255,255,0.08)]">
-                {briefItems.length ? briefItems.map((item) => (
-                  <div key={item.label} className={cn('flex items-center justify-between gap-4 py-2.5', isRtl && 'flex-row-reverse')}>
-                    <span className="text-sm text-text-muted">{item.label}</span>
-                    <span className={cn('text-sm font-bold text-text', isRtl ? 'text-left' : 'text-right')}>
-                      {item.value || copy.fallback}
-                    </span>
-                  </div>
-                )) : (
-                  <p className="py-3 text-sm leading-6 text-text-soft">{result.turn.text}</p>
-                )}
-                <div className={cn('flex items-center justify-between gap-4 py-2.5', isRtl && 'flex-row-reverse')}>
-                  <span className="text-sm text-text-muted">{copy.searchStatus}</span>
-                  <span className={cn('text-sm font-bold text-text', isRtl ? 'text-left' : 'text-right')}>{copy.notRun}</span>
-                </div>
+          <div className="max-h-[min(68vh,720px)] space-y-4 overflow-y-auto p-4 sm:p-5">
+            <div className={cn('flex', isRtl ? 'justify-start' : 'justify-end')}>
+              <div className="max-w-[82%] rounded-[22px] bg-accent px-4 py-3 text-[color:var(--accent-text)] shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] opacity-70">{copy.you}</p>
+                <p className="mt-1 text-sm font-semibold leading-6">{prompt}</p>
               </div>
-              <p className="mt-3 text-xs leading-5 text-text-muted">{copy.preview}</p>
             </div>
 
-            <div className="rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.22em] text-accent">
-                {copy.beforeSearch}
-              </p>
-              <h3 className="text-xl font-semibold tracking-normal text-text">
-                {isReadyForAuth ? copy.readyTitle : copy.questionsTitle}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-text-soft">
-                {isReadyForAuth ? copy.readyBody : (result.turn.next_question || result.turn.text)}
-              </p>
+            <div className={cn('flex', isRtl ? 'justify-end' : 'justify-start')}>
+              <div className="max-w-[92%] rounded-[24px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">{copy.agent}</p>
+                <p className="mt-2 text-lg font-semibold text-text">{copy.understood}</p>
+                <p className="mt-1 text-sm leading-6 text-text-soft">
+                  {result.turn.next_question || result.turn.text}
+                </p>
 
-              <div className="mt-3 space-y-3">
-                {copy.questionGroups.map((group) => (
-                  <div key={group.key}>
-                    <p className="mb-2 text-sm font-semibold text-text">{group.label}</p>
-                    <div className={cn('flex flex-wrap gap-2', isRtl && 'justify-end')}>
-                      {group.options.map((option) => {
-                        const answerKey = group.key as ScoutQualificationKey;
-                        const selected = qualification[answerKey] === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setQualification((current) => ({ ...current, [answerKey]: option.value }))}
-                            className={cn(
-                              'min-h-[36px] rounded-full border px-3.5 text-sm font-semibold transition',
-                              selected
-                                ? 'border-accent bg-accent text-[color:var(--accent-text)]'
-                                : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.035)] text-text-soft hover:border-accent/50 hover:text-text',
-                            )}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.09)] bg-[rgba(0,0,0,0.18)] p-3">
+                  <p className="mb-3 text-sm font-semibold text-text">{copy.stepsTitle}</p>
+                  {[
+                    copy.stepParse,
+                    copy.stepBrief,
+                    copy.stepPreview,
+                    copy.stepQualify,
+                  ].map((step, index) => {
+                    const done = index < 2 || (index === 2 && Boolean(result.preview_status)) || (index === 3 && Boolean(result.turn.next_question));
+                    return (
+                      <div key={step} className={cn('flex items-start gap-3 py-1.5', isRtl && 'flex-row-reverse')}>
+                        <span
+                          className={cn(
+                            'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
+                            done ? 'bg-accent' : 'border border-[rgba(255,255,255,0.25)]',
+                          )}
+                        />
+                        <span className="text-sm leading-5 text-text-soft">{step}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.09)] bg-[rgba(0,0,0,0.18)] p-3">
+                  <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{copy.extracted}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {briefItems.length ? briefItems.map((item) => (
+                      <div key={item.label} className="rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] p-3">
+                        <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">{item.label}</p>
+                        <p className="mt-1 text-sm font-bold text-text">{item.value || copy.fallback}</p>
+                      </div>
+                    )) : (
+                      <p className="text-sm leading-6 text-text-soft">{result.turn.text}</p>
+                    )}
                   </div>
-                ))}
+                </div>
+
+                <div className="mt-4 rounded-[18px] border border-[rgba(255,255,255,0.09)] bg-[rgba(0,0,0,0.18)] p-3">
+                  <div className={cn('mb-3 flex items-center justify-between gap-3', isRtl && 'flex-row-reverse')}>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{copy.previewTitle}</p>
+                    <span className="rounded-full border border-[rgba(255,255,255,0.1)] px-2.5 py-1 text-[10px] font-semibold text-text-muted">
+                      {result.preview_status?.live_preview ? copy.livePreview : copy.samplePreview}
+                    </span>
+                  </div>
+                  {previewCards.length ? (
+                    <div className="grid gap-2 md:grid-cols-3">
+                      {previewCards.map((card) => (
+                        <div key={`${card.title}-${card.location}`} className="rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] p-3">
+                          <p className="text-sm font-bold text-text">{card.title}</p>
+                          <p className="mt-1 text-xs text-text-muted">{card.location}</p>
+                          <p className="mt-2 text-xs leading-5 text-text-soft">{card.note || copy.preview}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-6 text-text-soft">{previewStatusText}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {qualificationReplies.length ? (
+              <div className={cn('flex', isRtl ? 'justify-start' : 'justify-end')}>
+                <div className="max-w-[82%] rounded-[22px] bg-accent px-4 py-3 text-[color:var(--accent-text)] shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] opacity-70">{copy.replyTitle}</p>
+                  <div className="mt-2 space-y-1">
+                    {qualificationReplies.map((reply) => (
+                      <p key={reply.question} className="text-sm font-semibold leading-6">
+                        {reply.question}: {reply.answer}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className={cn('flex', isRtl ? 'justify-end' : 'justify-start')}>
+              <div className="max-w-[92%] rounded-[24px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.045)] p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">{copy.beforeSearch}</p>
+                <h3 className="mt-2 text-xl font-semibold tracking-normal text-text">
+                  {isReadyForAuth ? copy.readyTitle : copy.questionsTitle}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-text-soft">
+                  {isReadyForAuth ? copy.readyBody : (result.turn.next_question || result.turn.text)}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {copy.questionGroups.map((group) => (
+                    <div key={group.key}>
+                      <p className="mb-2 text-sm font-semibold text-text">{group.label}</p>
+                      <div className={cn('flex flex-wrap gap-2', isRtl && 'justify-end')}>
+                        {group.options.map((option) => {
+                          const answerKey = group.key as ScoutQualificationKey;
+                          const selected = qualification[answerKey] === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setQualification((current) => ({ ...current, [answerKey]: option.value }))}
+                              className={cn(
+                                'min-h-[36px] rounded-full border px-3.5 text-sm font-semibold transition',
+                                selected
+                                  ? 'border-accent bg-accent text-[color:var(--accent-text)]'
+                                  : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.035)] text-text-soft hover:border-accent/50 hover:text-text',
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
