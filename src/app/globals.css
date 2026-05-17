@@ -18,6 +18,7 @@
 :root {
   --font-source-serif: 'Instrument Serif', Georgia, serif;
   --font-inter: 'Inter', system-ui, sans-serif;
+  --font-arabic: 'Noto Sans Arabic', 'IBM Plex Sans Arabic', Tahoma, system-ui, sans-serif;
   --font-instrument-serif: 'Instrument Serif', Georgia, serif;
   --font-plus-jakarta: 'Inter', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
@@ -133,11 +134,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html[lang='ar'] body {
+  font-family: var(--font-arabic);
+}
+
 .website-shell {
   font-family: var(--font-plus-jakarta);
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
+}
+
+html[lang='ar'] .website-shell {
+  font-family: var(--font-arabic);
 }
 
 .website-display {

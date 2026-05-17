@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, CheckCircle2, MessageCircle } from 'lucide-react';
+import { useLocale } from 'next-intl';
 import { LAND_STATUS_OPTIONS, PREFAB_PROJECT_TYPES, PREFAB_WHATSAPP_URL, SCOPE_NEEDS } from '@/lib/prefab-content';
+import { isArabic, prefabCopy, pickLocalized } from '@/lib/prefab-copy';
 
 type RfqFormState = {
   projectType: string;
@@ -45,15 +47,6 @@ const initialState: RfqFormState = {
   notes: '',
 };
 
-const steps = [
-  'Project type',
-  'Location and land',
-  'Requirements',
-  'Budget and timeline',
-  'Scope help',
-  'Contact',
-] as const;
-
 export function RequestQuoteForm({
   initialProjectType,
   initialModel,
@@ -63,6 +56,10 @@ export function RequestQuoteForm({
   initialModel?: string;
   initialSupplier?: string;
 }) {
+  const locale = useLocale();
+  const ar = isArabic(locale);
+  const t = (copy: { ar: string; en: string }) => pickLocalized(locale, copy.ar, copy.en);
+  const steps = prefabCopy.rfq.steps[ar ? 'ar' : 'en'];
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<RfqFormState>({
     ...initialState,
@@ -122,10 +119,10 @@ export function RequestQuoteForm({
         }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || 'Unable to send request.');
+      if (!response.ok) throw new Error(payload?.error || t(prefabCopy.rfq.fallbackError));
       setResult(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to send request.');
+      setError(err instanceof Error ? err.message : t(prefabCopy.rfq.fallbackError));
     } finally {
       setSubmitting(false);
     }
@@ -135,15 +132,12 @@ export function RequestQuoteForm({
     return (
       <div className="rounded-[8px] border border-[#d8cfba] bg-white p-6 shadow-[0_18px_60px_rgba(36,53,47,0.12)] md:p-8">
         <CheckCircle2 className="h-10 w-10 text-[#1f6b4f]" />
-        <h2 className="mt-4 text-3xl font-semibold text-[#24352f]">Your request has been received.</h2>
+        <h2 className="mt-4 text-3xl font-semibold text-[#24352f]">{t(prefabCopy.rfq.successTitle)}</h2>
         <p className="mt-2 text-lg text-[#59645e]">
-          Mihad will review your project details and match the RFQ with suitable prefab suppliers.
-        </p>
-        <p className="mt-2 text-right text-lg text-[#1f6b4f]" dir="rtl">
-          تم استلام طلبك. سيقوم ميهاد بمراجعة التفاصيل وربطك بالموردين المناسبين.
+          {t(prefabCopy.rfq.successBody)}
         </p>
         <div className="mt-6 rounded-[8px] bg-[#f5f1e7] p-4 text-sm text-[#59645e]">
-          RFQ reference: <span className="font-mono text-[#24352f]">{result.rfq_id}</span>
+          {t(prefabCopy.rfq.reference)}: <span className="font-mono text-[#24352f]">{result.rfq_id}</span>
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -151,10 +145,10 @@ export function RequestQuoteForm({
             className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white"
           >
             <MessageCircle className="h-4 w-4" />
-            Continue on WhatsApp
+            {t(prefabCopy.rfq.continueWhatsapp)}
           </Link>
           <Link href="/models" className="inline-flex min-h-11 items-center rounded-[8px] border border-[#cfc5ad] px-4 text-sm font-semibold text-[#24352f]">
-            Browse models
+            {t(prefabCopy.rfq.browseModels)}
           </Link>
         </div>
       </div>
@@ -164,9 +158,8 @@ export function RequestQuoteForm({
   return (
     <div className="rounded-[8px] border border-[#d8cfba] bg-white shadow-[0_18px_60px_rgba(36,53,47,0.12)]">
       <div className="border-b border-[#e1dac9] p-5">
-        <p className="text-sm font-semibold text-[#1f6b4f]">Request prefab quotes from verified suppliers</p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#24352f]">Tell us about your project.</h1>
-        <p className="mt-2 text-right text-lg text-[#6a746f]" dir="rtl">اطلب عروض أسعار من موردين موثوقين</p>
+        <p className="text-sm font-semibold text-[#1f6b4f]">{t(prefabCopy.rfq.headerEyebrow)}</p>
+        <h1 className="mt-2 text-3xl font-semibold text-[#24352f]">{t(prefabCopy.rfq.headerTitle)}</h1>
         <div className="mt-5 grid gap-2 sm:grid-cols-6">
           {steps.map((label, index) => (
             <button
@@ -189,10 +182,10 @@ export function RequestQuoteForm({
                 key={type.value}
                 type="button"
                 onClick={() => patch({ projectType: type.value })}
-                className={`rounded-[8px] border p-4 text-left transition ${form.projectType === type.value ? 'border-[#1f6b4f] bg-[#eef6ef]' : 'border-[#e1dac9] bg-[#fbfaf6] hover:border-[#1f6b4f]'}`}
+                className={`rounded-[8px] border p-4 ${ar ? 'text-right' : 'text-left'} transition ${form.projectType === type.value ? 'border-[#1f6b4f] bg-[#eef6ef]' : 'border-[#e1dac9] bg-[#fbfaf6] hover:border-[#1f6b4f]'}`}
               >
-                <span className="font-semibold text-[#24352f]">{type.label}</span>
-                <span className="mt-1 block text-right text-sm text-[#6a746f]" dir="rtl">{type.labelAr}</span>
+                <span className="font-semibold text-[#24352f]">{ar ? type.labelAr : type.label}</span>
+                <span className="mt-1 block text-sm text-[#6a746f]">{ar ? type.label : type.labelAr}</span>
               </button>
             ))}
           </div>
@@ -200,19 +193,19 @@ export function RequestQuoteForm({
 
         {step === 1 ? (
           <div className="grid gap-4">
-            <TextField label="City / delivery location" value={form.city} onChange={(value) => patch({ city: value })} placeholder="Riyadh" />
+            <TextField label={t(prefabCopy.rfq.city)} value={form.city} onChange={(value) => patch({ city: value })} placeholder={t(prefabCopy.rfq.cityPlaceholder)} />
             <div>
-              <p className="mb-2 text-sm font-semibold text-[#24352f]">Do you own land?</p>
+              <p className="mb-2 text-sm font-semibold text-[#24352f]">{t(prefabCopy.rfq.ownLand)}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {LAND_STATUS_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => patch({ landStatus: option.value })}
-                    className={`rounded-[8px] border p-4 text-left ${form.landStatus === option.value ? 'border-[#1f6b4f] bg-[#eef6ef]' : 'border-[#e1dac9] bg-[#fbfaf6]'}`}
+                    className={`rounded-[8px] border p-4 ${ar ? 'text-right' : 'text-left'} ${form.landStatus === option.value ? 'border-[#1f6b4f] bg-[#eef6ef]' : 'border-[#e1dac9] bg-[#fbfaf6]'}`}
                   >
-                    <span className="font-semibold">{option.label}</span>
-                    <span className="mt-1 block text-right text-sm text-[#6a746f]" dir="rtl">{option.labelAr}</span>
+                    <span className="font-semibold">{ar ? option.labelAr : option.label}</span>
+                    <span className="mt-1 block text-sm text-[#6a746f]">{ar ? option.label : option.labelAr}</span>
                   </button>
                 ))}
               </div>
@@ -222,39 +215,39 @@ export function RequestQuoteForm({
 
         {step === 2 ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label="Target size" value={form.sizeSqm} onChange={(value) => patch({ sizeSqm: value })} placeholder="180 sqm" />
-            <TextField label="Rooms / bedrooms" value={form.rooms} onChange={(value) => patch({ rooms: value })} placeholder="3 bedrooms, 4 bathrooms" />
-            <TextField label="Use case" value={form.useCase} onChange={(value) => patch({ useCase: value })} placeholder="Family villa, farm chalet, site office..." />
-            <TextField label="Preferred style" value={form.styleReference} onChange={(value) => patch({ styleReference: value })} placeholder="Modern, traditional, simple cabin..." />
+            <TextField label={t(prefabCopy.rfq.targetSize)} value={form.sizeSqm} onChange={(value) => patch({ sizeSqm: value })} placeholder={t(prefabCopy.rfq.targetSizePlaceholder)} />
+            <TextField label={t(prefabCopy.rfq.rooms)} value={form.rooms} onChange={(value) => patch({ rooms: value })} placeholder={t(prefabCopy.rfq.roomsPlaceholder)} />
+            <TextField label={t(prefabCopy.rfq.useCase)} value={form.useCase} onChange={(value) => patch({ useCase: value })} placeholder={t(prefabCopy.rfq.useCasePlaceholder)} />
+            <TextField label={t(prefabCopy.rfq.style)} value={form.styleReference} onChange={(value) => patch({ styleReference: value })} placeholder={t(prefabCopy.rfq.stylePlaceholder)} />
             <div className="sm:col-span-2">
-              <TextField label="Model reference" value={form.modelReference} onChange={(value) => patch({ modelReference: value })} placeholder="Optional model or supplier reference" />
+              <TextField label={t(prefabCopy.rfq.modelReference)} value={form.modelReference} onChange={(value) => patch({ modelReference: value })} placeholder={t(prefabCopy.rfq.modelReferencePlaceholder)} />
             </div>
           </div>
         ) : null}
 
         {step === 3 ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label="Minimum budget" value={form.budgetMin} onChange={(value) => patch({ budgetMin: value })} placeholder="500000 SAR" />
-            <TextField label="Maximum budget" value={form.budgetMax} onChange={(value) => patch({ budgetMax: value })} placeholder="1200000 SAR" />
+            <TextField label={t(prefabCopy.rfq.budgetMin)} value={form.budgetMin} onChange={(value) => patch({ budgetMin: value })} placeholder={t(prefabCopy.rfq.budgetMinPlaceholder)} />
+            <TextField label={t(prefabCopy.rfq.budgetMax)} value={form.budgetMax} onChange={(value) => patch({ budgetMax: value })} placeholder={t(prefabCopy.rfq.budgetMaxPlaceholder)} />
             <div className="sm:col-span-2">
-              <TextField label="Desired timeline" value={form.timeline} onChange={(value) => patch({ timeline: value })} placeholder="Within 3 months, Q4 2026..." />
+              <TextField label={t(prefabCopy.rfq.timeline)} value={form.timeline} onChange={(value) => patch({ timeline: value })} placeholder={t(prefabCopy.rfq.timelinePlaceholder)} />
             </div>
           </div>
         ) : null}
 
         {step === 4 ? (
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#24352f]">Where do you need help?</p>
+            <p className="mb-3 text-sm font-semibold text-[#24352f]">{t(prefabCopy.rfq.scopeHelp)}</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {SCOPE_NEEDS.map((scope) => (
                 <button
                   key={scope.value}
                   type="button"
                   onClick={() => toggleScope(scope.value)}
-                  className={`rounded-[8px] border p-4 text-left ${form.scopeNeeds.includes(scope.value) ? 'border-[#1f6b4f] bg-[#eef6ef]' : 'border-[#e1dac9] bg-[#fbfaf6]'}`}
+                  className={`rounded-[8px] border p-4 ${ar ? 'text-right' : 'text-left'} ${form.scopeNeeds.includes(scope.value) ? 'border-[#1f6b4f] bg-[#eef6ef]' : 'border-[#e1dac9] bg-[#fbfaf6]'}`}
                 >
-                  <span className="font-semibold">{scope.label}</span>
-                  <span className="mt-1 block text-right text-sm text-[#6a746f]" dir="rtl">{scope.labelAr}</span>
+                  <span className="font-semibold">{ar ? scope.labelAr : scope.label}</span>
+                  <span className="mt-1 block text-sm text-[#6a746f]">{ar ? scope.label : scope.labelAr}</span>
                 </button>
               ))}
             </div>
@@ -263,16 +256,16 @@ export function RequestQuoteForm({
 
         {step === 5 ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label="Name" value={form.name} onChange={(value) => patch({ name: value })} placeholder="Your name" />
-            <TextField label="Phone / WhatsApp" value={form.phone} onChange={(value) => patch({ phone: value })} placeholder="+966..." />
-            <TextField label="Email optional" value={form.email} onChange={(value) => patch({ email: value })} placeholder="name@example.com" />
+            <TextField label={t(prefabCopy.rfq.name)} value={form.name} onChange={(value) => patch({ name: value })} placeholder={t(prefabCopy.rfq.namePlaceholder)} />
+            <TextField label={t(prefabCopy.rfq.phone)} value={form.phone} onChange={(value) => patch({ phone: value })} placeholder="+966..." />
+            <TextField label={t(prefabCopy.rfq.email)} value={form.email} onChange={(value) => patch({ email: value })} placeholder="name@example.com" />
             <label className="flex items-center gap-3 rounded-[8px] border border-[#e1dac9] bg-[#fbfaf6] p-4">
               <input type="checkbox" checked={form.whatsappPreferred} onChange={(event) => patch({ whatsappPreferred: event.target.checked })} />
-              <span className="text-sm font-semibold text-[#24352f]">Prefer WhatsApp follow-up</span>
+              <span className="text-sm font-semibold text-[#24352f]">{t(prefabCopy.rfq.whatsappPreferred)}</span>
             </label>
             <div className="sm:col-span-2">
               <label className="grid gap-2 text-sm font-semibold text-[#24352f]">
-                Notes optional
+                {t(prefabCopy.rfq.notes)}
                 <textarea value={form.notes} onChange={(event) => patch({ notes: event.target.value })} className="min-h-28 rounded-[8px] border border-[#d8cfba] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f6b4f]" />
               </label>
             </div>
@@ -290,7 +283,7 @@ export function RequestQuoteForm({
           className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[#cfc5ad] px-4 text-sm font-semibold disabled:opacity-40"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t(prefabCopy.rfq.back)}
         </button>
         {step < steps.length - 1 ? (
           <button
@@ -299,7 +292,7 @@ export function RequestQuoteForm({
             onClick={() => setStep((current) => Math.min(steps.length - 1, current + 1))}
             className="inline-flex min-h-10 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white disabled:opacity-40"
           >
-            Continue
+            {t(prefabCopy.rfq.continue)}
             <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
@@ -309,7 +302,7 @@ export function RequestQuoteForm({
             onClick={submit}
             className="inline-flex min-h-10 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white disabled:opacity-40"
           >
-            {submitting ? 'Sending...' : 'Send request'}
+            {submitting ? t(prefabCopy.rfq.sending) : t(prefabCopy.rfq.send)}
           </button>
         )}
       </div>

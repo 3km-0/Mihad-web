@@ -1,38 +1,21 @@
 import { getRequestConfig } from 'next-intl/server';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 
 export const locales = ['en', 'ar'] as const;
 export type Locale = (typeof locales)[number];
-export const defaultLocale: Locale = 'en';
+export const defaultLocale: Locale = 'ar';
 
 export default getRequestConfig(async () => {
-  // Try to get locale from cookie first
+  // Arabic is the product default. Only move away from it when the user has
+  // explicitly selected another supported locale.
   const cookieStore = await cookies();
   const localeCookie = cookieStore.get('NEXT_LOCALE')?.value;
-
-  // Then try Accept-Language header
-  const headersList = await headers();
-  const acceptLanguage = headersList.get('Accept-Language');
-
-  let locale: Locale = defaultLocale;
-
-  if (localeCookie && locales.includes(localeCookie as Locale)) {
-    locale = localeCookie as Locale;
-  } else if (acceptLanguage) {
-    // Parse Accept-Language header
-    const preferredLocale = acceptLanguage
-      .split(',')
-      .map((lang) => lang.split(';')[0].trim().substring(0, 2))
-      .find((lang) => locales.includes(lang as Locale));
-
-    if (preferredLocale) {
-      locale = preferredLocale as Locale;
-    }
-  }
+  const locale: Locale = localeCookie && locales.includes(localeCookie as Locale)
+    ? localeCookie as Locale
+    : defaultLocale;
 
   return {
     locale,
     messages: (await import(`../../messages/${locale}.json`)).default,
   };
 });
-

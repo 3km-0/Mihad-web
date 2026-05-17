@@ -51,6 +51,24 @@ acquisition report lane in the active buyer desk.
 - approval-gated supplier/broker intro actions
 - web-side GCP backend service code under `services/zohal-backend/`
 
+## Localization
+
+Arabic is the default language for Mihad public and buyer-facing product
+surfaces. The tone should be Saudi business-casual: professional, clear,
+practical, and familiar without becoming chatty or slang-heavy. English mirrors
+the Arabic product intent as the secondary locale.
+
+Implementation rules:
+
+- `NEXT_LOCALE=ar` is the default when the user has not explicitly selected a
+  language.
+- The language switcher must remain visible on public prefab/RFQ pages.
+- Do not add user-facing English-only strings. Add Arabic and English together,
+  with Arabic treated as the source copy for Saudi buyer flows.
+- Keep legal/scope disclaimers precise in both languages, especially around
+  supplier verification, permits, pricing, delivery, and Mihad not being a
+  contractor or permit issuer.
+
 ## Buyer Workflow Backend Lane
 
 `services/zohal-backend` owns the Mihad buyer workflow API:

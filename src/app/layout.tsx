@@ -3,6 +3,7 @@ import {
   Inter,
   Instrument_Serif,
   JetBrains_Mono,
+  Noto_Sans_Arabic,
 } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -21,6 +22,12 @@ const sourceSerif = Instrument_Serif({
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+});
+
+const notoSansArabic = Noto_Sans_Arabic({
+  subsets: ['arabic'],
+  variable: '--font-arabic',
   display: 'swap',
 });
 
@@ -118,7 +125,7 @@ export default async function RootLayout({
       lang={locale}
       dir={dir}
       data-theme="zohal-dark"
-      className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${vectorSans.variable}`}
+      className={`${sourceSerif.variable} ${inter.variable} ${notoSansArabic.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${vectorSans.variable}`}
       suppressHydrationWarning
     >
       <body>

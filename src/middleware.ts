@@ -8,27 +8,17 @@ type CookieToSet = {
   options: CookieOptions;
 };
 
-const GCC_COUNTRY_CODES = new Set(['SA', 'AE', 'KW', 'QA', 'BH', 'OM']);
 const LOCALE_COOKIE = 'NEXT_LOCALE';
 // Written only when the user actively clicks the language switcher.
 // Presence means "respect their choice; skip geo detection."
 const LOCALE_EXPLICIT_COOKIE = 'LOCALE_EXPLICIT';
 
-function detectGccLocale(request: NextRequest): 'ar' | null {
-  // User explicitly chose a language via the switcher — always respect it
+function detectDefaultLocale(request: NextRequest): 'ar' | null {
+  // User explicitly chose a language via the switcher — always respect it.
   if (request.cookies.get(LOCALE_EXPLICIT_COOKIE)?.value === '1') return null;
-  // Locale already set to Arabic (our redirect already ran) — prevents loop
-  if (request.cookies.get(LOCALE_COOKIE)?.value === 'ar') return null;
-
-  // Vercel injects x-vercel-ip-country at the edge; Cloudflare uses cf-ipcountry
-  const country =
-    request.headers.get('x-vercel-ip-country') ??
-    request.headers.get('cf-ipcountry');
-
-  if (country && GCC_COUNTRY_CODES.has(country.toUpperCase())) {
-    return 'ar';
-  }
-  return null;
+  // Any locale cookie means this browser already has a resolved preference.
+  if (request.cookies.get(LOCALE_COOKIE)?.value) return null;
+  return 'ar';
 }
 
 export async function middleware(request: NextRequest) {
@@ -136,18 +126,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(profile?.onboarding_completed_at ? '/workspaces' : '/onboarding', request.url));
   }
 
-  // Auto-set Arabic for first-time GCC visitors.
+  // Auto-set Arabic for first-time visitors.
   // We redirect (same URL) so the browser re-requests with the cookie already
   // present, ensuring i18n/request.ts picks up Arabic on the very first render.
   // Only fires on GET requests with no existing locale cookie.
-  const gccLocale = detectGccLocale(request);
-  if (gccLocale && request.method === 'GET') {
+  const defaultLocale = detectDefaultLocale(request);
+  if (defaultLocale && request.method === 'GET') {
     const redirectResponse = NextResponse.redirect(request.nextUrl.clone());
     // Carry over any Supabase session cookies refreshed above.
     response.cookies.getAll().forEach(({ name, value, ...opts }) => {
       redirectResponse.cookies.set(name, value, opts);
     });
-    redirectResponse.cookies.set(LOCALE_COOKIE, gccLocale, {
+    redirectResponse.cookies.set(LOCALE_COOKIE, defaultLocale, {
       path: '/',
       maxAge: 60 * 60 * 24 * 365, // 1 year
       sameSite: 'lax',

@@ -79,6 +79,13 @@ This file is the repo-local workflow guide for `Mihad-web`.
 
 - Keep localization in sync. Do not add user-facing English-only strings unless
   explicitly approved.
+- Arabic is the default product language for public and buyer-facing surfaces.
+  New copy must be written Arabic-first in Saudi business-casual language:
+  clear, professional, direct, and familiar without slang overload. English is
+  the mirrored secondary locale, not the source of truth for Saudi buyer flows.
+- Public prefab/RFQ pages must expose the language switcher and respect the
+  `NEXT_LOCALE` cookie. Do not rely on browser `Accept-Language` to override
+  the Arabic default.
 - Before changing canonical domains, auth redirects, payment callbacks, email
   senders, or backend hostnames, use `docs/mihad-brand-domain-migration-audit.md`.
 - Prefer existing theme tokens and design-system primitives over ad-hoc styling.
