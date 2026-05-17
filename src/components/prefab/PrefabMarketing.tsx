@@ -45,6 +45,12 @@ export function PrefabNav() {
         </nav>
         <div className="flex items-center gap-2">
           <Link
+            href="/auth/login"
+            className="inline-flex min-h-10 items-center rounded-[8px] px-2 text-xs font-semibold text-[#59645e] transition hover:bg-[#f5f1e7] hover:text-[#24352f] sm:px-3 sm:text-sm"
+          >
+            Sign in
+          </Link>
+          <Link
             href="/request-quote"
             className="inline-flex min-h-10 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white transition hover:bg-[#18543f]"
           >
@@ -111,7 +117,7 @@ export function PublicPageShell({ children, nav = true }: { children: React.Reac
         <Link href="/categories/prefab-homes" className="grid min-h-14 place-items-center">Explore</Link>
         <Link href="/suppliers" className="grid min-h-14 place-items-center">Suppliers</Link>
         <Link href="/request-quote" className="grid min-h-14 place-items-center text-[#1f6b4f]">Request</Link>
-        <Link href={PREFAB_WHATSAPP_URL} className="grid min-h-14 place-items-center">WhatsApp</Link>
+        <Link href="/auth/login" className="grid min-h-14 place-items-center">Sign in</Link>
       </div>
     </div>
   );
