@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { data: opportunity, error: opportunityErr } = await supabase
-      .from('acquisition_opportunities')
-      .select('id,workspace_id,title,summary,stage')
+    const { data: opportunity, error: opportunityErr } = await (supabase as any)
+      .from('sourced_options')
+      .select('id,workspace_id,title,summary,status')
       .eq('id', opportunityId)
       .eq('workspace_id', workspaceId)
       .maybeSingle();
@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
     if (Number.isNaN(start.getTime())) return NextResponse.json({ error: 'Invalid start_iso' }, { status: 400 });
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     const event = {
-      summary: body.title || `Property visit: ${opportunity.title || opportunity.summary || 'Acquisition opportunity'}`,
+      summary: body.title || `Partner review: ${opportunity.title || opportunity.summary || 'Sourced option'}`,
       description: [
-        body.description || opportunity.summary || 'Mihad acquisition workspace visit.',
+        body.description || opportunity.summary || 'Mihad buyer desk partner review.',
         `Workspace: ${workspaceId}`,
         `Opportunity: ${opportunityId}`,
       ].filter(Boolean).join('\n\n'),
@@ -106,24 +106,30 @@ export async function POST(request: NextRequest) {
     }
 
     const json = (await googleRes.json().catch(() => null)) as { id?: string; htmlLink?: string } | null;
-    const { error: stageError } = await supabase
-      .from('acquisition_opportunities')
-      .update({ stage: 'visit_requested' })
+    const { error: stageError } = await (supabase as any)
+      .from('sourced_options')
+      .update({ status: 'screening' })
       .eq('id', opportunityId);
     if (stageError) return NextResponse.json({ error: stageError.message }, { status: 500 });
 
-    await supabase.from('acquisition_events').insert({
-      opportunity_id: opportunityId,
+    await (supabase as any).from('approval_gates').insert({
       workspace_id: workspaceId,
-      event_type: 'schedule_visit',
-      event_direction: 'operator',
-      body_text: 'Google Calendar visit created.',
-      event_payload: {
-        source: 'web_acquisition_action',
+      action_type: 'schedule_visit',
+      approval_status: 'executed',
+      requested_by: user.id,
+      executed_by: user.id,
+      executed_at: new Date().toISOString(),
+      draft_payload_json: {
+        option_id: opportunityId,
+        source: 'web_buyer_desk_action',
         action_id: 'schedule_visit',
         google_event_id: json?.id || null,
         html_link: json?.htmlLink || null,
         start_iso: start.toISOString(),
+      },
+      execution_result_json: {
+        google_event_id: json?.id || null,
+        html_link: json?.htmlLink || null,
       },
     });
 

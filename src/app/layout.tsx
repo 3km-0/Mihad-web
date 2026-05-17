@@ -50,15 +50,15 @@ export const metadata: Metadata = {
     template: '%s | Mihad',
   },
   description:
-    'Mihad helps Saudi real estate investors turn a buy box into serious acquisition candidates with evidence, scenarios, renovation exposure, and clear next steps.',
+    'Mihad helps buyers turn a structured mandate into sourced prefab options, evidence-backed matches, buyer packets, and consented partner introductions.',
   applicationName: 'Mihad',
   keywords: [
-    'real estate acquisition workflow',
-    'Saudi real estate investors',
-    'property acquisition AI',
-    'evidence-based review',
+    'prefab buyer workflow',
+    'Saudi prefab suppliers',
+    'buyer mandate RFQ',
+    'evidence-backed sourcing',
     'Arabic English document review',
-    'invoice verification',
+    'buyer packet consent',
   ],
   authors: [{ name: 'Mihad' }],
   icons: {

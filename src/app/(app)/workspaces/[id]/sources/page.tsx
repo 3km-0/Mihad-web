@@ -165,8 +165,8 @@ export default function WorkspaceDetailPage() {
       const rootId = await ensureFolder({ name: 'Properties', folderKind: 'acquisition_property_root', metadata: { analysis_policy: 'none' } });
       let label = 'Property files';
       if (opportunityId) {
-        const { data } = await supabase
-          .from('acquisition_opportunities')
+        const { data } = await (supabase as any)
+          .from('sourced_options')
           .select('title,summary')
           .eq('id', opportunityId)
           .maybeSingle();
@@ -266,10 +266,10 @@ export default function WorkspaceDetailPage() {
         .select('id, document_id, evidence_type, status, sensitivity_level, expires_at')
         .eq('profile_id', profile.id)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('document_sharing_grants')
+      (supabase as any)
+        .from('sharing_grants')
         .select('id, document_id, share_mode, revoked_at, expires_at')
-        .eq('buyer_profile_id', profile.id)
+        .eq('workspace_id', workspaceId)
         .order('created_at', { ascending: false }),
     ]);
 
@@ -476,35 +476,21 @@ export default function WorkspaceDetailPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const [eventResult, diligenceResult] = await Promise.all([
-      supabase.from('acquisition_events').insert({
-        opportunity_id: opportunityId,
-        workspace_id: workspaceId,
-        created_by: user?.id || null,
-        event_type: 'upload_property_document',
-        event_direction: 'operator',
-        body_text: 'Property file uploaded; acquisition property analysis queued.',
-        media_json: [],
-        event_payload: {
+    const { error } = await (supabase as any)
+      .from('sourced_options')
+      .update({
+        status: 'screening',
+        evidence_snapshot_json: {
           source: 'web_files_upload',
-          action_id: 'upload_property_document',
           document_id: documentId,
-          analysis_policy: 'acquisition_property',
+          analysis_policy: 'sourced_option_evidence',
+          uploaded_by: user?.id || null,
         },
-      }),
-      supabase
-        .from('acquisition_diligence_items')
-        .update({
-          status: 'received',
-          evidence_refs_json: [{ document_id: documentId, source: 'web_files_upload' }],
-        })
-        .eq('opportunity_id', opportunityId)
-        .eq('status', 'requested')
-        .in('item_type', ['missing_info', 'document_request']),
-    ]);
+      })
+      .eq('id', opportunityId);
 
-    if (eventResult.error || diligenceResult.error) {
-      showError(eventResult.error || diligenceResult.error, 'acquisition_property_upload');
+    if (error) {
+      showError(error, 'sourced_option_upload');
     }
   };
 

@@ -1,50 +1,30 @@
-import Link from 'next/link';
+import type { Metadata } from 'next';
+import { GuideCard, PREFAB_GUIDES, PublicPageShell, SectionHeading } from '@/components/prefab/PrefabMarketing';
 import { absoluteUrl } from '@/lib/seo';
-import { COUNTRY_GUIDES, COUNTRY_GUIDE_CODES } from '@/lib/country-guides';
-import { LegalDisclaimerFooter } from '@/components/legal/LegalDisclaimerFooter';
 
-export async function generateMetadata() {
-  return {
-    title: 'Country guides — Mihad',
-    description:
-      'Cross-border property buying guides for Saudi buyers: UAE, Türkiye, Greece, and Spain. Source-cited residency, due diligence, and Saudi compliance notes.',
-    alternates: {
-      canonical: absoluteUrl('/guides'),
-    },
-  };
-}
+export const metadata: Metadata = {
+  title: 'Prefab buying guides — Mihad',
+  description: 'Saudi prefab buying guides for cost, land readiness, supplier trust, foundations, utilities, and quote comparison.',
+  alternates: { canonical: absoluteUrl('/guides') },
+};
 
 export default function GuidesIndexPage() {
+  const groups = ['Cost and comparison', 'Land readiness', 'Supplier trust'];
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10 text-text">
-      <header className="mb-8">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">Mihad buyer guides</p>
-        <h1 className="mt-2 text-4xl font-bold leading-tight">Cross-border property guides</h1>
-        <p className="mt-3 text-lg text-text-soft">
-          Practical, source-cited notes for Saudi buyers exploring UAE, Türkiye, Greece, and Spain.
-          Every threshold and tax rate is marked for operator verification — Mihad does not provide
-          legal, tax, or brokerage advice.
-        </p>
-      </header>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {COUNTRY_GUIDE_CODES.filter((code) => code !== 'SA').map((code) => {
-          const guide = COUNTRY_GUIDES[code];
-          return (
-            <Link
-              key={code}
-              href={`/guides/${code.toLowerCase()}`}
-              className="block rounded-[14px] border border-border bg-surface-alt p-5 transition hover:border-accent/30"
-            >
-              <p className="font-mono text-xs uppercase tracking-[0.18em] text-text-soft">{code}</p>
-              <h2 className="mt-2 text-xl font-semibold text-text">{guide.displayName}</h2>
-              <p className="mt-2 text-sm text-text-soft">{guide.oneLineSummary}</p>
-            </Link>
-          );
-        })}
-      </div>
-
-      <LegalDisclaimerFooter />
-    </main>
+    <PublicPageShell>
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <SectionHeading eyebrow="Guides" title="Learn before you buy" titleAr="افهم الخيارات قبل أن تشتري" body="Plain-language guides for Saudi buyers comparing prefab suppliers, scope, and project readiness." />
+        <div className="mt-10 grid gap-8">
+          {groups.map((group) => (
+            <section key={group}>
+              <h2 className="text-2xl font-semibold">{group}</h2>
+              <div className="mt-4 grid gap-5 md:grid-cols-3">
+                {PREFAB_GUIDES.filter((guide) => guide.category === group).map((guide) => <GuideCard key={guide.slug} guide={guide} />)}
+              </div>
+            </section>
+          ))}
+        </div>
+      </main>
+    </PublicPageShell>
   );
 }

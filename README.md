@@ -1,9 +1,9 @@
 # Mihad Web
 
 Status: Active
-Last reviewed: 2026-05-11
+Last reviewed: 2026-05-17
 
-Web companion for the Mihad document and acquisition workspace platform. Built
+Web companion for the Mihad document and buyer workflow platform. Built
 with Next.js 15, React 19, TypeScript, Tailwind, next-intl, and Supabase SSR
 auth.
 
@@ -27,6 +27,10 @@ The shared product model is:
 
 `Document -> Template -> Run -> Snapshot -> Living Interface -> Automation`
 
+The active buyer workflow lane is:
+
+`Buyer Mandate -> RFQ -> Source Run -> Sourced Option -> Match -> Buyer Packet -> Partner Intro -> Deal Event`
+
 Web uses the same product language as iOS and core docs:
 - `Living Interface` for public/product language
 - `Surface` for internal runtime/delivery language
@@ -34,34 +38,37 @@ Web uses the same product language as iOS and core docs:
 - `playbook` only for persistence/API details
 - `Corpus` for curated source sets
 
-The web app does not expose an end-user Pipeline Builder during the acquisition
-reset.
+The web app does not expose an end-user Pipeline Builder, deal desk, or legacy
+acquisition report lane in the active buyer desk.
 
 ## Main Areas
 
-- authenticated workspace and property/acquisition flows
+- authenticated workspace and buyer/RFQ flows
 - Sources / document management
 - operator and Ask flows
 - settings, billing, and subscription UI
-- Living Interface publication controls for the active `market` family
-- Acquisition Report creation and weekly report orchestration through the GCP
-  backend
+- derived buyer packet and consent-scoped partner sharing
+- approval-gated supplier/broker intro actions
 - web-side GCP backend service code under `services/zohal-backend/`
 
-## Acquisition Report Backend Lane
+## Buyer Workflow Backend Lane
 
-`services/zohal-backend` owns the Acquisition Report API aliases:
+`services/zohal-backend` owns the Mihad buyer workflow API:
 
-- `POST /api/acquisition/v1/workspaces/:workspaceId/acquisition-reports`
-- `POST /api/acquisition/v1/acquisition-reports/:reportId/notes`
-- compatibility routes under `/deal-desk`
-- internal weekly orchestration under `/internal/acquisition/reports/weekly`
+- `POST /api/mihad/v1/mandates`
+- `POST /api/mihad/v1/rfqs`
+- `POST /api/mihad/v1/source-runs`
+- `POST /api/mihad/v1/source-runs/:runId/execute`
+- `POST /api/mihad/v1/sourced-options`
+- `POST /api/mihad/v1/buyer-packets`
+- `POST /api/mihad/v1/buyer-packets/:packetId/grants`
+- `POST /api/mihad/v1/approval-gates`
+- `POST /api/mihad/v1/agent/turn`
 
-The report lane keeps Supabase report records and Cloudflare delivery/proof
-URLs, but it is deterministic presentation data, not arbitrary AI-generated UI
-code. Default reports are public-unlisted, rank by `investment_score` when
-available, and default to the top 5 deals unless structured preferences say
-otherwise.
+The API writes to `buyer_mandates`, `rfqs`, `source_runs`, `sourced_options`,
+`option_sources`, `matches`, `buyer_packets`, `sharing_grants`, and
+`approval_gates`. Raw financial/private documents stay in `documents`; buyer
+packets contain derived fields only.
 
 ## Commands
 

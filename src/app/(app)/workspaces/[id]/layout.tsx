@@ -17,9 +17,7 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
 
   const primarySurface =
     pathname === `/workspaces/${workspaceId}` ||
-    pathname === `/workspaces/${workspaceId}/sources` ||
-    pathname === `/workspaces/${workspaceId}/automations` ||
-    pathname === `/workspaces/${workspaceId}/publish`;
+    pathname === `/workspaces/${workspaceId}/sources`;
 
   useEffect(() => {
     let cancelled = false;
@@ -57,10 +55,10 @@ export default function WorkspaceRouteLayout({ children }: { children: React.Rea
             </Link>
             <div className="min-w-0">
               <p className="truncate text-lg font-bold leading-tight text-text md:text-xl">
-                {workspaceName || 'Acquisition workspace'}
+                {workspaceName || 'Buyer desk'}
               </p>
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                Mandate {'->'} Opportunity {'->'} Decision
+                Buyer Mandate {'->'} RFQ {'->'} Buyer Packet
               </p>
             </div>
           </div>

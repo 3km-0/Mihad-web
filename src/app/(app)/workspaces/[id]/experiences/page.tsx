@@ -6,5 +6,5 @@ export default async function WorkspaceExperiencesRedirect({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/workspaces/${id}/publish`);
+  redirect(`/workspaces/${encodeURIComponent(id)}`);
 }

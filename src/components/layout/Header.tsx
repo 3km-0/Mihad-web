@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { MessageCircle } from 'lucide-react';
+import { PREFAB_WHATSAPP_URL } from '@/lib/prefab-content';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface HeaderProps {
@@ -19,13 +21,14 @@ export function Header({
   className,
 }: HeaderProps) {
   const tCommon = useTranslations('common');
-  const t = useTranslations('nav');
   const authT = useTranslations('auth');
 
   const navLinks = [
-    { href: '/terms', label: t('terms') },
-    { href: '/privacy', label: t('privacy') },
-    { href: '/support', label: t('support') },
+    { href: '/categories/prefab-homes', label: 'Explore Prefab' },
+    { href: '/suppliers', label: 'Suppliers' },
+    { href: '/models', label: 'Models' },
+    { href: '/guides', label: 'Guides' },
+    { href: '/for-businesses', label: 'For Businesses' },
   ];
 
   return (
@@ -73,10 +76,17 @@ export function Header({
               {authT('login')}
             </Link>
             <Link
-              href="/auth/signup"
+              href={PREFAB_WHATSAPP_URL}
+              className="hidden min-h-[42px] items-center justify-center gap-2 rounded-[var(--rSm)] border border-border px-4 text-sm font-semibold text-text transition-colors hover:border-accent hover:text-accent sm:inline-flex"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </Link>
+            <Link
+              href="/request-quote"
               className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--rSm)] bg-text px-4 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-95"
             >
-              {authT('signup')}
+              Get matched
             </Link>
           </div>
         )}

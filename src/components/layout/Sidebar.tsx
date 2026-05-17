@@ -8,20 +8,20 @@ import { cn } from '@/lib/utils';
 import {
   House,
   FolderOpen,
-  ChartPie,
-  Search,
+  ClipboardList,
+  Handshake,
+  LayoutDashboard,
+  PackageCheck,
   Settings,
+  ShieldCheck,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Crown,
-  Building2,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { getEffectiveSubscriptionTier } from '@/lib/subscription';
+import { useEffect, useState } from 'react';
 
 interface SidebarProps {
   className?: string;
@@ -34,43 +34,21 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const tCommon = useTranslations('common');
   const t = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const supabase = useMemo(() => createClient(), []);
-  const [showOrgTab, setShowOrgTab] = useState(false);
-  const [showPortfolioTab, setShowPortfolioTab] = useState(false);
 
   useEffect(() => {
     onClose?.();
   }, [pathname, onClose]);
 
-  useEffect(() => {
-    async function checkTier() {
-      if (!user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('subscription_tier, subscription_status, subscription_expires_at, grace_period_ends_at')
-        .eq('id', user.id)
-        .single();
-      if (data) {
-        const tier = getEffectiveSubscriptionTier(data);
-        setShowOrgTab(tier === 'team' || tier === 'premium');
-        setShowPortfolioTab(tier === 'team');
-      }
-    }
-    checkTier();
-  }, [supabase, user]);
-
   const navItems = [
-    { href: '/workspaces', label: t('workspaces'), icon: FolderOpen },
-    { href: '/ask', label: t('search'), icon: Search },
-    ...(showPortfolioTab
-      ? [{ href: '/portfolio', label: t('portfolio'), icon: ChartPie }]
-      : []),
+    { href: '/workspaces', label: t('dashboard'), icon: LayoutDashboard },
+    { href: '/rfqs', label: t('rfqs'), icon: ClipboardList },
+    { href: '/supplier-matches', label: t('supplierMatches'), icon: Handshake },
+    { href: '/buyer-packets', label: t('buyerPackets'), icon: PackageCheck },
+    { href: '/partners', label: t('partners'), icon: FolderOpen },
+    { href: '/approvals', label: t('approvals'), icon: ShieldCheck },
     { href: '/settings', label: t('settings'), icon: Settings },
-    ...(showOrgTab
-      ? [{ href: '/organization', label: t('organization'), icon: Building2 }]
-      : []),
   ];
 
   const bottomItems = [
@@ -81,12 +59,6 @@ export function Sidebar({ className, mobileOpen = false, onClose }: SidebarProps
   const isActive = (href: string) => {
     if (href === '/workspaces') {
       return pathname === '/workspaces' || pathname.startsWith('/workspaces/');
-    }
-    if (href === '/organization') {
-      return pathname === '/organization' || pathname.startsWith('/organization/');
-    }
-    if (href === '/portfolio') {
-      return pathname === '/portfolio' || pathname.startsWith('/portfolio/');
     }
     return pathname.startsWith(href);
   };

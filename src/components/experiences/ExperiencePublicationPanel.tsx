@@ -298,7 +298,7 @@ export function ExperiencePublicationPanel({ workspaceId, embedded = false }: Ex
       {!embedded ? (
         <>
           <AppHeader title={t('title')} subtitle={t('subtitle')} />
-          <WorkspaceTabs workspaceId={workspaceId} active="automations" />
+          <WorkspaceTabs workspaceId={workspaceId} active="workspace" />
         </>
       ) : null}
 

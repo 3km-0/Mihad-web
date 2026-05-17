@@ -182,13 +182,13 @@ export function WorkspaceAcquisitionOpportunityPanel({ workspaceId }: { workspac
       try {
         const [{ data: opportunityRows, error: opportunityError }, { data: conversationRows, error: conversationError }] =
           await Promise.all([
-            db
-              .from('acquisition_opportunities')
+            (db as any)
+              .from('sourced_options')
               .select('id,phone_number,title,stage,summary,updated_at,created_at,workspace_id,opportunity_kind,acquisition_focus,screening_readiness,missing_info_json,metadata_json')
               .eq('workspace_id', workspaceId)
               .order('updated_at', { ascending: false })
               .limit(40),
-            db
+            (db as any)
               .from('whatsapp_conversations')
               .select('id,phone_number,mode,language,last_user_goal,updated_at,active_acquisition_thread_id')
               .eq('active_workspace_id', workspaceId)
@@ -229,31 +229,31 @@ export function WorkspaceAcquisitionOpportunityPanel({ workspaceId }: { workspac
     (async () => {
       try {
         const [eventResult, threadResult, claimResult, scenarioResult, diligenceResult] = await Promise.all([
-          db
+          (db as any)
             .from('acquisition_events')
             .select('id,event_type,event_direction,body_text,created_at,event_payload')
             .eq('opportunity_id', selectedOpportunityId)
             .order('created_at', { ascending: false })
             .limit(30),
-          db
+          (db as any)
             .from('acquisition_threads')
             .select('id,thread_kind,status,title,summary,created_at')
             .eq('opportunity_id', selectedOpportunityId)
             .order('created_at', { ascending: false })
             .limit(12),
-          db
+          (db as any)
             .from('acquisition_claims')
             .select('id,fact_key,basis_label,confidence,value_json')
             .eq('opportunity_id', selectedOpportunityId)
             .order('created_at', { ascending: false })
             .limit(30),
-          db
+          (db as any)
             .from('acquisition_scenarios')
             .select('id,title,scenario_kind,assumptions_json,outputs_json')
             .eq('opportunity_id', selectedOpportunityId)
             .order('created_at', { ascending: false })
             .limit(8),
-          db
+          (db as any)
             .from('acquisition_diligence_items')
             .select('id,title,status,priority,owner_kind')
             .eq('opportunity_id', selectedOpportunityId)
@@ -289,7 +289,7 @@ export function WorkspaceAcquisitionOpportunityPanel({ workspaceId }: { workspac
     setBusy(`stage:${stage}`);
     setError(null);
     try {
-      const { error: updateError } = await db.from('acquisition_opportunities').update({ stage }).eq('id', selectedOpportunity.id);
+      const { error: updateError } = await (db as any).from('sourced_options').update({ status: stage }).eq('id', selectedOpportunity.id);
       if (updateError) throw updateError;
       setOpportunities((current) => current.map((item) => (item.id === selectedOpportunity.id ? { ...item, stage } : item)));
     } catch (err) {
@@ -304,7 +304,7 @@ export function WorkspaceAcquisitionOpportunityPanel({ workspaceId }: { workspac
     setBusy('note');
     setError(null);
     try {
-      const { data, error: insertError } = await db
+      const { data, error: insertError } = await (db as any)
         .from('acquisition_events')
         .insert({
           opportunity_id: selectedOpportunity.id,
@@ -333,7 +333,7 @@ export function WorkspaceAcquisitionOpportunityPanel({ workspaceId }: { workspac
     setError(null);
     try {
       const parsed = JSON.parse(scenarioText || '{}');
-      const { data, error: updateError } = await db
+      const { data, error: updateError } = await (db as any)
         .from('acquisition_scenarios')
         .update({ assumptions_json: parsed })
         .eq('id', scenarios[0].id)

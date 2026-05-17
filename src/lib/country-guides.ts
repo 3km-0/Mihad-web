@@ -285,16 +285,16 @@ export const COUNTRY_GUIDES: Record<CountryGuide['countryCode'], CountryGuide> =
   SA: {
     countryCode: 'SA',
     displayName: 'Saudi Arabia',
-    oneLineSummary: 'Saudi Arabia is Mihad\'s home market — investor-cockpit workspaces use the full acquisition pipeline including Aqar and Bayut sourcing.',
+    oneLineSummary: 'Saudi Arabia is Mihad\'s home market — buyer desks use structured RFQs, verified sourcing, and partner introductions.',
     marketContext:
-      'Saudi Arabia is Mihad\'s domestic market. Domestic acquisitions use the full Mihad acquisition cockpit (Aqar and Bayut sourcing, Riyadh district intelligence, Saudi-specific underwriting). Cross-border buyers targeting Saudi from outside KSA can use Property Finder Saudi as an additional source.',
+      'Saudi Arabia is Mihad\'s domestic market. Domestic buyer workflows use the full Mihad buyer desk: mandate capture, RFQ structuring, verified sourcing, readiness evidence, and partner introductions. Cross-border buyers targeting Saudi from outside KSA can use Property Finder Saudi as an additional source.',
     sections: [
       {
         id: 'domestic_flow',
-        heading: 'Domestic acquisition flow',
+        heading: 'Domestic buyer flow',
         body: [
-          'Saudi buyers searching domestically use the investor cockpit workspace (overview, underwriting, evidence ladder, deal desk) rather than the Mihad buyer-desk view.',
-          'Riyadh-specific district maps, renovation rate cards, and capex calculators are tuned for the domestic flip and rent-hold strategies.',
+          'Saudi buyers searching domestically use the Mihad buyer desk for RFQs, evidence, shortlist decisions, packets, and partner introductions.',
+          'Riyadh-specific district maps, supplier signals, renovation rate cards, and capex calculators are tuned for domestic buyer decisions.',
         ],
       },
       {

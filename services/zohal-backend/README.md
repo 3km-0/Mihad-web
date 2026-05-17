@@ -1,52 +1,49 @@
-# Zohal Backend Service
+# Mihad Backend Service
 
 Status: Active
-Last reviewed: 2026-05-11
+Last reviewed: 2026-05-17
 
 This GCP Cloud Run service owns web-side backend APIs that are no longer
 Supabase Edge Function work. It is part of the migration direction toward GCP +
 Cloudflare, while Supabase remains the active control plane for auth and
 Postgres.
 
-## Acquisition Report Lane
+## Buyer Workflow Lane
 
-Acquisition Reports are the weekly ranked mandate-matching artifacts for real
-estate acquisition users. They provide the share/present/proof URL for a saved
-mandate, but they are not an AI-generated UI/code product.
+The active product lane is:
+
+`Buyer Mandate -> RFQ -> Source Run -> Sourced Option -> Match -> Buyer Packet -> Partner Intro -> Deal Event`
 
 Primary API:
 
 ```txt
-POST /api/acquisition/v1/workspaces/:workspaceId/acquisition-reports
-POST /api/acquisition/v1/acquisition-reports/:reportId/notes
-```
-
-Compatibility API:
-
-```txt
-POST /api/acquisition/v1/workspaces/:workspaceId/deal-desk
-POST /api/acquisition/v1/deal-desk/:reportId/notes
-```
-
-Internal weekly orchestration:
-
-```txt
-POST /internal/acquisition/reports/weekly
-POST /internal/acquisition/report-task
+POST /api/mihad/v1/mandates
+GET  /api/mihad/v1/workspaces/:workspaceId/mandate
+POST /api/mihad/v1/rfqs
+POST /api/mihad/v1/source-runs
+POST /api/mihad/v1/source-runs/:runId/execute
+POST /api/mihad/v1/sourced-options
+POST /api/mihad/v1/sourced-options/:optionId/promote
+POST /api/mihad/v1/buyer-packets
+POST /api/mihad/v1/buyer-packets/:packetId/grants
+POST /api/mihad/v1/sharing-grants/:grantId/revoke
+GET  /api/mihad/v1/partners
+POST /api/mihad/v1/approval-gates
+POST /api/mihad/v1/agent/turn
 ```
 
 ## Runtime Contract
 
-- Persistence remains in `acquisition_deal_desk_reports` for v1.
-- Public product language is `Acquisition Report`.
-- `deal_desk` and `/deal-desk/{surface_key}` remain internal/URL
-  compatibility terms.
-- Default visibility is `public_unlisted`.
-- Default report size is top 5 ranked deals.
-- Ranking prefers `investment_score`, then recommendation state and fit score.
-- Structured preferences may control `top_n`, hidden sections, density, and
-  whether AI analysis sections render.
-- Arbitrary AI-generated UI/code is not supported in this lane.
+- Persistence uses the reset schema: `buyer_mandates`, `rfqs`, `source_runs`,
+  `sourced_options`, `option_sources`, `matches`, `buyer_packets`,
+  `sharing_grants`, `approval_gates`, `partners`, and `agent_*`.
+- Prefab is the first vertical.
+- Every sourced option needs source attribution.
+- Buyer packets are derived-only; raw financial/private documents stay in
+  `documents`.
+- Partner outreach and packet sharing are approval-gated.
+- Legacy `/api/acquisition/v1/*` and deal-desk report routes are not exported
+  by the service entrypoint.
 
 ## Scheduling
 
@@ -62,8 +59,9 @@ report jobs run.
 Useful checks:
 
 ```bash
-node --test services/zohal-backend/test/acquisition.test.js
-npm --prefix services/zohal-backend run smoke:acquisition-report
+npm test
+curl -fsS https://zohal-backend-508190035666.me-central2.run.app/status
 ```
 
-Remote smoke requires the normal backend and platform runtime secrets.
+Remote smokes that create rows require the normal backend and platform runtime
+secrets plus a valid Supabase user token or internal function token.

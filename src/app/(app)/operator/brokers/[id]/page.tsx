@@ -53,12 +53,12 @@ type BrokerEventRow = {
 async function loadBroker(brokerId: string) {
   const service = await createServiceClient();
   const [{ data: broker }, { data: scorecard }, { data: events }] = await Promise.all([
-    service.from('broker_partners').select('*').eq('id', brokerId).maybeSingle(),
-    service.from('broker_scorecards').select('*').eq('broker_partner_id', brokerId).maybeSingle(),
-    service
-      .from('broker_events')
+    (service as any).from('partners').select('*').eq('id', brokerId).maybeSingle(),
+    (service as any).from('partner_scorecards').select('*').eq('partner_id', brokerId).maybeSingle(),
+    (service as any)
+      .from('partner_events')
       .select('id, event_type, response_latency_seconds, outcome, occurred_at')
-      .eq('broker_partner_id', brokerId)
+      .eq('partner_id', brokerId)
       .order('occurred_at', { ascending: false })
       .limit(25),
   ]);

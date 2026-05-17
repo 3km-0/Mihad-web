@@ -7,10 +7,9 @@ import {
   handleAnalysisTask,
 } from "./handlers/analysis.js";
 import {
-  handleAcquisitionApi,
-  handleAcquisitionInternal,
-  isAcquisitionApiRoute,
-} from "./handlers/acquisition.js";
+  handleMihadApi,
+  isMihadApiRoute,
+} from "./handlers/mihad-api.js";
 import {
   handleAgentOrchestrate,
   handleAgentOutboxRun,
@@ -305,8 +304,8 @@ const server = createServer(async (req, res) => {
       return await handleExportAuditPack(req, res, { requestId, log, readJsonBody });
     }
 
-    if (isAcquisitionApiRoute(req.method, url.pathname)) {
-      return await handleAcquisitionApi(req, res, {
+    if (isMihadApiRoute(req.method, url.pathname)) {
+      return await handleMihadApi(req, res, {
         requestId,
         log,
         readJsonBody,
@@ -343,14 +342,6 @@ const server = createServer(async (req, res) => {
         requestId,
       });
       return sendJson(res, 200, { request_id: requestId, ...result });
-    }
-
-    if (url.pathname.startsWith("/internal/acquisition/")) {
-      return await handleAcquisitionInternal(req, res, {
-        requestId,
-        log,
-        readJsonBody,
-      });
     }
 
     if (req.method === "POST" && url.pathname === "/analysis/start") {

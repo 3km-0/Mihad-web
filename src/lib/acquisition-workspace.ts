@@ -68,7 +68,7 @@ export type MihadLiquidityClass = 'cash_ready' | 'financing_ready' | 'mixed' | '
 
 export type MihadBudgetCurrency = 'SAR' | 'AED' | 'TRY' | 'EUR' | 'USD' | 'GBP';
 
-export type WorkspaceKind = 'investor_cockpit' | 'mihad_buyer_desk' | 'operator' | 'other';
+export type WorkspaceKind = 'mihad_buyer_desk' | 'operator' | 'other';
 
 export interface MihadMandateExtras {
   targetCountryCodes?: MihadCountryCode[] | string[] | null;
@@ -151,8 +151,9 @@ async function assertAcquisitionWorkspaceAllowed(
 ) {
   if (input.adminApprovedAdditionalMandate) return;
 
-  const { data: existingMandates, error: mandatesError } = await supabase
-    .from('acquisition_mandates')
+  const db = supabase as any;
+  const { data: existingMandates, error: mandatesError } = await db
+    .from('buyer_mandates')
     .select('id, status')
     .eq('user_id', input.userId);
 
@@ -193,9 +194,6 @@ function normalizeMihadCountryCodes(codes: MihadMandateExtras['targetCountryCode
 
 function inferWorkspaceKind(input: CreateAcquisitionWorkspaceInput): WorkspaceKind {
   if (input.workspaceKind) return input.workspaceKind;
-  const codes = normalizeMihadCountryCodes(input.mihad?.targetCountryCodes);
-  if (codes.some((code) => code !== 'SA')) return 'mihad_buyer_desk';
-  if (codes.length === 1 && codes[0] === 'SA' && !input.mihad?.purpose) return 'investor_cockpit';
   return 'mihad_buyer_desk';
 }
 
@@ -210,11 +208,12 @@ export async function createAcquisitionWorkspace(
   const summary = input.description?.trim() || buildAcquisitionBrief(name, buyBox);
   const createdAt = new Date().toISOString();
 
+  const db = supabase as any;
   const workspaceKind = inferWorkspaceKind(input);
   const targetCountryCodes = normalizeMihadCountryCodes(input.mihad?.targetCountryCodes);
   const budgetCurrency: MihadBudgetCurrency = (input.mihad?.budgetCurrency || 'SAR') as MihadBudgetCurrency;
 
-  const { data: createdWorkspace, error: workspaceError } = await supabase
+  const { data: createdWorkspace, error: workspaceError } = await db
     .from('workspaces')
     .insert({
       name,
@@ -229,10 +228,9 @@ export async function createAcquisitionWorkspace(
       status: 'active',
       preparation_status: 'seeded',
       preparation_metadata: {
-        seed_source: input.seedSource || 'acquisition_workspace_creation_form',
+        seed_source: input.seedSource || 'mihad_buyer_workspace_creation_form',
         seeded_at: createdAt,
-        product_model: 'Mandate -> Opportunity -> Screening -> Acquisition Workspace -> Coordination -> Decision',
-        living_interface_state: 'pending_snapshot',
+        product_model: 'Buyer Mandate -> RFQ -> Source Run -> Sourced Option -> Match -> Buyer Packet -> Partner Intro -> Deal Event',
         buy_box: buyBox,
         mihad: input.mihad
           ? {
@@ -253,14 +251,31 @@ export async function createAcquisitionWorkspace(
     throw new Error(workspaceError?.message || 'Failed to create workspace');
   }
 
-  const { data: mandate, error: mandateError } = await supabase
-    .from('acquisition_mandates')
+  const { data: buyerEntity, error: buyerEntityError } = await db
+    .from('buyer_entities')
+    .insert({
+      owner_user_id: input.userId,
+      display_name: name,
+      entity_type: 'individual',
+      metadata_json: {
+        intake_source: input.seedSource || 'workspace_creation_form',
+      },
+    })
+    .select('id')
+    .single();
+
+  if (buyerEntityError || !buyerEntity) {
+    throw new Error(buyerEntityError?.message || 'Failed to create buyer entity');
+  }
+
+  const { data: mandate, error: mandateError } = await db
+    .from('buyer_mandates')
     .insert({
       workspace_id: createdWorkspace.id,
+      buyer_entity_id: buyerEntity.id,
       user_id: input.userId,
       title: name,
       status: 'active',
-      buy_box_json: buyBox,
       target_locations_json: buyBox.districts.length
         ? buyBox.districts
         : buyBox.city
@@ -271,28 +286,88 @@ export async function createAcquisitionWorkspace(
         max: buyBox.budget_max_sar,
         currency: budgetCurrency,
       },
-      risk_appetite: buyBox.risk_appetite,
-      excluded_criteria_json: buyBox.avoid,
-      confidence_json: {
+      budget_currency: budgetCurrency,
+      use_case: input.mihad?.purpose ?? buyBox.strategy,
+      purpose: input.mihad?.purpose ?? null,
+      timeline: input.mihad?.mandateTimeline ?? buyBox.timeline,
+      readiness_state: input.mihad?.liquidityClass ? 'self_declared' : 'intake',
+      constraints_json: {
+        must_haves: buyBox.must_haves,
+        avoid: buyBox.avoid,
+        risk_appetite: buyBox.risk_appetite,
+        financing: buyBox.financing,
+      },
+      notes: buyBox.notes,
+      metadata_json: {
         intake_source: input.seedSource || 'workspace_creation_form',
-        basis_label: 'investor_provided',
+        basis_label: 'buyer_provided',
+        buy_box: buyBox,
+        target_return: buyBox.target_return,
+        liquidity_class: input.mihad?.liquidityClass ?? null,
       },
       target_country_codes: targetCountryCodes,
-      purpose: input.mihad?.purpose ?? null,
-      timeline: input.mihad?.mandateTimeline ?? null,
-      liquidity_class: input.mihad?.liquidityClass ?? null,
-      budget_currency: budgetCurrency,
     })
     .select('id')
     .single();
 
   if (mandateError || !mandate) {
-    throw new Error(mandateError?.message || 'Failed to create acquisition mandate');
+    throw new Error(mandateError?.message || 'Failed to create buyer mandate');
+  }
+
+  const preferences = input.mihad?.preferences ?? {};
+  const scoutIntent = (preferences as { scout_intent?: Record<string, unknown> | null })?.scout_intent ?? null;
+  const { data: rfq, error: rfqError } = await db
+    .from('rfqs')
+    .insert({
+      workspace_id: createdWorkspace.id,
+      mandate_id: mandate.id,
+      buyer_entity_id: buyerEntity.id,
+      status: 'submitted',
+      vertical: 'prefab',
+      title: name,
+      city: String((scoutIntent?.city as string | undefined) || buyBox.city || '').trim() || null,
+      country_code: targetCountryCodes[0] || 'SA',
+      land_status: typeof preferences.land_status === 'string' ? preferences.land_status : 'unknown',
+      use_case: String(input.mihad?.purpose || scoutIntent?.purpose || buyBox.strategy || 'prefab_buyer'),
+      prefab_category: String(preferences.prefab_category || buyBox.asset_type || 'villa'),
+      budget_range_json: {
+        min: buyBox.budget_min_sar,
+        max: buyBox.budget_max_sar,
+        currency: budgetCurrency,
+      },
+      target_size_json: {
+        area_sqm: preferences.target_size_sqm ?? null,
+      },
+      delivery_timeline: input.mihad?.mandateTimeline ?? buyBox.timeline,
+      scope_needs_json: {
+        must_haves: buyBox.must_haves,
+        avoid: buyBox.avoid,
+        scope_needs: preferences.scope_needs ?? [],
+      },
+      contact_preference: typeof preferences.contact_preference === 'string' ? preferences.contact_preference : 'whatsapp',
+      qualification_json: {
+        liquidity_class: input.mihad?.liquidityClass ?? null,
+        readiness: scoutIntent?.readiness ?? null,
+        financing_posture: scoutIntent?.financing_posture ?? buyBox.financing,
+      },
+      metadata_json: {
+        intake_source: input.seedSource || 'workspace_creation_form',
+        buy_box: buyBox,
+        scout_intent: scoutIntent,
+      },
+      created_by: input.userId,
+    })
+    .select('id')
+    .single();
+
+  if (rfqError || !rfq) {
+    throw new Error(rfqError?.message || 'Failed to create RFQ');
   }
 
   return {
     workspaceId: createdWorkspace.id as string,
     mandateId: mandate.id as string,
+    rfqId: rfq.id as string,
     buyBox,
   };
 }

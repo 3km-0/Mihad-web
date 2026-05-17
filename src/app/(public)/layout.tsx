@@ -11,8 +11,21 @@ export default function PublicLayout({
 }) {
   const pathname = usePathname();
 
-  // `/home` owns its full chrome (nav + footer) per marketing spec.
-  if (pathname === '/home') {
+  const prefabChromeRoutes = [
+    '/home',
+    '/request-quote',
+    '/models',
+    '/suppliers',
+    '/categories',
+    '/guides',
+    '/for-businesses',
+    '/for-manufacturers',
+    '/showcase',
+    '/about',
+  ];
+  const ownsChrome = prefabChromeRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
+  if (ownsChrome) {
     return <>{children}</>;
   }
 

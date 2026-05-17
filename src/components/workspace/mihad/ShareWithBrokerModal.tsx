@@ -20,12 +20,16 @@ export type ShareWithBrokerModalBroker = {
   response_sla_minutes?: number | null;
 };
 
+export type SharePacketModalPartner = ShareWithBrokerModalBroker;
+
 export type ShareWithBrokerModalPacket = {
   id: string;
   version?: number | null;
   expires_at?: string | null;
   snapshot_json?: Record<string, unknown> | null;
 };
+
+export type SharePacketModalPacket = ShareWithBrokerModalPacket;
 
 interface ShareWithBrokerModalProps {
   broker: ShareWithBrokerModalBroker;
@@ -35,6 +39,8 @@ interface ShareWithBrokerModalProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
+
+type SharePacketModalProps = ShareWithBrokerModalProps;
 
 function formatDateLocalized(iso: string | null | undefined, locale: string) {
   if (!iso) return null;
@@ -257,4 +263,8 @@ export function ShareWithBrokerModal({
       </div>
     </div>
   );
+}
+
+export function SharePacketModal(props: SharePacketModalProps) {
+  return <ShareWithBrokerModal {...props} />;
 }

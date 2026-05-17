@@ -69,15 +69,15 @@ async function findExistingOnboardingWorkspace(service: Awaited<ReturnType<typeo
     .from('workspaces')
     .select('id')
     .eq('owner_id', userId)
-    .contains('preparation_metadata', { seed_source: 'onboarding_acquisition_journey' })
+    .contains('preparation_metadata', { seed_source: 'onboarding_buyer_rfq' })
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!workspace?.id) return null;
 
-  const { data: mandate } = await service
-    .from('acquisition_mandates')
+  const { data: mandate } = await (service as any)
+    .from('buyer_mandates')
     .select('id')
     .eq('workspace_id', workspace.id)
     .order('created_at', { ascending: false })
@@ -87,6 +87,7 @@ async function findExistingOnboardingWorkspace(service: Awaited<ReturnType<typeo
   return {
     workspaceId: workspace.id as string,
     mandateId: mandate?.id as string | undefined,
+    rfqId: undefined as string | undefined,
   };
 }
 
@@ -94,7 +95,7 @@ async function triggerSearchRunProcessing(searchRunId: string) {
   const headers = internalBackendHeaders();
   if (!headers) return { attempted: false, error: 'Internal backend token is not configured.' };
 
-  const response = await fetch(zohalBackendUrl('/internal/acquisition/search-run'), {
+  const response = await fetch(zohalBackendUrl(`/api/mihad/v1/source-runs/${searchRunId}/execute`), {
     method: 'POST',
     headers,
     body: JSON.stringify({ search_run_id: searchRunId }),
@@ -124,23 +125,23 @@ async function createSearchRunFallback(
     throw new Error('Workspace mandate is missing, so the search run cannot be created.');
   }
 
-  const { data, error } = await service
-    .from('acquisition_search_runs')
+  const { data, error } = await (service as any)
+    .from('source_runs')
     .insert({
       workspace_id: input.workspaceId,
       mandate_id: input.mandateId,
       user_id: input.userId,
       status: 'queued',
-      trigger_kind: 'operator',
+      trigger_kind: 'manual',
       sources_json: ['aqar', 'bayut'],
-      query_description: input.queryDescription,
+      query_text: input.queryDescription,
       limits_json: input.limits,
     })
     .select('*')
     .single();
 
   if (error || !data) {
-    throw new Error(error?.message || 'Failed to create onboarding search run.');
+    throw new Error(error?.message || 'Failed to create onboarding source run.');
   }
 
   return data as Record<string, unknown>;
@@ -188,12 +189,13 @@ export async function POST(request: Request) {
   const targetCountryCodes = Array.isArray(body.target_country_codes) && body.target_country_codes.length
     ? (body.target_country_codes as MihadCountryCode[])
     : ['SA'] as MihadCountryCode[];
-  const isMihadIntake = Boolean(body.mihad_scout_intent) || targetCountryCodes.some((code) => code !== 'SA');
+  const isMihadIntake = true;
   const existingWorkspace = await findExistingOnboardingWorkspace(service, session.user.id);
   const workspaceResult = existingWorkspace
     ? {
         workspaceId: existingWorkspace.workspaceId,
         mandateId: existingWorkspace.mandateId || null,
+        rfqId: existingWorkspace.rfqId || null,
         buyBox: normalizeBuyBox(body.buy_box || {}),
       }
     : await createAcquisitionWorkspace(service, {
@@ -201,8 +203,8 @@ export async function POST(request: Request) {
         name: workspaceName,
         description: null,
         buyBox: body.buy_box || {},
-        seedSource: body.mihad_scout_intent ? 'mihad_home_scout' : 'onboarding_acquisition_journey',
-        workspaceKind: isMihadIntake ? 'mihad_buyer_desk' : 'investor_cockpit',
+        seedSource: body.mihad_scout_intent ? 'mihad_home_scout' : 'onboarding_buyer_rfq',
+        workspaceKind: 'mihad_buyer_desk',
         mihad: {
           targetCountryCodes,
           purpose: body.purpose ?? null,
@@ -233,10 +235,10 @@ export async function POST(request: Request) {
         },
       });
 
-  const { workspaceId, mandateId, buyBox } = workspaceResult;
+  const { workspaceId, mandateId, rfqId, buyBox } = workspaceResult;
 
   const instructionParts = [
-    `Find ${buyBox.asset_type} acquisition candidates`,
+    `Find ${buyBox.asset_type} prefab options`,
     buyBox.city ? `in ${buyBox.city}` : null,
     buyBox.districts.length ? `focused on ${buyBox.districts.join(', ')}` : null,
     buyBox.budget_max_sar ? `up to ${buyBox.budget_max_sar} SAR` : null,
@@ -254,98 +256,51 @@ export async function POST(request: Request) {
   let searchPayload: Record<string, unknown> | null = null;
   let searchRunError: string | null = null;
   let searchRunProcessing: Record<string, unknown> | null = null;
-  let discoverResult: Record<string, unknown> | null = null;
 
-  if (isMihadIntake) {
-    try {
-      const headers = internalBackendHeaders();
-      if (!headers) {
-        throw new Error('Internal backend token is not configured.');
-      }
-      const discoverResponse = await fetch(
-        zohalBackendUrl('/api/acquisition/v1/discover'),
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            user_id: session.user.id,
-            workspace_id: workspaceId,
-            target_country_codes: targetCountryCodes,
-            purpose: body.purpose ?? null,
-            timeline: body.timeline ?? null,
-            liquidity_class: body.liquidity_class ?? null,
-            budget_currency: body.budget_currency || 'SAR',
-            budget_range: body.budget_range || {
-              min: body.buy_box?.budget_min_sar,
-              max: body.buy_box?.budget_max_sar,
-            },
-            title: workspaceName,
-            buy_box: body.buy_box || null,
-            confidence: { source: 'mihad_onboarding' },
-          }),
-          cache: 'no-store',
-        }
-      );
-      const discoverPayload = await discoverResponse.json().catch(() => ({}));
-      if (!discoverResponse.ok) {
-        searchRunError =
-          String(discoverPayload?.error || '').trim() ||
-          `Discover handler returned ${discoverResponse.status}`;
-      } else {
-        discoverResult =
-          (discoverPayload?.data as Record<string, unknown>) ||
-          (discoverPayload as Record<string, unknown>);
-      }
-    } catch (error) {
-      searchRunError = error instanceof Error ? error.message : 'Discover handler request failed';
-    }
-  } else {
-    try {
-      const headers = internalBackendHeaders();
-      if (!headers) {
-        throw new Error('Internal backend token is not configured.');
-      }
-
-      const searchResponse = await fetch(
-        zohalBackendUrl(`/api/acquisition/v1/workspaces/${workspaceId}/search-runs`),
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            user_id: session.user.id,
-            query_description: queryDescription,
-            sourcing_instruction: queryDescription,
-            sources: ['aqar', 'bayut'],
-            limits: searchLimits,
-          }),
-          cache: 'no-store',
-        }
-      );
-
-      searchPayload = await searchResponse.json().catch(() => ({}));
-      if (!searchResponse.ok) {
-        searchRunError =
-          String(searchPayload?.message || searchPayload?.error || '').trim() ||
-          `Search workflow returned ${searchResponse.status}`;
-      }
-    } catch (error) {
-      searchRunError = error instanceof Error ? error.message : 'Search workflow request failed';
+  try {
+    const headers = internalBackendHeaders();
+    if (!headers) {
+      throw new Error('Internal backend token is not configured.');
     }
 
-    if (searchRunError) {
-      try {
-        const fallbackSearchRun = await createSearchRunFallback(service, {
-          workspaceId,
-          mandateId,
-          userId: session.user.id,
-          queryDescription,
-          limits: searchLimits,
-        });
-        searchPayload = { search_run: fallbackSearchRun, fallback: true };
-        searchRunError = null;
-      } catch (error) {
-        searchRunError = error instanceof Error ? error.message : 'Fallback search run creation failed';
-      }
+    const searchResponse = await fetch(zohalBackendUrl('/api/mihad/v1/source-runs'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        user_id: session.user.id,
+        workspace_id: workspaceId,
+        mandate_id: mandateId,
+        rfq_id: rfqId ?? null,
+        query_text: queryDescription,
+        sources: ['aqar', 'bayut'],
+        limits: searchLimits,
+      }),
+      cache: 'no-store',
+    });
+
+    searchPayload = await searchResponse.json().catch(() => ({}));
+    if (!searchResponse.ok) {
+      searchRunError =
+        String(searchPayload?.message || searchPayload?.error || '').trim() ||
+        `Source run workflow returned ${searchResponse.status}`;
+    }
+  } catch (error) {
+    searchRunError = error instanceof Error ? error.message : 'Source run request failed';
+  }
+
+  if (searchRunError) {
+    try {
+      const fallbackSearchRun = await createSearchRunFallback(service, {
+        workspaceId,
+        mandateId,
+        userId: session.user.id,
+        queryDescription,
+        limits: searchLimits,
+      });
+      searchPayload = { search_run: fallbackSearchRun, fallback: true };
+      searchRunError = null;
+    } catch (error) {
+      searchRunError = error instanceof Error ? error.message : 'Fallback source run creation failed';
     }
   }
 
@@ -381,6 +336,7 @@ export async function POST(request: Request) {
     return jsonError('Workspace created, but onboarding could not be marked complete.', 500, 'profile_update_failed', {
       workspace_id: workspaceId,
       mandate_id: mandateId,
+      rfq_id: rfqId ?? null,
     });
   }
 
@@ -388,10 +344,10 @@ export async function POST(request: Request) {
     success: true,
     workspace_id: workspaceId,
     mandate_id: mandateId,
-    workspace_kind: isMihadIntake ? 'mihad_buyer_desk' : 'investor_cockpit',
+    rfq_id: rfqId ?? null,
+    workspace_kind: 'mihad_buyer_desk',
     search_run: searchRun,
     search_run_processing: searchRunProcessing,
     search_run_error: searchRunError,
-    discover: discoverResult,
   });
 }

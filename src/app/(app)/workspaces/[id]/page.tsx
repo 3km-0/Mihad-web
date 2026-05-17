@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AskAgentView } from '@/components/ask/AskAgentView';
-import { ShareWithBrokerModal } from '@/components/workspace/mihad/ShareWithBrokerModal';
+import { SharePacketModal } from '@/components/workspace/mihad/ShareWithBrokerModal';
 import { Button, Spinner } from '@/components/ui';
 import {
   acquisitionMetadataNumber,
@@ -300,6 +300,26 @@ type BrokerPartnerRow = {
   response_sla_minutes?: number | null;
 };
 
+type SourcedOptionRow = {
+  id: string;
+  status?: string | null;
+  title?: string | null;
+  source_kind?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
+  summary?: string | null;
+  country_code?: string | null;
+  city?: string | null;
+  district?: string | null;
+  price_amount?: number | string | null;
+  price_currency?: string | null;
+  area_sqm?: number | string | null;
+  model_payload_json?: Record<string, unknown> | null;
+  evidence_snapshot_json?: Record<string, unknown> | null;
+  score_json?: Record<string, unknown> | null;
+  updated_at?: string | null;
+};
+
 type MihadAgentToolResult = {
   tool: string;
   status: 'completed' | 'blocked' | 'failed' | 'skipped' | string;
@@ -553,6 +573,38 @@ function humanize(value: string | null | undefined): string {
   const text = `${value ?? ''}`.trim();
   if (!text) return '';
   return text.replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function sourcedOptionToOpportunity(row: SourcedOptionRow): OpportunityRow {
+  const modelPayload = row.model_payload_json ?? {};
+  const evidence = row.evidence_snapshot_json ?? {};
+  const score = row.score_json ?? {};
+  return {
+    id: row.id,
+    stage: row.status ?? 'sourced',
+    title: row.title ?? null,
+    acquisition_focus: row.source_kind ?? null,
+    area_summary: row.area_sqm ? `${row.area_sqm} sqm` : null,
+    budget_band: row.price_amount ? `${new Intl.NumberFormat('en-SA', { maximumFractionDigits: 0 }).format(Number(row.price_amount))} ${row.price_currency || 'SAR'}` : null,
+    metadata_json: {
+      ...modelPayload,
+      ...evidence,
+      ...score,
+      city: row.city ?? modelPayload.city ?? evidence.city ?? null,
+      district: row.district ?? modelPayload.district ?? evidence.district ?? null,
+      source_name: row.source_name ?? evidence.source_name ?? null,
+      source_url: row.source_url ?? evidence.source_url ?? null,
+      price: row.price_amount ?? modelPayload.price ?? evidence.price ?? null,
+      asking_price: row.price_amount ?? modelPayload.asking_price ?? evidence.asking_price ?? null,
+      currency: row.price_currency ?? modelPayload.currency ?? evidence.currency ?? 'SAR',
+      area_sqm: row.area_sqm ?? modelPayload.area_sqm ?? evidence.area_sqm ?? null,
+      recommendation: row.status ?? score.recommendation ?? null,
+    },
+    summary: row.summary ?? null,
+    missing_info_json: score.missing_info ?? [],
+    screening_readiness: typeof score.confidence === 'string' ? score.confidence : null,
+    updated_at: row.updated_at ?? null,
+  };
 }
 
 function metadataValue(item: OpportunityRow | null | undefined, keys: string[]): unknown {
@@ -1232,6 +1284,7 @@ export default function WorkspaceCockpitPage() {
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
     try {
+      const db = supabase as any;
       const [
         workspaceResult,
         opportunitiesResult,
@@ -1243,47 +1296,48 @@ export default function WorkspaceCockpitPage() {
         brokerPartnersResult,
       ] = await Promise.all([
         supabase.from('workspaces').select('id, name, description, analysis_brief, org_id, owner_id, workspace_kind, preparation_metadata').eq('id', workspaceId).maybeSingle(),
-        supabase
-          .from('acquisition_opportunities')
-          .select('id, stage, title, acquisition_focus, area_summary, budget_band, metadata_json, summary, missing_info_json, screening_readiness, updated_at, renovation_capex_json, renovation_capex_updated_at, renovation_rate_card_id')
+        db
+          .from('sourced_options')
+          .select('id, status, title, source_kind, source_name, source_url, summary, country_code, city, district, price_amount, price_currency, area_sqm, model_payload_json, evidence_snapshot_json, score_json, updated_at')
           .eq('workspace_id', workspaceId)
-          .neq('stage', 'archived')
+          .neq('status', 'archived')
           .order('updated_at', { ascending: false })
           .limit(12),
         supabase.from('documents').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
-        supabase
+        db
           .from('buyer_readiness_profiles')
-          .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+          .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, verification_confidence, updated_at')
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(1),
-        supabase
-          .from('acquisition_search_runs')
-          .select('id,status,query_description,candidate_count,error_summary,created_at,updated_at')
+        db
+          .from('source_runs')
+          .select('id,status,query_text,sourced_option_count,error_summary,created_at,updated_at')
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(5),
-        supabase
-          .from('acquisition_mandates')
-          .select('id, workspace_id, title, target_country_codes, purpose, timeline, liquidity_class, budget_currency, budget_range_json, target_locations_json, buy_box_json, updated_at')
+        db
+          .from('buyer_mandates')
+          .select('id, workspace_id, title, target_country_codes, purpose, timeline, budget_currency, budget_range_json, target_locations_json, metadata_json, updated_at')
           .eq('workspace_id', workspaceId)
           .order('updated_at', { ascending: false })
           .limit(1),
-        supabase
+        db
           .from('buyer_packets')
           .select('id, version, status, snapshot_json, consent_scope_json, expires_at, created_at, updated_at')
           .eq('workspace_id', workspaceId)
           .order('created_at', { ascending: false })
           .limit(8),
-        supabase
-          .from('broker_partners')
+        db
+          .from('partners')
           .select('id, display_name, country_code, city, languages, status, response_sla_minutes')
-          .eq('status', 'active')
+          .in('partner_kind', ['broker', 'prefab_supplier'])
+          .in('status', ['active', 'onboarding'])
           .order('country_code', { ascending: true })
           .limit(50),
       ]);
 
-      const opportunityRows = [...(opportunitiesResult.data ?? [])].sort((a, b) =>
+      const opportunityRows = [...(opportunitiesResult.data ?? [])].map((row) => sourcedOptionToOpportunity(row as SourcedOptionRow)).sort((a, b) =>
         (rawScoreFor(b as OpportunityRow) ?? -1) - (rawScoreFor(a as OpportunityRow) ?? -1),
       ) as OpportunityRow[];
       const profileRows = (profileResult.data ?? []) as BuyerReadinessProfileRow[];
@@ -1291,9 +1345,30 @@ export default function WorkspaceCockpitPage() {
       setWorkspace((workspaceResult.data as WorkspaceRow | null) ?? null);
       setOpportunities(opportunityRows);
       setReadinessProfile(currentReadinessProfile);
-      setSearchRuns((searchRunsResult.data ?? []) as AcquisitionSearchRunRow[]);
+      setSearchRuns(((searchRunsResult.data ?? []) as any[]).map((row) => ({
+        id: row.id,
+        status: row.status,
+        query_description: row.query_text,
+        candidate_count: row.sourced_option_count,
+        error_summary: row.error_summary,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      })) as AcquisitionSearchRunRow[]);
       setDocumentCount(documentsResult.count ?? 0);
-      const mandateRows = (mandateResult?.data ?? []) as AcquisitionMandateRow[];
+      const mandateRows = ((mandateResult?.data ?? []) as any[]).map((row) => ({
+        id: row.id,
+        workspace_id: row.workspace_id,
+        title: row.title,
+        target_country_codes: row.target_country_codes,
+        purpose: row.purpose,
+        timeline: row.timeline,
+        liquidity_class: row.metadata_json?.liquidity_class ?? null,
+        budget_currency: row.budget_currency,
+        budget_range_json: row.budget_range_json,
+        target_locations_json: row.target_locations_json,
+        buy_box_json: row.metadata_json?.buy_box ?? null,
+        updated_at: row.updated_at,
+      })) as AcquisitionMandateRow[];
       setMandate(mandateRows[0] ?? null);
       setBuyerPackets((buyerPacketsResult?.data ?? []) as BuyerPacketRow[]);
       setBrokerPartners((brokerPartnersResult?.data ?? []) as BrokerPartnerRow[]);
@@ -1304,25 +1379,25 @@ export default function WorkspaceCockpitPage() {
         return bestOpportunityId(opportunityRows);
       });
 
-      const approvalsPromise = supabase
-        .from('external_action_approvals')
-        .select('id, action_type, approval_status, opportunity_id, executed_at, created_at')
+      const approvalsPromise = db
+        .from('approval_gates')
+        .select('id, action_type, approval_status, match_id, executed_at, created_at')
         .eq('workspace_id', workspaceId)
         .order('created_at', { ascending: false })
         .limit(12);
 
       if (currentReadinessProfile) {
         const [evidenceResult, grantsResult, approvalsResult] = await Promise.all([
-          supabase
+          db
             .from('buyer_readiness_evidence')
             .select('id, evidence_type, status, sensitivity_level, document_id, verified_at, expires_at')
             .eq('profile_id', currentReadinessProfile.id)
             .order('created_at', { ascending: false })
             .limit(8),
-          supabase
-            .from('document_sharing_grants')
+          db
+            .from('sharing_grants')
             .select('id, document_id, share_mode, allowed_action, purpose, expires_at, revoked_at, revoked_reason, granted_to_kind, granted_to_identifier, metadata_json')
-            .eq('buyer_profile_id', currentReadinessProfile.id)
+            .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false })
             .limit(20),
           approvalsPromise,
@@ -1339,13 +1414,19 @@ export default function WorkspaceCockpitPage() {
 
       const selectedOpportunityIds = opportunityRows.map((item) => item.id).slice(0, 6);
       if (selectedOpportunityIds.length > 0) {
-        const eventsResult = await supabase
-          .from('acquisition_events')
-          .select('id, opportunity_id, event_type, body_text, created_at')
-          .in('opportunity_id', selectedOpportunityIds)
+        const eventsResult = await db
+          .from('partner_events')
+          .select('id, match_id, event_type, notes, created_at')
+          .eq('workspace_id', workspaceId)
           .order('created_at', { ascending: false })
           .limit(8);
-        setEvents((eventsResult.data ?? []) as AcquisitionEventRow[]);
+        setEvents(((eventsResult.data ?? []) as any[]).map((row) => ({
+          id: row.id,
+          opportunity_id: row.match_id ?? null,
+          event_type: row.event_type,
+          body_text: row.notes ?? null,
+          created_at: row.created_at,
+        })) as AcquisitionEventRow[]);
       } else {
         setEvents([]);
       }
@@ -1400,50 +1481,8 @@ export default function WorkspaceCockpitPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadMarketObservations() {
-      if (!selectedOpportunity) {
-        setMarketObservations([]);
-        return;
-      }
-
-      const marketTerms = marketQueryTermsForOpportunity(selectedOpportunity);
-      const mandateCountryCodes = Array.isArray(mandate?.target_country_codes)
-        ? mandate.target_country_codes.filter((code): code is string => typeof code === 'string' && code.length === 2).map((code) => code.toUpperCase())
-        : [];
-      const observationCountryCodes = mandateCountryCodes.length > 0 ? mandateCountryCodes : ['SA'];
-      let query = supabase
-        .from('acquisition_market_observations')
-        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label, metric_key, metric_unit, metric_value, raw_row_json, normalized_json')
-        .in('country_code', observationCountryCodes)
-        .order('observed_at', { ascending: false, nullsFirst: false })
-        .limit(72);
-
-      if (marketTerms.length) {
-        const orFilters = marketTerms
-          .map(escapePostgrestPattern)
-          .filter(Boolean)
-          .flatMap((term) => [
-            `city.ilike.%${term}%`,
-            `region.ilike.%${term}%`,
-            `district.ilike.%${term}%`,
-            `neighborhood.ilike.%${term}%`,
-          ]);
-        query = query.or(orFilters.join(','));
-      }
-
-      const { data } = await query;
       if (cancelled) return;
-      if (data?.length || !marketTerms.length) {
-        setMarketObservations((data ?? []) as MarketObservationRow[]);
-        return;
-      }
-
-      const fallback = await supabase
-        .from('acquisition_market_observations')
-        .select('id, observation_kind, city, district, neighborhood, zone, property_type, property_subtype, average_price_per_sqm, median_price_per_sqm, min_price_per_sqm, max_price_per_sqm, price_per_sqm, asking_price, transaction_price, transaction_count, listing_count, demand_count, supply_count, days_on_market, area_sqm, land_area_sqm, total_area_sqm, observed_at, period_label, source_confidence_label, metric_key, metric_unit, metric_value, raw_row_json, normalized_json')
-        .eq('country_code', 'SA')
-        .order('observed_at', { ascending: false, nullsFirst: false })
-        .limit(72);
-      if (!cancelled) setMarketObservations((fallback.data ?? []) as MarketObservationRow[]);
+      setMarketObservations([]);
     }
 
     void loadMarketObservations();
@@ -1455,20 +1494,7 @@ export default function WorkspaceCockpitPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadUnderwriting() {
-      if (!selectedOpportunity?.id) {
-        setUnderwriting(null);
-        return;
-      }
-      const { data } = await supabase
-        .from('acquisition_scenarios')
-        .select('outputs_json')
-        .eq('opportunity_id', selectedOpportunity.id)
-        .eq('scenario_kind', 'base')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const output = (data?.outputs_json as { underwriting?: UnderwritingRun } | null)?.underwriting ?? null;
-      if (!cancelled) setUnderwriting(output);
+      if (!cancelled) setUnderwriting(null);
     }
     void loadUnderwriting();
     return () => {
@@ -1479,17 +1505,7 @@ export default function WorkspaceCockpitPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadClaims() {
-      if (!selectedOpportunity?.id) {
-        setClaims([]);
-        return;
-      }
-      const { data } = await supabase
-        .from('acquisition_claims')
-        .select('id, fact_key, value_json, basis_label, confidence, source_channel, evidence_refs_json')
-        .eq('opportunity_id', selectedOpportunity.id)
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (!cancelled) setClaims((data ?? []) as AcquisitionClaimRow[]);
+      if (!cancelled) setClaims([]);
     }
     void loadClaims();
     return () => {
@@ -1500,17 +1516,7 @@ export default function WorkspaceCockpitPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadRenovationEvents() {
-      if (!selectedOpportunity?.id) {
-        setRenovationEvents([]);
-        return;
-      }
-      const { data } = await supabase
-        .from('renovation_estimate_events')
-        .select('id, event_type, low_total, base_total, high_total, confidence_score, created_at')
-        .eq('acquisition_opportunity_id', selectedOpportunity.id)
-        .order('created_at', { ascending: false })
-        .limit(8);
-      if (!cancelled) setRenovationEvents((data ?? []) as RenovationEstimateEventRow[]);
+      if (!cancelled) setRenovationEvents([]);
     }
     void loadRenovationEvents();
     return () => {
@@ -1612,24 +1618,28 @@ export default function WorkspaceCockpitPage() {
         manualPropertyDraft.city.trim(),
         manualPropertyDraft.notes.trim(),
       ].filter(Boolean);
-      const intake = await invokeZohalBackendJson<ManualListingResponse>(
+      const intake = await invokeZohalBackendJson<{ sourced_option?: SourcedOptionRow }>(
         supabase,
-        '/api/acquisition/v1/intake/listing',
+        '/api/mihad/v1/sourced-options',
         {
           workspace_id: workspaceId,
-          source: 'manual_operator',
-          manual_entry: true,
-          submitted_by_user: true,
+          mandate_id: mandate?.id ?? null,
+          rfq_id: null,
+          source_kind: 'manual',
+          source_name: 'manual_operator',
           source_url: sourceUrl || null,
           title: title || sourceUrl,
-          asking_price: askingPrice,
+          price_amount: askingPrice,
+          price_currency: 'SAR',
           city: manualPropertyDraft.city.trim() || null,
           district: manualPropertyDraft.district.trim() || null,
-          property_type: manualPropertyDraft.propertyType.trim() || null,
           area_sqm: areaSqm,
-          photo_refs_json: photoRefs,
-          text: descriptionParts.join('\n'),
-          limited_evidence_snapshot: {
+          model_payload: {
+            property_type: manualPropertyDraft.propertyType.trim() || null,
+            photo_refs_json: photoRefs,
+          },
+          summary: descriptionParts.join('\n'),
+          evidence_snapshot: {
             source: 'manual_operator',
             intake_mode: 'manual_user_entry',
             submitted_by_user: true,
@@ -1638,14 +1648,7 @@ export default function WorkspaceCockpitPage() {
           },
         },
       );
-      const candidateId = intake.candidate?.id;
-      if (!candidateId) throw new Error(t('manualPropertyCreateError'));
-      const promoted = await invokeZohalBackendJson<PromoteCandidateResponse>(
-        supabase,
-        `/api/acquisition/v1/candidates/${candidateId}/promote`,
-        {},
-      );
-      const opportunity = promoted.opportunity;
+      const opportunity = intake.sourced_option ? sourcedOptionToOpportunity(intake.sourced_option) : null;
       if (!opportunity?.id) throw new Error(t('manualPropertyCreateError'));
       setOpportunities((current) => [opportunity, ...current.filter((item) => item.id !== opportunity.id)]);
       setSelectedOpportunityId(opportunity.id);
@@ -1667,15 +1670,22 @@ export default function WorkspaceCockpitPage() {
     try {
       const response = await invokeZohalBackendJson<WorkspaceSearchRunResponse>(
         supabase,
-        `/api/acquisition/v1/workspaces/${workspaceId}/search-runs`,
+        '/api/mihad/v1/source-runs',
         {
-          instruction: sourcingInstruction.trim() || undefined,
+          workspace_id: workspaceId,
+          mandate_id: mandate?.id ?? null,
+          query_text: sourcingInstruction.trim() || workspace?.analysis_brief || workspace?.description || workspace?.name || '',
           sources: sourcingSources.length ? sourcingSources : ['aqar', 'bayut'],
-          mandate: workspace?.analysis_brief || workspace?.description || workspace?.name || undefined,
+          limits: {},
         },
       );
       if (response.search_run) {
         setSearchRuns((current) => [response.search_run as AcquisitionSearchRunRow, ...current.filter((item) => item.id !== response.search_run?.id)].slice(0, 5));
+        await invokeZohalBackendJson(
+          supabase,
+          `/api/mihad/v1/source-runs/${response.search_run.id}/execute`,
+          {},
+        );
       }
       await loadWorkspace();
     } catch (error) {
@@ -1702,10 +1712,11 @@ export default function WorkspaceCockpitPage() {
     try {
       const response = await invokeZohalBackendJson<MihadAgentTurnResponse>(
         supabase,
-        `/api/acquisition/v1/workspaces/${workspaceId}/mihad-agent/turn`,
+        '/api/mihad/v1/agent/turn',
         {
+          workspace_id: workspaceId,
           message,
-          selected_opportunity_id: selectedOpportunityId,
+          selected_option_id: selectedOpportunityId,
         },
       );
       const assistantTurn: MihadAgentTurn = {
@@ -1737,9 +1748,10 @@ export default function WorkspaceCockpitPage() {
     setMihadActionBusy('packet');
     setMihadActionError(null);
     try {
-      await invokeZohalBackendJson(supabase, '/api/acquisition/v1/buyer-packets', {
+      await invokeZohalBackendJson(supabase, '/api/mihad/v1/buyer-packets', {
         buyer_profile_id: readinessProfile.id,
         workspace_id: workspaceId,
+        mandate_id: mandate?.id ?? null,
       });
       await loadWorkspace();
     } catch (error) {
@@ -1772,8 +1784,10 @@ export default function WorkspaceCockpitPage() {
     setMihadActionBusy(`share-${brokerPartnerId}`);
     setMihadActionError(null);
     try {
-      await invokeZohalBackendJson(supabase, `/api/acquisition/v1/buyer-packets/${activePacket.id}/grant`, {
-        broker_partner_id: brokerPartnerId,
+      await invokeZohalBackendJson(supabase, `/api/mihad/v1/buyer-packets/${activePacket.id}/grants`, {
+        partner_id: brokerPartnerId,
+        granted_to_kind: 'partner',
+        purpose: 'supplier_or_broker_intro',
       });
       setPendingShareBrokerId(null);
       await loadWorkspace();
@@ -1788,7 +1802,7 @@ export default function WorkspaceCockpitPage() {
     setMihadActionBusy(`revoke-${grantId}`);
     setMihadActionError(null);
     try {
-      await invokeZohalBackendJson(supabase, `/api/acquisition/v1/sharing-grants/${grantId}/revoke`, {
+      await invokeZohalBackendJson(supabase, `/api/mihad/v1/sharing-grants/${grantId}/revoke`, {
         reason: 'revoked_by_buyer',
       });
       await loadWorkspace();
@@ -1803,24 +1817,22 @@ export default function WorkspaceCockpitPage() {
     setApprovalBusy(actionType);
     setApprovalError(null);
     try {
-      const { data, error } = await supabase
-        .from('external_action_approvals')
-        .insert({
+      const data = await invokeZohalBackendJson<{ approval_gate?: ExternalActionApprovalRow }>(
+        supabase,
+        '/api/mihad/v1/approval-gates',
+        {
           workspace_id: workspaceId,
-          opportunity_id: selectedOpportunity?.id ?? null,
+          option_id: selectedOpportunity?.id ?? null,
           buyer_profile_id: readinessProfile?.id ?? null,
           action_type: actionType,
-          draft_payload_json: {
-            source: 'web_acquisition_cockpit',
-            opportunity_title: selectedOpportunity ? titleFor(selectedOpportunity) || selectedOpportunity.summary || selectedOpportunity.id : workspace?.name || workspaceId,
+          draft_payload: {
+            source: 'web_buyer_desk',
+            option_title: selectedOpportunity ? titleFor(selectedOpportunity) || selectedOpportunity.summary || selectedOpportunity.id : workspace?.name || workspaceId,
             ...draftPayload,
           },
-          approval_status: 'pending',
-        })
-        .select('id, action_type, approval_status, opportunity_id, executed_at, created_at')
-        .single();
-      if (error) throw error;
-      setActionApprovals((current) => [data as ExternalActionApprovalRow, ...current]);
+        },
+      );
+      if (data.approval_gate) setActionApprovals((current) => [data.approval_gate as ExternalActionApprovalRow, ...current]);
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
     } finally {
@@ -1833,20 +1845,16 @@ export default function WorkspaceCockpitPage() {
     setApprovalBusy('schedule_visit');
     setApprovalError(null);
     try {
-      const response = await fetch('/google-calendar/acquisition-visit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          opportunity_id: selectedOpportunity.id,
-          title: `Property visit: ${titleFor(selectedOpportunity) || selectedOpportunity.summary || workspace?.name || 'Acquisition opportunity'}`,
+      await invokeZohalBackendJson(supabase, '/api/mihad/v1/approval-gates', {
+        workspace_id: workspaceId,
+        option_id: selectedOpportunity.id,
+        action_type: 'schedule_visit',
+        draft_payload: {
+          title: `Partner review: ${titleFor(selectedOpportunity) || selectedOpportunity.summary || workspace?.name || 'Sourced option'}`,
           description: selectedOpportunity.summary || workspace?.analysis_brief || workspace?.description || null,
-        }),
+        },
       });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json?.error || t('approvalRequestError'));
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, stage: 'visit_requested', updated_at: new Date().toISOString() } : item));
-      if (json?.html_link) window.open(String(json.html_link), '_blank', 'noopener,noreferrer');
       await loadWorkspace();
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : t('approvalRequestError'));
@@ -1863,10 +1871,11 @@ export default function WorkspaceCockpitPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('buyer_readiness_profiles')
         .insert({
           workspace_id: workspaceId,
+          mandate_id: mandate?.id ?? null,
           buyer_user_id: user?.id ?? workspace?.owner_id ?? null,
           organization_id: workspace?.org_id ?? null,
           buyer_type: 'individual',
@@ -1874,11 +1883,10 @@ export default function WorkspaceCockpitPage() {
           readiness_level: mandateSummary ? 1 : 0,
           evidence_status: 'self_declared',
           sharing_mode: 'private',
-          brokerage_status: 'not_started',
-          kyc_state: 'not_started',
-          metadata_json: { source: 'web_acquisition_cockpit' },
+          verification_confidence: 'not_started',
+          metadata_json: { source: 'web_buyer_desk' },
         })
-        .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, visit_readiness, brokerage_status, kyc_state, updated_at')
+        .select('id, buyer_type, mandate_summary, funding_path, readiness_level, evidence_status, sharing_mode, verification_confidence, updated_at')
         .single();
       if (error) throw error;
       setReadinessProfile(data as BuyerReadinessProfileRow);
@@ -1895,9 +1903,9 @@ export default function WorkspaceCockpitPage() {
     setScenarioBusy(true);
     try {
       const metadata = scenarioMetadataForOpportunity(selectedOpportunity, nextScenario);
-      const { error } = await supabase
-        .from('acquisition_opportunities')
-        .update({ metadata_json: metadata })
+      const { error } = await (supabase as any)
+        .from('sourced_options')
+        .update({ model_payload_json: metadata })
         .eq('id', selectedOpportunity.id);
       if (error) throw error;
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, metadata_json: metadata } : item));
@@ -1928,54 +1936,13 @@ export default function WorkspaceCockpitPage() {
     setApprovalError(null);
     try {
       const metadata = scenarioMetadataForOpportunity(selectedOpportunity, nextScenario);
-      const { error: saveError } = await supabase
-        .from('acquisition_opportunities')
-        .update({ metadata_json: metadata })
+      const { error: saveError } = await (supabase as any)
+        .from('sourced_options')
+        .update({ model_payload_json: metadata })
         .eq('id', selectedOpportunity.id);
       if (saveError) throw saveError;
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, metadata_json: metadata } : item));
-
-      const response = await invokeZohalBackendJson<UnderwritingResponse>(
-        supabase,
-        `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/underwriting-run`,
-        {
-          mode: 'quick',
-          save: true,
-          target_irr_pct: nextScenario.targetIrr,
-          deal_strategy: nextScenario.strategy,
-          investment_strategy: nextScenario.strategy,
-          ltv_pct: nextScenario.ltv,
-          financing_rate_pct: nextScenario.financingRate,
-          after_repair_value: nextScenario.arv,
-          arv: nextScenario.arv,
-          refinance_enabled: nextScenario.refinanceEnabled,
-          refinance_ltv_pct: nextScenario.refinanceLtv,
-          refinance_rate_pct: nextScenario.refinanceRate,
-          refinance_year: nextScenario.refinanceYear,
-          refinance_cost_pct: nextScenario.refinanceCost,
-          assumptions: {
-            deal_strategy: nextScenario.strategy,
-            purchase_price: nextScenario.price,
-            acquisition_price: nextScenario.price,
-            monthly_rent: nextScenario.rent,
-            renovation: nextScenario.renovation,
-            vacancy_pct: nextScenario.vacancy,
-            hold_period_years: nextScenario.hold,
-            exit_growth_pct: nextScenario.appreciation,
-            ltv_pct: nextScenario.ltv,
-            financing_rate_pct: nextScenario.financingRate,
-            after_repair_value: nextScenario.arv,
-            arv: nextScenario.arv,
-            refinance_enabled: nextScenario.refinanceEnabled,
-            refinance_ltv_pct: nextScenario.refinanceLtv,
-            refinance_rate_pct: nextScenario.refinanceRate,
-            refinance_year: nextScenario.refinanceYear,
-            refinance_cost_pct: nextScenario.refinanceCost,
-            target_irr_pct: nextScenario.targetIrr,
-          },
-        },
-      );
-      setUnderwriting(response.underwriting ?? response.scenario?.outputs_json?.underwriting ?? null);
+      setUnderwriting(null);
       setScenario(nextScenario);
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : t('underwritingRunError'));
@@ -1993,36 +1960,31 @@ export default function WorkspaceCockpitPage() {
     setCapexBusy(true);
     setCapexError(null);
     try {
-      const response = await invokeZohalBackendJson<CapexEstimateResponse>(
-        supabase,
-        `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/capex-estimate`,
-        {
-          strategy: input.strategy,
-          finish_level: input.finish_level,
-          user_notes: input.user_notes,
-          save: true,
-        },
-      );
-      const estimate = response.estimate ?? {};
+      const estimate: RenovationCapexEstimate = {
+        mode: 'operator_note',
+        strategy: input.strategy,
+        finish_level: input.finish_level,
+        pricing_status: 'not_priced',
+        assumptions: input.user_notes ? [{ message: input.user_notes }] : [],
+        generated_at: new Date().toISOString(),
+      };
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id
         ? {
             ...item,
             renovation_capex_json: estimate,
-            renovation_capex_updated_at: response.event?.renovation_capex_updated_at ?? new Date().toISOString(),
+            renovation_capex_updated_at: new Date().toISOString(),
             renovation_rate_card_id: estimate.rate_card_id ?? null,
           }
         : item));
-      if (response.event?.event_id) {
-        setRenovationEvents((current) => [{
-          id: response.event?.event_id ?? crypto.randomUUID(),
-          event_type: 'generated',
-          low_total: estimate.low_total,
-          base_total: estimate.base_total,
-          high_total: estimate.high_total,
-          confidence_score: estimate.confidence_score,
-          created_at: new Date().toISOString(),
-        }, ...current].slice(0, 8));
-      }
+      setRenovationEvents((current) => [{
+        id: crypto.randomUUID(),
+        event_type: 'noted',
+        low_total: estimate.low_total,
+        base_total: estimate.base_total,
+        high_total: estimate.high_total,
+        confidence_score: estimate.confidence_score,
+        created_at: new Date().toISOString(),
+      }, ...current].slice(0, 8));
     } catch (error) {
       setCapexError(error instanceof Error ? error.message : t('capexGenerateError'));
     } finally {
@@ -2036,8 +1998,8 @@ export default function WorkspaceCockpitPage() {
     try {
       const response = await invokeZohalBackendJson<PromoteCandidateResponse>(
         supabase,
-        `/api/acquisition/v1/opportunities/${selectedOpportunity.id}/stage`,
-        { stage, suppress_source: false },
+        `/api/mihad/v1/sourced-options/${selectedOpportunity.id}/promote`,
+        { status: stage },
       );
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id
         ? { ...item, ...(response.opportunity ?? {}), stage, updated_at: new Date().toISOString() }
@@ -2057,10 +2019,9 @@ export default function WorkspaceCockpitPage() {
     try {
       await invokeZohalBackendJson<PromoteCandidateResponse>(
         supabase,
-        `/api/acquisition/v1/opportunities/${opportunityId}/stage`,
+        `/api/mihad/v1/sourced-options/${opportunityId}/promote`,
         {
-          stage: 'archived',
-          suppress_source: true,
+          status: 'archived',
           rejection_reason: 'operator_removed_from_workspace_pipeline',
         },
       );
@@ -2433,7 +2394,7 @@ export default function WorkspaceCockpitPage() {
         if (!broker || !activePacket) return null;
         const shareBusy = mihadActionBusy === `share-${broker.id}`;
         return (
-          <ShareWithBrokerModal
+          <SharePacketModal
             broker={broker}
             packet={activePacket}
             busy={shareBusy}
