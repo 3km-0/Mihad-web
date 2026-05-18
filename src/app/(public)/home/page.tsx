@@ -2,142 +2,103 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
-import { EyeOff, LockKeyhole, ShieldCheck, Sparkles, UserCheck } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { DigestSectionHeading, DigestShell } from '@/components/private-digest/DigestShell';
 import { localize } from '@/lib/private-digest';
 import { absoluteUrl } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'Mihad — Private Saudi luxury-home digest',
-  description: 'Exceptional Saudi homes, privately showcased and quietly open to serious interest through screened confidential inquiry.',
+  title: 'Mihad — Architecture and interiors digest',
+  description: 'A quiet editorial digest for selected spaces, interior architecture, materials, light, and craft.',
   alternates: { canonical: absoluteUrl('/home') },
   openGraph: {
-    title: 'Mihad — Private Saudi luxury-home digest',
-    description: 'Exceptional Saudi homes. Privately showcased. Quietly open to serious interest.',
+    title: 'Mihad — Architecture and interiors digest',
+    description: 'Selected spaces, interior architecture, materials, light, and craft.',
     url: absoluteUrl('/home'),
     siteName: 'Mihad',
-    images: [absoluteUrl('/onboarding/workspace.jpg')],
+    images: [absoluteUrl('/private-digest/interior-study.png')],
   },
 };
 
 export default async function HomePage() {
   const locale = await getLocale();
-  const ownerHref = '/submit-property';
-  const buyerHref = '/private-interest';
 
   return (
     <DigestShell>
       <main>
-        <section className="relative min-h-[calc(100svh-72px)] overflow-hidden border-b border-[#ded6c7]">
-          <Image src="/onboarding/workspace.jpg" alt="" fill priority className="object-cover" sizes="100vw" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(30,26,20,0.86),rgba(30,26,20,0.58),rgba(30,26,20,0.18))]" />
-          <div className="relative mx-auto flex min-h-[calc(100svh-72px)] max-w-7xl items-end px-4 py-12 sm:px-6 lg:px-8">
-            <div className="max-w-4xl pb-8 text-white">
-              <p className="inline-flex items-center gap-2 rounded-[999px] border border-white/25 bg-white/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-[#f2dfb8]">
-                <Sparkles className="h-4 w-4" />
-                {localize(locale, 'خاص. منتقى. هادئ.', 'Private. Curated. Discreet.')}
+        <section className="border-b border-[#D8DEE8] bg-[#EEF2F6]">
+          <div className="mx-auto grid min-h-[560px] max-w-7xl items-center gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1D4E89]">
+                {localize(locale, 'دفتر معماري هادئ', 'Quiet architecture digest')}
               </p>
-              <h1 className="mt-6 max-w-4xl font-serif text-5xl font-semibold leading-[1.02] tracking-normal md:text-7xl">
-                {localize(locale, 'منازل سعودية استثنائية. تُعرض بخصوصية. وتبقى مفتوحة لاهتمام جاد.', 'Exceptional Saudi homes. Privately showcased. Quietly open to serious interest.')}
+              <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-[#101827] md:text-5xl">
+                {localize(locale, 'مساحات تُقرأ من الضوء والمادة والتكوين.', 'Spaces read through light, material, and composition.')}
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82">
+              <p className="mt-5 max-w-2xl text-base leading-8 text-[#334155]">
                 {localize(
                   locale,
-                  'مهاد ليس بوابة عقارية عامة. هو مساحة تحريرية هادئة للمنازل النادرة، حيث يتحكم المالك في الظهور، ويُفحص اهتمام المشتري قبل أي اقتراب.',
-                  'Mihad is not a public property portal. It is a quiet editorial room for rare homes, where owners control visibility and buyer interest is screened before any approach.'
+                  'مهاد يختار مساحات معمارية وداخلية تظهر بهدوء: لقطة واضحة، نص قليل، وتفاصيل تكفي لفهم الشعور دون ضجيج.',
+                  'Mihad selects architectural and interior spaces with restraint: clear image, spare copy, and enough detail to understand the feeling without noise.'
                 )}
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href={buyerHref} className="inline-flex min-h-12 items-center rounded-[8px] bg-white px-5 text-sm font-semibold text-[#1e1a14] transition hover:bg-[#f2dfb8]">
-                  {localize(locale, 'إرسال اهتمام خاص', 'Submit Private Interest')}
-                </Link>
-                <Link href={ownerHref} className="inline-flex min-h-12 items-center rounded-[8px] border border-white/35 px-5 text-sm font-semibold text-white transition hover:bg-white/12">
-                  {localize(locale, 'اعرض منزلك بهدوء', 'Showcase Your Home Quietly')}
-                </Link>
-              </div>
+              <Link href="/spaces" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-[6px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">
+                {localize(locale, 'استعراض المساحات', 'View spaces')}
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[8px] border border-[#D8DEE8] bg-white">
+              <Image src="/private-digest/interior-study.png" alt="" fill priority className="object-cover" sizes="(min-width: 1024px) 54vw, 100vw" />
             </div>
           </div>
         </section>
 
-        <section className="bg-[#f7f2e8] py-16">
+        <section className="bg-[#EEF2F6] py-14">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <DigestSectionHeading
-              eyebrow={localize(locale, 'الفكرة', 'The premise')}
-              title={localize(locale, 'المالك لا يحتاج أن يظهر كبائع. والمشتري لا يحتاج أن يصرخ ليصل.', 'The owner does not need to look like a seller. The buyer does not need noise to reach access.')}
+              eyebrow={localize(locale, 'التحرير', 'Editorial')}
+              title={localize(locale, 'الصورة أولًا، ثم ما يكفي من اللغة.', 'Image first, then only enough language.')}
               body={localize(
                 locale,
-                'مهاد يحوّل الفضول الجاد إلى مسار مؤهل: عرض تحريري، خصوصية قوية، ثم فحص يدوي قبل أي خطوة وساطة.',
-                'Mihad turns serious curiosity into a qualified path: editorial presentation, strong privacy, then manual screening before any brokerage step.'
+                'الصفحة الجيدة لا تشرح كل شيء. تترك للضوء، النسب، السطح، والفراغ أن يقوموا بالعمل.',
+                'A good page does not explain everything. It lets light, proportion, surface, and void do the work.'
               )}
             />
             <div className="mt-10 grid gap-4 md:grid-cols-3">
               {[
-                {
-                  icon: EyeOff,
-                  title: localize(locale, 'لا سعر عام', 'No public price'),
-                  body: localize(locale, 'السعر لا يتحول إلى مرساة عامة أو ضغط اجتماعي.', 'Price never becomes a public anchor or social pressure.'),
-                },
-                {
-                  icon: LockKeyhole,
-                  title: localize(locale, 'تحكم كامل للمالك', 'Owner control'),
-                  body: localize(locale, 'المالك يوافق على ما يظهر ويقرر متى يستمع.', 'The owner approves what appears and decides when to listen.'),
-                },
-                {
-                  icon: UserCheck,
-                  title: localize(locale, 'فحص قبل الاقتراب', 'Screen before approach'),
-                  body: localize(locale, 'الهوية، النية، القدرة، والوقت تُراجع قبل إزعاج أي مالك.', 'Identity, intent, ability, and timing are reviewed before disturbing any owner.'),
-                },
-              ].map(({ icon: Icon, title, body }) => (
-                <div key={title} className="rounded-[8px] border border-[#ded6c7] bg-white p-6">
-                  <Icon className="h-8 w-8 text-[#8c6f45]" />
-                  <h2 className="mt-5 font-serif text-2xl font-semibold">{title}</h2>
-                  <p className="mt-3 text-sm leading-7 text-[#625746]">{body}</p>
-                </div>
+                [localize(locale, 'الضوء', 'Light'), localize(locale, 'كيف يدخل، أين يتوقف، وما الذي يكشفه.', 'How it enters, where it rests, and what it reveals.')],
+                [localize(locale, 'المادة', 'Material'), localize(locale, 'خشونة، لمعان، وزن، وملمس بدون مبالغة.', 'Texture, sheen, weight, and tactility without excess.')],
+                [localize(locale, 'التكوين', 'Composition'), localize(locale, 'علاقة العناصر ببعضها: فتحة، حافة، محور، ظل.', 'The relation of elements: opening, edge, axis, shadow.')],
+              ].map(([title, body]) => (
+                <section key={title} className="rounded-[8px] border border-[#D8DEE8] bg-white p-5">
+                  <h2 className="text-sm font-semibold text-[#101827]">{title}</h2>
+                  <p className="mt-3 text-sm leading-7 text-[#334155]">{body}</p>
+                </section>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="bg-[#1e1a14] py-16 text-white">
-          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+        <section className="border-t border-[#D8DEE8] bg-white py-14">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f2dfb8]">{localize(locale, 'كيف يعمل', 'How it works')}</p>
-              <h2 className="mt-4 font-serif text-4xl font-semibold leading-tight">{localize(locale, 'واجهة هادئة. مسار وساطة يدوي عند الجدية فقط.', 'A quiet surface. Manual brokerage path only when signal becomes serious.')}</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1D4E89]">{localize(locale, 'طريقة مهاد', 'Mihad method')}</p>
+              <h2 className="mt-3 text-3xl font-semibold leading-tight text-[#101827]">
+                {localize(locale, 'عرض مختصر، منظم، وغير صاخب.', 'A concise, structured, quiet presentation.')}
+              </h2>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3">
               {[
-                localize(locale, 'المالك يقدّم المنزل أو تتم دعوته بهدوء.', 'Owner submits or is invited quietly.'),
-                localize(locale, 'مهاد يراجع الجودة والخصوصية والوسائط الأصلية.', 'Mihad reviews quality, privacy, and original media.'),
-                localize(locale, 'الصفحة تظهر بتفاصيل محدودة ودون سعر أو عنوان دقيق.', 'The page appears with limited detail and no price or exact address.'),
-                localize(locale, 'المشتري يرسل اهتمامًا خاصًا مع الهوية والقدرة والوقت.', 'Buyer submits private interest with identity, ability, and timing.'),
-                localize(locale, 'مهاد يفحص الإشارة قبل أن يقترب من المالك.', 'Mihad screens the signal before approaching the owner.'),
-                localize(locale, 'إذا وافق المالك، تبدأ المحادثة الخاصة كمسار وساطة منظم.', 'If the owner agrees, the private conversation begins as a structured brokerage path.'),
+                localize(locale, 'نختار زاوية بصرية واحدة تقود القراءة.', 'Select one visual angle to lead the reading.'),
+                localize(locale, 'نكتب ملاحظات قصيرة عن الضوء، المادة، والإيقاع.', 'Write short notes on light, material, and rhythm.'),
+                localize(locale, 'نترك التفاصيل العملية خارج الصفحة العامة.', 'Keep operational details outside the public page.'),
               ].map((item, index) => (
-                <div key={item} className="rounded-[8px] border border-white/12 bg-white/[0.06] p-4 text-sm leading-7 text-white/82">
-                  <span className="mb-3 grid h-8 w-8 place-items-center rounded-[8px] bg-white text-xs font-bold text-[#1e1a14]">{index + 1}</span>
-                  {item}
+                <div key={item} className="flex gap-4 rounded-[8px] border border-[#D8DEE8] bg-[#F8FAFC] p-4 text-sm leading-7 text-[#334155]">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[6px] bg-[#EEF2F6] font-semibold text-[#1D4E89]">{index + 1}</span>
+                  <span>{item}</span>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        <section className="bg-[#f7f2e8] py-16">
-          <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
-            <Link href={ownerHref} className="rounded-[8px] border border-[#ded6c7] bg-white p-8 transition hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(30,26,20,0.11)]">
-              <ShieldCheck className="h-9 w-9 text-[#8c6f45]" />
-              <h2 className="mt-5 font-serif text-4xl font-semibold">{localize(locale, 'للملاك', 'For owners')}</h2>
-              <p className="mt-4 leading-8 text-[#625746]">
-                {localize(locale, 'منزلك لا يحتاج أن يكون معروضًا للبيع. يمكنك الموافقة على عرض تحريري هادئ، وتقرر وحدك هل يستحق أي اهتمام جاد الرد.', 'Your home does not need to be actively for sale. You can approve a quiet editorial presentation and decide whether any serious interest deserves a response.')}
-              </p>
-            </Link>
-            <Link href={buyerHref} className="rounded-[8px] border border-[#ded6c7] bg-white p-8 transition hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(30,26,20,0.11)]">
-              <UserCheck className="h-9 w-9 text-[#8c6f45]" />
-              <h2 className="mt-5 font-serif text-4xl font-semibold">{localize(locale, 'للمشترين الجادين', 'For serious buyers')}</h2>
-              <p className="mt-4 leading-8 text-[#625746]">
-                {localize(locale, 'بعض المنازل لا تظهر في الأماكن العامة. أرسل اهتمامًا خاصًا، ومهاد يفحص الجدية قبل أن يطلب من المالك أي رد.', 'Some homes do not appear in public channels. Submit confidential interest, and Mihad screens seriousness before asking an owner for any response.')}
-              </p>
-            </Link>
           </div>
         </section>
       </main>

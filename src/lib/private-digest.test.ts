@@ -1,54 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
-  findProperty,
-  publicProperties,
-  sitemapProperties,
-  validateOwnerSubmission,
-  validatePrivateInterest,
+  findSpace,
+  publicSpaces,
+  sitemapSpaces,
+  validateSpaceOffer,
 } from './private-digest';
+import sitemap from '@/app/sitemap';
 
 describe('private digest data', () => {
-  it('excludes private-link property pages from public gallery and sitemap', () => {
-    expect(findProperty('editorial-format-preview')).toBeTruthy();
-    expect(publicProperties().map((property) => property.slug)).not.toContain('editorial-format-preview');
-    expect(sitemapProperties().map((property) => property.slug)).not.toContain('editorial-format-preview');
+  it('excludes private-link space pages from public gallery and sitemap', () => {
+    expect(findSpace('editorial-format-preview')).toBeTruthy();
+    expect(publicSpaces().map((space) => space.slug)).not.toContain('editorial-format-preview');
+    expect(sitemapSpaces().map((space) => space.slug)).not.toContain('editorial-format-preview');
+  });
+
+  it('indexes spaces but excludes retired intake routes', () => {
+    const urls = sitemap().map((item) => item.url);
+    expect(urls).toContain('https://mihad.properties/spaces');
+    expect(urls).not.toContain('https://mihad.properties/properties');
+    expect(urls).not.toContain('https://mihad.properties/submit-property');
+    expect(urls).not.toContain('https://mihad.properties/private-interest');
   });
 });
 
-describe('private digest validation', () => {
-  it('validates owner submissions', () => {
-    const valid = validateOwnerSubmission({
-      name: 'Owner',
-      phone: '+966500000000',
-      role: 'Authorized representative',
-      city: 'Riyadh',
-      propertyType: 'Villa',
-      privacyPreference: 'Private link',
-      originalMediaReady: true,
-      consent: true,
-      notes: 'Quiet review.',
+describe('space offer validation', () => {
+  it('requires a space and a message', () => {
+    expect(validateSpaceOffer({ spaceSlug: 'editorial-format-preview', message: 'A quiet note.' }).ok).toBe(true);
+    const invalid = validateSpaceOffer({
+      spaceSlug: 'editorial-format-preview',
+      message: '',
     });
-
-    expect(valid.ok).toBe(true);
-    expect(validateOwnerSubmission({}).ok).toBe(false);
-  });
-
-  it('validates private buyer interest', () => {
-    const valid = validatePrivateInterest({
-      propertySlug: 'editorial-format-preview',
-      fullName: 'Buyer',
-      phone: '+966511111111',
-      location: 'Riyadh',
-      intent: 'Family use',
-      indicativeRange: 'Confidential range',
-      fundingStatus: 'Cash',
-      timeline: '30-90 days',
-      proofReadiness: 'Can verify privately',
-      ndaOpen: true,
-      consent: true,
-    });
-
-    expect(valid.ok).toBe(true);
-    expect(validatePrivateInterest({ fullName: 'Buyer' }).ok).toBe(false);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.errors.message).toBeTruthy();
   });
 });

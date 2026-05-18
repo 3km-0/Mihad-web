@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { absoluteUrl } from '@/lib/seo';
-import { sitemapProperties } from '@/lib/private-digest';
+import { sitemapSpaces } from '@/lib/private-digest';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -13,22 +13,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: absoluteUrl('/properties'),
+      url: absoluteUrl('/spaces'),
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.8,
-    },
-    {
-      url: absoluteUrl('/submit-property'),
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: absoluteUrl('/private-interest'),
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
     },
     {
       url: absoluteUrl('/about'),
@@ -54,8 +42,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.4,
     },
-    ...sitemapProperties().map((property) => ({
-      url: absoluteUrl(`/properties/${property.slug}`),
+    ...sitemapSpaces().map((space) => ({
+      url: absoluteUrl(`/spaces/${space.slug}`),
       lastModified: now,
       changeFrequency: 'monthly' as const,
       priority: 0.6,

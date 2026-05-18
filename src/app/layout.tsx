@@ -57,14 +57,14 @@ export const metadata: Metadata = {
     template: '%s | Mihad',
   },
   description:
-    'Mihad is Saudi Arabia’s private digest of exceptional homes, quietly open to serious interest through screened confidential inquiry.',
+    'Mihad is a quiet architecture and interiors digest for selected spaces, materials, light, and craft.',
   applicationName: 'Mihad',
   keywords: [
-    'private Saudi homes',
-    'luxury home digest',
-    'confidential property inquiry',
-    'screened serious interest',
-    'owner-controlled showcase',
+    'architecture digest',
+    'interior design digest',
+    'selected spaces',
+    'materials and light',
+    'editorial interiors',
   ],
   authors: [{ name: 'Mihad' }],
   icons: {
@@ -81,7 +81,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Mihad',
     description:
-      'Exceptional Saudi homes. Privately showcased. Quietly open to serious interest.',
+      'Selected spaces, interior architecture, materials, light, and craft.',
     url: absoluteUrl('/home'),
     siteName: 'Mihad',
     locale: 'en_US',
@@ -99,7 +99,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Mihad',
     description:
-      'Exceptional Saudi homes. Privately showcased. Quietly open to serious interest.',
+      'Selected spaces, interior architecture, materials, light, and craft.',
     images: [absoluteUrl('/icon.png')],
   },
 };

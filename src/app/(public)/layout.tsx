@@ -13,9 +13,7 @@ export default function PublicLayout({
 
   const publicSelfChromeRoutes = [
     '/home',
-    '/properties',
-    '/submit-property',
-    '/private-interest',
+    '/spaces',
     '/calculator',
     '/fieldbook',
     '/market',

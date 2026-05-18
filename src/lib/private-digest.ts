@@ -1,21 +1,21 @@
 export type LocaleCode = 'ar' | 'en';
 
-export type PropertyVisibility = 'public' | 'private_link';
-export type PropertyStatus = 'approved' | 'editorial_preview';
+export type SpaceVisibility = 'public' | 'private_link';
+export type SpaceStatus = 'approved' | 'editorial_preview';
 
-export type PrivateProperty = {
+export type EditorialSpace = {
   slug: string;
   title: { ar: string; en: string };
-  cityArea: { ar: string; en: string };
-  propertyType: { ar: string; en: string };
-  visibility: PropertyVisibility;
-  status: PropertyStatus;
+  locationHint: { ar: string; en: string };
+  typology: { ar: string; en: string };
+  visibility: SpaceVisibility;
+  status: SpaceStatus;
   heroImage: string;
   galleryImages: string[];
   story: { ar: string; en: string };
   highlights: Array<{ ar: string; en: string }>;
-  featureSummary: Array<{ label: { ar: string; en: string }; value: { ar: string; en: string } }>;
-  privacyNotes: Array<{ ar: string; en: string }>;
+  designNotes: Array<{ label: { ar: string; en: string }; value: { ar: string; en: string } }>;
+  editorialNotes: Array<{ ar: string; en: string }>;
 };
 
 export type ValidationResult<T> =
@@ -49,6 +49,13 @@ export type PrivateInterest = {
   notes: string;
 };
 
+export type SpaceOffer = {
+  spaceSlug: string;
+  name: string;
+  contact: string;
+  message: string;
+};
+
 export function localize(locale: string, ar: string, en: string) {
   return locale === 'ar' ? ar : en;
 }
@@ -59,57 +66,57 @@ export function localizedValue(locale: string, value: { ar: string; en: string }
 
 export const PRIVATE_DIGEST_WHATSAPP_URL = 'https://wa.me/966500000000';
 
-export const privateProperties: PrivateProperty[] = [
+export const editorialSpaces: EditorialSpace[] = [
   {
     slug: 'editorial-format-preview',
     title: {
-      ar: 'معاينة تنسيق تحريري خاص',
-      en: 'Private editorial format preview',
+      ar: 'معاينة مساحة تحريرية',
+      en: 'Editorial space preview',
     },
-    cityArea: {
-      ar: 'الموقع مخفي للخصوصية',
-      en: 'Location hidden for privacy',
+    locationHint: {
+      ar: 'المكان محفوظ للتنسيق البصري',
+      en: 'Place withheld for visual study',
     },
-    propertyType: {
-      ar: 'منزل استثنائي',
-      en: 'Exceptional home',
+    typology: {
+      ar: 'عمارة داخلية معاصرة',
+      en: 'Contemporary interior architecture',
     },
     visibility: 'private_link',
     status: 'editorial_preview',
-    heroImage: '/onboarding/workspace.jpg',
-    galleryImages: ['/onboarding/workspace.jpg'],
+    heroImage: '/private-digest/interior-study.png',
+    galleryImages: ['/private-digest/interior-study.png'],
     story: {
-      ar: 'هذه الصفحة توضّح شكل العرض التحريري فقط. لا تمثل عقارًا متاحًا، ولا تعرض سعرًا أو مالكًا أو عنوانًا. الهدف هو اختبار لغة مهاد الخاصة قبل نشر أي منزل حقيقي بموافقة صاحبه.',
-      en: 'This page demonstrates the editorial presentation format only. It does not represent an available property and does not show a price, owner, or address. Its purpose is to test Mihad’s private language before any real home is published with owner approval.',
+      ar: 'هذه الصفحة توضّح شكل مهاد التحريري: قراءة هادئة لمساحة، ضوء، مادة، وتفاصيل معمارية. لا تهتم الصفحة بالمعاملة، بل بطريقة حضور المكان وهدوء قراءته.',
+      en: 'This page demonstrates Mihad’s editorial format: a quiet reading of space, light, material, and architectural detail. It is concerned with how a place holds presence, not with transaction language.',
     },
     highlights: [
-      { ar: 'عرض بصري هادئ يركز على الشعور والمكانة', en: 'Calm visual presentation focused on feeling and status' },
-      { ar: 'تفاصيل محدودة تحمي العنوان والمالك والسعر', en: 'Limited details protect address, owner, and price' },
-      { ar: 'اهتمام جاد فقط بعد فحص مهاد للهوية والقدرة والنية', en: 'Serious interest only after Mihad screens identity, ability, and intent' },
+      { ar: 'ضوء طبيعي يحدد الإيقاع بدل الزخرفة', en: 'Natural light sets rhythm instead of decoration' },
+      { ar: 'مواد هادئة تسمح للتفاصيل أن تظهر ببطء', en: 'Quiet materials let detail emerge slowly' },
+      { ar: 'تكوين بصري يوازن بين الخصوصية والانفتاح', en: 'A visual composition balanced between privacy and openness' },
     ],
-    featureSummary: [
-      { label: { ar: 'الظهور', en: 'Visibility' }, value: { ar: 'رابط خاص', en: 'Private link' } },
-      { label: { ar: 'السعر', en: 'Price' }, value: { ar: 'غير منشور', en: 'Not public' } },
-      { label: { ar: 'العنوان', en: 'Address' }, value: { ar: 'غير معروض', en: 'Not shown' } },
+    designNotes: [
+      { label: { ar: 'الضوء', en: 'Light' }, value: { ar: 'ناعم وممتد', en: 'Soft and extended' } },
+      { label: { ar: 'المواد', en: 'Materials' }, value: { ar: 'خشب، حجر، نسيج', en: 'Wood, stone, textile' } },
+      { label: { ar: 'الإيقاع', en: 'Rhythm' }, value: { ar: 'هادئ ومقروء', en: 'Calm and legible' } },
     ],
-    privacyNotes: [
-      { ar: 'لا توجد هوية مالك أو عنوان دقيق في الصفحة العامة.', en: 'No owner identity or exact address is shown publicly.' },
-      { ar: 'أي اهتمام يمر عبر فحص مهاد قبل الوصول للمالك.', en: 'Any interest is screened by Mihad before reaching the owner.' },
-      { ar: 'الصفحة ليست إعلان بيع ولا دعوة لتقديم عرض ملزم.', en: 'This page is not a sale advert or an invitation for a binding offer.' },
+    editorialNotes: [
+      { ar: 'الصفحة تستخدم نصًا مختصرًا حتى تبقى الصورة والمساحة في المقدمة.', en: 'The page uses spare copy so the image and space stay primary.' },
+      { ar: 'التفاصيل العملية تبقى خارج العرض التحريري.', en: 'Operational details stay outside the editorial presentation.' },
+      { ar: 'أي تواصل لاحق يتم يدويًا وبهدوء من فريق مهاد.', en: 'Any later follow-up is handled manually and quietly by Mihad.' },
     ],
   },
 ];
 
-export function publicProperties() {
-  return privateProperties.filter((property) => property.visibility === 'public' && property.status === 'approved');
+export function publicSpaces() {
+  return editorialSpaces.filter((space) => space.visibility === 'public' && space.status === 'approved');
 }
 
-export function sitemapProperties() {
-  return publicProperties();
+export function sitemapSpaces() {
+  return publicSpaces();
 }
 
-export function findProperty(slug: string) {
-  return privateProperties.find((property) => property.slug === slug) || null;
+export function findSpace(slug: string) {
+  return editorialSpaces.find((space) => space.slug === slug) || null;
 }
 
 function text(value: unknown, max = 500) {
@@ -127,6 +134,10 @@ function phone(value: unknown) {
 
 export function makeReference(prefix: 'OWNER' | 'INTEREST') {
   return `${prefix}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+export function makeOfferReference() {
+  return `OFFER-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
 export function buildDigestWhatsappUrl(input: { reference: string; path: 'owner' | 'interest'; phone?: string }) {
@@ -197,5 +208,19 @@ export function validatePrivateInterest(value: unknown): ValidationResult<Privat
   if (!data.proofReadiness) errors.proofReadiness = 'Proof readiness is required.';
   if (!data.ndaOpen) errors.ndaOpen = 'NDA openness must be confirmed.';
   if (!data.consent) errors.consent = 'Consent is required.';
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, data };
+}
+
+export function validateSpaceOffer(value: unknown): ValidationResult<SpaceOffer> {
+  const record = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
+  const data: SpaceOffer = {
+    spaceSlug: text(record.spaceSlug, 120),
+    name: text(record.name, 160),
+    contact: text(record.contact, 180),
+    message: text(record.message, 1200),
+  };
+  const errors: Record<string, string> = {};
+  if (!data.spaceSlug) errors.spaceSlug = 'Space is required.';
+  if (!data.message || data.message.length < 8) errors.message = 'Message is required.';
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, data };
 }
