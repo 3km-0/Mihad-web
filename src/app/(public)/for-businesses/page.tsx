@@ -1,31 +1,5 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Building2 } from 'lucide-react';
-import { PublicPageShell } from '@/components/prefab/PrefabMarketing';
-import { absoluteUrl } from '@/lib/seo';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Prefab project calculator for businesses — Mihad',
-  description: 'Estimate modular showrooms, equipment yards, project offices, logistics yards, retail pods, and commercial site facilities.',
-  alternates: { canonical: absoluteUrl('/for-businesses') },
-};
-
-export default function ForBusinessesPage() {
-  const uses = ['Vehicle showrooms', 'Equipment rental yards', 'Project offices', 'Logistics yards', 'Retail pods', 'Cafes', 'Clinics', 'Site facilities'];
-  return (
-    <PublicPageShell>
-      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <section className="rounded-[8px] border border-[#d8cfba] bg-[#24352f] p-8 text-white md:p-10">
-          <Building2 className="h-10 w-10 text-[#d3b36b]" />
-          <h1 className="mt-5 max-w-3xl text-5xl font-semibold leading-tight tracking-normal">Estimate modular business sites before outreach</h1>
-          <p className="mt-3 text-right text-2xl font-semibold text-[#d3b36b]" dir="rtl">احسب موقعك التجاري الجاهز قبل التواصل</p>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-[#d7e2dc]">Start with use, city, size, budget, site readiness, and timing. If land help is needed, Mihad opens that path after the calculator.</p>
-          <Link href="/calculator?category=modular-offices" className="mt-6 inline-flex min-h-11 items-center rounded-[8px] bg-white px-4 text-sm font-semibold text-[#24352f]">Estimate a business project</Link>
-        </section>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {uses.map((use) => <div key={use} className="rounded-[8px] border border-[#d8cfba] bg-white p-5 font-semibold">{use}</div>)}
-        </div>
-      </main>
-    </PublicPageShell>
-  );
+export default function RetiredBusinessesPage() {
+  redirect('/private-interest');
 }

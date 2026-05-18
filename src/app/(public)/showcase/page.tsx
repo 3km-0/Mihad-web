@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function ShowcasePage() {
-  redirect('/fieldbook');
+export default function RetiredShowcasePage() {
+  redirect('/properties');
 }

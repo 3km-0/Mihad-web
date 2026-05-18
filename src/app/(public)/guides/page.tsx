@@ -1,30 +1,5 @@
-import type { Metadata } from 'next';
-import { GuideCard, PREFAB_GUIDES, PublicPageShell, SectionHeading } from '@/components/prefab/PrefabMarketing';
-import { absoluteUrl } from '@/lib/seo';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Prefab guides — Mihad Fieldbook',
-  description: 'Saudi prefab guides for cost, land readiness, supplier trust, foundations, utilities, and calculator-based planning.',
-  alternates: { canonical: absoluteUrl('/guides') },
-};
-
-export default function GuidesIndexPage() {
-  const groups = ['Cost and comparison', 'Land readiness', 'Supplier trust'];
-  return (
-    <PublicPageShell>
-      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Guides" title="Learn before you estimate" titleAr="افهم الخيارات قبل أن تحسب مشروعك" body="Plain-language guides for comparing prefab suppliers, scope, site readiness, and planning ranges." />
-        <div className="mt-10 grid gap-8">
-          {groups.map((group) => (
-            <section key={group}>
-              <h2 className="text-2xl font-semibold">{group}</h2>
-              <div className="mt-4 grid gap-5 md:grid-cols-3">
-                {PREFAB_GUIDES.filter((guide) => guide.category === group).map((guide) => <GuideCard key={guide.slug} guide={guide} />)}
-              </div>
-            </section>
-          ))}
-        </div>
-      </main>
-    </PublicPageShell>
-  );
+export default function RetiredGuidesPage() {
+  redirect('/about');
 }

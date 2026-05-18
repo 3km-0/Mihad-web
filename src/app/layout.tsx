@@ -57,15 +57,14 @@ export const metadata: Metadata = {
     template: '%s | Mihad',
   },
   description:
-    'Mihad helps buyers turn a structured mandate into sourced prefab options, evidence-backed matches, buyer packets, and consented partner introductions.',
+    'Mihad is Saudi Arabia’s private digest of exceptional homes, quietly open to serious interest through screened confidential inquiry.',
   applicationName: 'Mihad',
   keywords: [
-    'prefab buyer workflow',
-    'Saudi prefab suppliers',
-    'buyer mandate RFQ',
-    'evidence-backed sourcing',
-    'Arabic English document review',
-    'buyer packet consent',
+    'private Saudi homes',
+    'luxury home digest',
+    'confidential property inquiry',
+    'screened serious interest',
+    'owner-controlled showcase',
   ],
   authors: [{ name: 'Mihad' }],
   icons: {
@@ -82,7 +81,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Mihad',
     description:
-      'Verified document analysis with page-level evidence for teams that need work that stands up to review.',
+      'Exceptional Saudi homes. Privately showcased. Quietly open to serious interest.',
     url: absoluteUrl('/home'),
     siteName: 'Mihad',
     locale: 'en_US',
@@ -100,7 +99,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Mihad',
     description:
-      'Verified document analysis with page-level evidence for teams that need work that stands up to review.',
+      'Exceptional Saudi homes. Privately showcased. Quietly open to serious interest.',
     images: [absoluteUrl('/icon.png')],
   },
 };

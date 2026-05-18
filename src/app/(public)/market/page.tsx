@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function RetiredCategoryPage() {
+export default function RetiredMarketPage() {
   redirect('/properties');
 }

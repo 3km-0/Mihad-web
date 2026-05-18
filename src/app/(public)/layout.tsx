@@ -11,10 +11,14 @@ export default function PublicLayout({
 }) {
   const pathname = usePathname();
 
-  const prefabChromeRoutes = [
+  const publicSelfChromeRoutes = [
     '/home',
+    '/properties',
+    '/submit-property',
+    '/private-interest',
     '/calculator',
     '/fieldbook',
+    '/market',
     '/request-quote',
     '/models',
     '/suppliers',
@@ -24,8 +28,10 @@ export default function PublicLayout({
     '/for-manufacturers',
     '/showcase',
     '/about',
+    '/privacy',
+    '/terms',
   ];
-  const ownsChrome = prefabChromeRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const ownsChrome = publicSelfChromeRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
   if (ownsChrome) {
     return <>{children}</>;

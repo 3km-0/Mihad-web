@@ -1,262 +1,46 @@
+import type { Metadata } from 'next';
+import { getLocale } from 'next-intl/server';
+import { DigestShell } from '@/components/private-digest/DigestShell';
+import { localize } from '@/lib/private-digest';
 import { absoluteUrl } from '@/lib/seo';
-import { Badge } from '@/components/ui';
-import Link from 'next/link';
 
-export async function generateMetadata() {
-  return {
-    title: 'Terms of Use',
-    description:
-      'Read the terms that govern use of Mihad, including subscriptions, billing, account responsibilities, and service limits.',
-    alternates: {
-      canonical: absoluteUrl('/terms'),
-    },
-  };
-}
+export const metadata: Metadata = {
+  title: 'Terms — Mihad',
+  description: 'Mihad private digest terms for confidential inquiries, owner consent, and manual review.',
+  alternates: { canonical: absoluteUrl('/terms') },
+};
 
-function Section({
-  icon,
-  title,
-  children,
-}: {
-  icon: string;
-  title: string;
-  children: React.ReactNode;
-}) {
+export default async function TermsPage() {
+  const locale = await getLocale();
+
+  const items = [
+    [localize(locale, 'ليست دعوة بيع عامة', 'Not a public sale invitation'), localize(locale, 'ظهور أي صفحة لا يعني أن المالك ملزم بالبيع أو الرد أو قبول أي اهتمام.', 'A page appearing on Mihad does not mean the owner is obliged to sell, respond, or accept any interest.')],
+    [localize(locale, 'الاهتمام غير ملزم', 'Interest is non-binding'), localize(locale, 'أي نطاق إرشادي أو اهتمام خاص يُستخدم للفحص الأولي فقط ولا يصبح عرضًا رسميًا إلا من خلال مستندات مناسبة.', 'Any indicative range or confidential interest is used only for initial screening and is not a formal offer unless documented appropriately.')],
+    [localize(locale, 'المراجعة اليدوية', 'Manual review'), localize(locale, 'قد يرفض مهاد أو يؤخر أو يطلب معلومات إضافية من أي مالك أو مشترٍ لحماية الخصوصية وجودة المسار.', 'Mihad may reject, delay, or request more information from any owner or buyer to protect privacy and process quality.')],
+    [localize(locale, 'المتطلبات النظامية', 'Regulatory requirements'), localize(locale, 'أي خطوة وساطة أو عمولة أو تفويض أو إفصاح يجب أن تكون متوافقة ومراجعة من مختصين قبل التعامل الحي.', 'Any brokerage step, commission, mandate, or disclosure must be compliant and professionally reviewed before live transaction work.')],
+  ];
+
   return (
-    <section className="bg-surface border border-border rounded-zohal p-7 mb-5">
-      <div className="w-11 h-11 bg-surface-alt border border-border rounded-zohal-lg flex items-center justify-center text-xl mb-4">
-        {icon}
-      </div>
-      <h2 className="website-display text-2xl text-text mb-3">{title}</h2>
-      <div className="text-text-soft space-y-3">{children}</div>
-    </section>
-  );
-}
-
-function HighlightBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="bg-surface-alt border border-border border-l-[3px] border-l-accent rounded-zohal-sm p-4 my-4">
-      {children}
-    </div>
-  );
-}
-
-export default function TermsPage() {
-  return (
-    <div className="max-w-4xl mx-auto px-6 pt-24 pb-12">
-      {/* Header */}
-      <header className="text-center pt-16 pb-12">
-        <Badge variant="success" dot className="mb-6">
-          Effective: December 2025
-        </Badge>
-        <h1 className="website-display text-4xl md:text-5xl text-text tracking-tight mb-4">
-          Terms of Use (EULA)
-        </h1>
-        <p className="text-xl text-text-soft max-w-lg mx-auto">
-          End User License Agreement for Mihad - Please read these terms carefully before using the
-          app.
+    <DigestShell>
+      <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8c6f45]">{localize(locale, 'الشروط', 'Terms')}</p>
+        <h1 className="mt-4 font-serif text-5xl font-semibold leading-tight text-[#1e1a14]">{localize(locale, 'مهاد يعمل بهدوء وبمراجعة يدوية.', 'Mihad works quietly and manually.')}</h1>
+        <p className="mt-5 text-lg leading-8 text-[#625746]">
+          {localize(
+            locale,
+            'هذه مبادئ نسخة MVP وليست مستندًا قانونيًا نهائيًا. يجب تحويلها إلى شروط معتمدة قبل تشغيل معاملات حية.',
+            'These are MVP principles, not final legal terms. They should be converted into approved terms before live transaction handling.'
+          )}
         </p>
-      </header>
-
-      {/* Content */}
-      <main>
-        <Section icon="📜" title="1. Acceptance of Terms">
-          <p>
-            By downloading, installing, or using Mihad (&quot;the App&quot;), you agree to be bound
-            by these Terms of Use (End User License Agreement). If you do not agree to these terms,
-            do not use the App.
-          </p>
-          <HighlightBox>
-            <p className="text-sm">
-              <strong className="text-text">Important:</strong> This agreement is between you and
-              Mihad (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). Apple is not a party to this
-              agreement and has no obligation to provide maintenance or support for the App.
-            </p>
-          </HighlightBox>
-        </Section>
-
-        <Section icon="📱" title="2. License Grant">
-          <p>
-            Subject to your compliance with these Terms, we grant you a limited, non-exclusive,
-            non-transferable, revocable license to:
-          </p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>Download and install the App on devices that you own or control</li>
-            <li>Use the App for your personal, non-commercial purposes</li>
-            <li>Access and use the features and content made available through the App</li>
-          </ul>
-          <p>
-            This license does not allow you to use the App on any device that you do not own or
-            control, and you may not distribute or make the App available over a network where it
-            could be used by multiple devices at the same time.
-          </p>
-        </Section>
-
-        <Section icon="🔄" title="3. Subscription Terms">
-          <p>
-            Mihad offers one public auto-renewable subscription that provides access to paid
-            features:
-          </p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>
-              <strong className="text-text">Mihad Core:</strong> SAR 299/month or SAR 2,999/year
-              for 1 workspace, 1 user, and core document tools
-            </li>
-          </ul>
-          <p>
-            <strong className="text-text">Billing:</strong>
-          </p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>
-              Payment will be charged to your Apple ID account at confirmation of purchase
-            </li>
-            <li>
-              Subscription automatically renews unless cancelled at least 24 hours before the end of
-              the current period
-            </li>
-            <li>
-              Your account will be charged for renewal within 24 hours prior to the end of the
-              current period
-            </li>
-            <li>You can manage and cancel subscriptions in your App Store account settings</li>
-            <li>
-              Any unused portion of a free trial period will be forfeited when purchasing a
-              subscription
-            </li>
-          </ul>
-        </Section>
-
-        <Section icon="🚫" title="4. Restrictions">
-          <p>You agree NOT to:</p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>Copy, modify, or distribute the App or any content within it</li>
-            <li>Reverse engineer, decompile, or disassemble the App</li>
-            <li>Rent, lease, lend, sell, or sublicense the App</li>
-            <li>Use the App for any unlawful purpose or in violation of any laws</li>
-            <li>Attempt to gain unauthorized access to any systems or networks</li>
-            <li>Interfere with or disrupt the integrity or performance of the App</li>
-            <li>Upload any content that is illegal, harmful, or infringes on others&apos; rights</li>
-            <li>
-              Use automated systems to access the App in a manner that exceeds reasonable use
-            </li>
-          </ul>
-        </Section>
-
-        <Section icon="📄" title="5. User Content">
-          <p>
-            You retain ownership of any content you create, upload, or store in the App (&quot;User
-            Content&quot;). By using the App, you grant us a license to host, store, and process
-            your User Content solely for the purpose of providing the App&apos;s services to you.
-          </p>
-          <p>You are responsible for:</p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>Ensuring you have the rights to upload any content</li>
-            <li>Maintaining backups of your important content</li>
-            <li>The accuracy and legality of your User Content</li>
-          </ul>
-        </Section>
-
-        <Section icon="🤖" title="6. AI-Generated Content">
-          <p>
-            The App uses artificial intelligence to provide explanations, analysis, and other
-            features. You acknowledge that:
-          </p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>AI-generated content is provided for informational purposes only</li>
-            <li>AI responses may not always be accurate, complete, or appropriate</li>
-            <li>You should verify important information independently</li>
-            <li>We are not responsible for decisions made based on AI-generated content</li>
-          </ul>
-        </Section>
-
-        <Section icon="🛡️" title="7. Disclaimer of Warranties">
-          <p className="uppercase">
-            THE APP IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF
-            ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF
-            MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-          </p>
-          <p>We do not warrant that:</p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>The App will be uninterrupted or error-free</li>
-            <li>Defects will be corrected</li>
-            <li>The App or servers are free of viruses or harmful components</li>
-            <li>The results obtained from using the App will be accurate or reliable</li>
-          </ul>
-        </Section>
-
-        <Section icon="⚖️" title="8. Limitation of Liability">
-          <p className="uppercase">
-            TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL WE BE LIABLE FOR ANY INDIRECT,
-            INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR
-            REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL,
-            OR OTHER INTANGIBLE LOSSES.
-          </p>
-          <p>
-            Our total liability for any claims arising from or related to this agreement shall not
-            exceed the amount you paid us in the twelve (12) months preceding the claim.
-          </p>
-        </Section>
-
-        <Section icon="🔒" title="9. Privacy">
-          <p>
-            Your privacy is important to us. Our collection and use of personal information is
-            governed by our{' '}
-            <Link href="/privacy" className="text-accent hover:opacity-80">
-              Privacy Policy
-            </Link>
-            , which is incorporated into these Terms by reference.
-          </p>
-        </Section>
-
-        <Section icon="🗑️" title="10. Account Termination">
-          <p>
-            You may delete your account at any time through the App&apos;s Settings. We may
-            terminate or suspend your access to the App immediately, without prior notice, for any
-            reason, including breach of these Terms.
-          </p>
-          <p>Upon termination:</p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>Your license to use the App will immediately cease</li>
-            <li>We may delete your User Content after a reasonable period</li>
-            <li>Provisions that by their nature should survive termination will survive</li>
-          </ul>
-        </Section>
-
-        <Section icon="🍎" title="11. Apple-Specific Terms">
-          <p>If you downloaded the App from the Apple App Store, you acknowledge that:</p>
-          <ul className="list-disc pl-6 my-4 space-y-2">
-            <li>These Terms are between you and us only, not Apple</li>
-            <li>Apple has no obligation to furnish any maintenance and support services</li>
-            <li>Apple is not responsible for any product warranties or claims</li>
-            <li>Apple is not responsible for addressing any claims relating to the App</li>
-            <li>Apple and its subsidiaries are third-party beneficiaries of these Terms</li>
-          </ul>
-        </Section>
-
-        <Section icon="📝" title="12. Changes to Terms">
-          <p>
-            We reserve the right to modify these Terms at any time. If we make material changes, we
-            will notify you through the App or via email. Your continued use of the App after
-            changes become effective constitutes acceptance of the revised Terms.
-          </p>
-        </Section>
-
-        <Section icon="💬" title="13. Contact Us">
-          <p>If you have any questions about these Terms of Use, please contact us:</p>
-          <HighlightBox>
-            <p className="text-sm">
-              📧 Email:{' '}
-              <a href="mailto:support@mihad.properties" className="text-accent hover:opacity-80">
-                support@mihad.properties
-              </a>
-              {' '}or{' '}
-              <a href="mailto:abdullah@watd.co" className="text-accent hover:opacity-80">
-                abdullah@watd.co
-              </a>
-            </p>
-          </HighlightBox>
-        </Section>
+        <div className="mt-10 grid gap-4">
+          {items.map(([title, body]) => (
+            <section key={title} className="rounded-[8px] border border-[#ded6c7] bg-white p-5">
+              <h2 className="font-serif text-2xl font-semibold">{title}</h2>
+              <p className="mt-3 text-sm leading-7 text-[#625746]">{body}</p>
+            </section>
+          ))}
+        </div>
       </main>
-    </div>
+    </DigestShell>
   );
 }
