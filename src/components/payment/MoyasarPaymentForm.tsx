@@ -78,7 +78,7 @@ export function MoyasarPaymentForm({
   className,
 }: MoyasarPaymentFormProps) {
   // NOTE: recurring subscriptions use server-hosted invoice checkout (WEB_SUBSCRIPTION_V2).
-  // This component is retained for non-recurring/legacy payment experiences.
+  // This component is kept for non-recurring payment experiences.
   const formRef = useRef<HTMLDivElement>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);

@@ -97,7 +97,7 @@ ACQUISITION_BROWSER_AUTH_STATE_BAYUT=/secure/path/bayut.json
 ACQUISITION_BROWSER_AUTH_STATE_DIR=/secure/path
 ```
 
-The env names are retained compatibility names. Do not introduce new env vars
+The env names are current compatibility names. Do not introduce new env vars
 until the browser worker naming is migrated.
 
 ## Guardrails
