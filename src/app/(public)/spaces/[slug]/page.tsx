@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   return {
     title: `${space.title.en} — Mihad`,
-    description: 'A quiet editorial page for architecture, interiors, light, materials, and craft.',
+    description: 'A visual architecture note on light, privacy, materials, and Saudi modern interiors.',
     alternates: { canonical: absoluteUrl(`/spaces/${slug}`) },
     robots: space.visibility === 'private_link' ? { index: false, follow: false } : undefined,
   };
@@ -36,7 +36,7 @@ export default async function SpacePage({ params }: { params: Promise<{ slug: st
             <div className="flex flex-col justify-end py-2">
               {space.status === 'editorial_preview' ? (
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">
-                  {localize(locale, 'معاينة تنسيق', 'Format preview')}
+                  {localize(locale, 'دراسة بصرية', 'Visual study')}
                 </p>
               ) : null}
               <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#667085]">{localizedValue(locale, space.locationHint)}</p>
@@ -49,11 +49,11 @@ export default async function SpacePage({ params }: { params: Promise<{ slug: st
 
         <section className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
           <article>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">{localize(locale, 'قراءة', 'Reading')}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">{localize(locale, 'المشهد', 'The scene')}</p>
             <p className="mt-4 text-lg leading-9 text-[#334155]">{localizedValue(locale, space.story)}</p>
           </article>
           <aside className="rounded-[8px] border border-[#D8DEE8] bg-white p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">{localize(locale, 'ملاحظات التصميم', 'Design notes')}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">{localize(locale, 'ملامح', 'Cues')}</p>
             <div className="mt-4 grid gap-3">
               {space.designNotes.map((item) => (
                 <div key={item.label.en} className="flex items-center justify-between gap-4 border-b border-[#EEF2F6] pb-3 text-sm">
@@ -77,7 +77,7 @@ export default async function SpacePage({ params }: { params: Promise<{ slug: st
 
         <section className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="rounded-[8px] border border-[#D8DEE8] bg-white p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">{localize(locale, 'هوامش تحريرية', 'Editorial notes')}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">{localize(locale, 'تفاصيل هادئة', 'Quiet details')}</p>
             <div className="mt-4 grid gap-3">
               {space.editorialNotes.map((note) => (
                 <p key={note.en} className="rounded-[8px] bg-[#F8FAFC] p-4 text-sm leading-7 text-[#334155]">{localizedValue(locale, note)}</p>

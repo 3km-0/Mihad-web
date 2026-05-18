@@ -26,7 +26,7 @@ export async function DigestNav() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <Link href="/spaces" className="inline-flex min-h-10 items-center rounded-[6px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">
-            {localize(locale, 'استعراض المساحات', 'View Spaces')}
+            {localize(locale, 'المختارات', 'The Edit')}
           </Link>
         </div>
       </div>
@@ -47,20 +47,20 @@ export async function DigestFooter() {
           <p className="mt-3 max-w-xl leading-7">
             {localize(
               locale,
-              'مهاد دفتر هادئ للعمارة الداخلية والمساحات المنتقاة. الصورة، الضوء، المادة، والتكوين تأتي أولًا.',
-              'Mihad is a quiet digest for interior architecture and selected spaces. Image, light, material, and composition come first.'
+              'مهاد مختارات بصرية للفلل، المجالس، الأفنية، والعمارة الداخلية في مزاج سعودي معاصر.',
+              'Mihad collects villas, majlis rooms, courtyards, and interiors in a contemporary Saudi mood.'
             )}
           </p>
         </div>
         <div>
-          <p className="font-semibold text-[#101827]">{localize(locale, 'التصفح', 'Browse')}</p>
+          <p className="font-semibold text-[#101827]">{localize(locale, 'المختارات', 'Edit')}</p>
           <div className="mt-3 grid gap-2">
             <Link href="/spaces">{localize(locale, 'المساحات', 'Spaces')}</Link>
             <Link href="/about">{localize(locale, 'عن مهاد', 'About Mihad')}</Link>
           </div>
         </div>
         <div>
-          <p className="font-semibold text-[#101827]">{localize(locale, 'النظام', 'System')}</p>
+          <p className="font-semibold text-[#101827]">{localize(locale, 'روابط', 'Links')}</p>
           <div className="mt-3 grid gap-2">
             <Link href="/privacy">{localize(locale, 'الخصوصية', 'Privacy')}</Link>
             <Link href="/terms">{localize(locale, 'الشروط', 'Terms')}</Link>
