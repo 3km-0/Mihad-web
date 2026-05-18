@@ -45,21 +45,21 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-[#fbfaf6] text-[#24352f]">
+    <div className="min-h-screen bg-[#EEF2F6] text-[#101827]">
       <PrefabNav />
       <main>
-        <section className="relative overflow-hidden border-b border-[#ddd5c2]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(31,107,79,0.14),transparent_30%),linear-gradient(120deg,#fbfaf6,#f1ead9)]" />
+        <section className="relative overflow-hidden border-b border-[#D8DEE8]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(29,78,137,0.12),transparent_30%),linear-gradient(120deg,#EEF2F6,#F8FAFC)]" />
           <div className="relative mx-auto grid min-h-[calc(100svh-72px)] max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,0.85fr)] lg:items-center lg:px-8">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-[999px] border border-[#d8cfba] bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7650]">
+              <p className="inline-flex items-center gap-2 rounded-[999px] border border-[#D8DEE8] bg-white/85 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#1D4E89]">
                 <BadgeCheck className="h-4 w-4" />
                 {pickLocalized(locale, 'طلبات بناء جاهز للسوق السعودي', 'Saudi-first prefab RFQs')}
               </p>
-              <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal text-[#24352f] md:text-7xl">
+              <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-normal text-[#101827] md:text-7xl">
                 {pickLocalized(locale, 'اختر حل البناء الجاهز المناسب لمشروعك في السعودية', 'Find the right prefab home or modular space in Saudi Arabia')}
               </h1>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-[#59645e]">
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-[#334155]">
                 {pickLocalized(
                   locale,
                   'قارن بين موردين موثوقين، تصفح النماذج الجاهزة، واطلب عروض حسب المدينة، الأرض، الميزانية، ونوع المشروع.',
@@ -67,14 +67,14 @@ export default async function HomePage() {
                 )}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link href="/request-quote" className="inline-flex min-h-12 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-5 text-sm font-semibold text-white transition hover:bg-[#18543f]">
+                <Link href="/request-quote" className="inline-flex min-h-12 items-center gap-2 rounded-[8px] bg-[#23395D] px-5 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">
                   {pickLocalized(locale, 'ابدأ بالموقع والميزانية ونوع المشروع', 'Start with your land, budget, and use case')}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/models" className="inline-flex min-h-12 items-center rounded-[8px] border border-[#cfc5ad] bg-white/70 px-5 text-sm font-semibold text-[#24352f] transition hover:border-[#1f6b4f]">
+                <Link href="/models" className="inline-flex min-h-12 items-center rounded-[8px] border border-[#C8D2E0] bg-white/75 px-5 text-sm font-semibold text-[#101827] transition hover:border-[#1D4E89]">
                   {pickLocalized(locale, 'تصفح النماذج', 'Browse prefab models')}
                 </Link>
-                <Link href={PREFAB_WHATSAPP_URL} className="inline-flex min-h-12 items-center gap-2 rounded-[8px] border border-[#cfc5ad] bg-white/70 px-5 text-sm font-semibold text-[#24352f] transition hover:border-[#1f6b4f]">
+                <Link href={PREFAB_WHATSAPP_URL} className="inline-flex min-h-12 items-center gap-2 rounded-[8px] border border-[#C8D2E0] bg-white/75 px-5 text-sm font-semibold text-[#101827] transition hover:border-[#1D4E89]">
                   <MessageCircle className="h-4 w-4" />
                   {pickLocalized(locale, 'واتساب', 'WhatsApp')}
                 </Link>
@@ -86,22 +86,22 @@ export default async function HomePage() {
                   pickLocalized(locale, 'طلبات أسعار + واتساب', 'RFQ + WhatsApp matching'),
                   pickLocalized(locale, 'منازل، شاليهات، مجالس، مكاتب', 'Homes, chalets, majlis, offices'),
                 ].map((item) => (
-                  <div key={item} className="flex items-center gap-2 rounded-[8px] border border-[#ddd5c2] bg-white/72 px-3 py-2 text-sm font-semibold text-[#59645e]">
-                    <ShieldCheck className="h-4 w-4 text-[#1f6b4f]" />
+                  <div key={item} className="flex items-center gap-2 rounded-[8px] border border-[#D8DEE8] bg-white/75 px-3 py-2 text-sm font-semibold text-[#334155]">
+                    <ShieldCheck className="h-4 w-4 text-[#1D4E89]" />
                     {item}
                   </div>
                 ))}
               </div>
             </div>
             <div className="space-y-4">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] border border-[#d8cfba] shadow-[0_28px_80px_rgba(36,53,47,0.18)]">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] border border-[#D8DEE8] shadow-[0_28px_80px_rgba(16,24,39,0.16)]">
                 <Image src="/onboarding/workspace.jpg" alt="Modern prefab project planning in Saudi Arabia" fill className="object-cover" priority sizes="(min-width: 1024px) 40vw, 100vw" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4 rounded-[8px] bg-white/92 p-4">
-                  <p className="text-sm font-semibold text-[#24352f]">
+                  <p className="text-sm font-semibold text-[#101827]">
                     {pickLocalized(locale, 'قبل مكالمة المورد، خلّ النطاق واضح.', 'Before supplier calls, clarify scope.')}
                   </p>
-                  <p className="mt-1 text-sm text-[#59645e]">
+                  <p className="mt-1 text-sm text-[#334155]">
                     {pickLocalized(
                       locale,
                       'الأرض، الميزانية، الوقت، النقل، الأساسات، الخدمات، والتركيب كلها تغيّر العرض النهائي.',
@@ -126,7 +126,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="bg-[#f5f1e7] py-16">
+        <section className="bg-[#F8FAFC] py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
               eyebrow={pickLocalized(locale, 'كيف يعمل', 'How it works')}
@@ -152,10 +152,10 @@ export default async function HomePage() {
                   pickLocalized(locale, 'راجع ملاءمة المورد، النطاق، والخطوات القادمة.', 'Review supplier fit, scope, and next steps.'),
                 ],
               ].map(([title, body], index) => (
-                <div key={title} className="rounded-[8px] border border-[#ddd5c2] bg-white p-5">
-                  <span className="grid h-9 w-9 place-items-center rounded-[8px] bg-[#1f6b4f] text-sm font-bold text-white">{index + 1}</span>
+                <div key={title} className="rounded-[8px] border border-[#D8DEE8] bg-white p-5">
+                  <span className="grid h-9 w-9 place-items-center rounded-[8px] bg-[#23395D] text-sm font-bold text-white">{index + 1}</span>
                   <h3 className="mt-4 text-lg font-semibold">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[#59645e]">{body}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#334155]">{body}</p>
                 </div>
               ))}
             </div>
@@ -174,7 +174,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="bg-[#f5f1e7] py-16">
+        <section className="bg-[#F8FAFC] py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
               eyebrow={pickLocalized(locale, 'الموردون', 'Suppliers')}
@@ -184,7 +184,7 @@ export default async function HomePage() {
             <div className="mt-10 grid gap-5 lg:grid-cols-3">
               {suppliers.slice(0, 3).map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} />)}
             </div>
-            <p className="mt-6 rounded-[8px] border border-[#d8cfba] bg-white p-4 text-sm leading-6 text-[#59645e]">
+            <p className="mt-6 rounded-[8px] border border-[#D8DEE8] bg-white p-4 text-sm leading-6 text-[#334155]">
               {pickLocalized(
                 locale,
                 'التحقق لا يعني أن مهاد يضمن اعتماد المشروع أو السعر أو التسليم. معناه أن المورد قدّم معلومات أساسية عن الشركة والأعمال والخدمة للمراجعة.',
@@ -207,7 +207,7 @@ export default async function HomePage() {
           <ReadinessChecklist />
         </section>
 
-        <section className="bg-[#f5f1e7] py-16">
+        <section className="bg-[#F8FAFC] py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionHeading
               eyebrow={pickLocalized(locale, 'الأدلة', 'Guides')}
@@ -221,20 +221,20 @@ export default async function HomePage() {
         </section>
 
         <section className="mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
-          <div className="rounded-[8px] border border-[#d8cfba] bg-white p-8">
-            <Building2 className="h-9 w-9 text-[#1f6b4f]" />
+          <div className="rounded-[8px] border border-[#D8DEE8] bg-white p-8">
+            <Building2 className="h-9 w-9 text-[#1D4E89]" />
             <h2 className="mt-4 text-3xl font-semibold">{pickLocalized(locale, 'تحتاج وحدات جاهزة لمشروع تجاري؟', 'Need modular spaces for a business project?')}</h2>
-            <p className="mt-3 leading-7 text-[#59645e]">
+            <p className="mt-3 leading-7 text-[#334155]">
               {pickLocalized(locale, 'اطلب عروض للمكاتب الجاهزة، سكن العمال، العيادات، الفصول، المقاهي، الأكشاك، ومرافق المواقع.', 'Request quotes for modular offices, staff housing, clinics, classrooms, cafes, kiosks, and site facilities.')}
             </p>
-            <Link href="/for-businesses" className="mt-5 inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">{pickLocalized(locale, 'قدّم طلب شركة', 'Submit business RFQ')}</Link>
+            <Link href="/for-businesses" className="mt-5 inline-flex min-h-11 items-center rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white">{pickLocalized(locale, 'قدّم طلب شركة', 'Submit business RFQ')}</Link>
           </div>
-          <div className="rounded-[8px] border border-[#d8cfba] bg-[#24352f] p-8 text-white">
+          <div className="rounded-[8px] border border-[#30333A] bg-[#111827] p-8 text-white">
             <h2 className="text-3xl font-semibold">{pickLocalized(locale, 'هل أنت مصنع أو مورد لحلول البناء الجاهز؟', 'Are you a prefab manufacturer?')}</h2>
-            <p className="mt-3 leading-7 text-[#d7e2dc]">
+            <p className="mt-3 leading-7 text-[#C9CCD1]">
               {pickLocalized(locale, 'انضم إلى مهاد لعرض نماذجك واستقبال طلبات مؤهلة وبناء الثقة مع المشترين في السعودية.', 'Join Mihad to showcase your models, receive qualified RFQs, and build trust with Saudi buyers.')}
             </p>
-            <Link href="/for-manufacturers" className="mt-5 inline-flex min-h-11 items-center rounded-[8px] bg-white px-4 text-sm font-semibold text-[#24352f]">{pickLocalized(locale, 'قدّم كمورد', 'Apply as supplier')}</Link>
+            <Link href="/for-manufacturers" className="mt-5 inline-flex min-h-11 items-center rounded-[8px] bg-white px-4 text-sm font-semibold text-[#111827]">{pickLocalized(locale, 'قدّم كمورد', 'Apply as supplier')}</Link>
           </div>
         </section>
       </main>

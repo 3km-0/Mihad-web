@@ -8,8 +8,8 @@
  * Mihad Design — Saudi Authority Minimal (CSS variables)
  *
  * Two themes share the same token surface:
- *   - zohal-light  Quiet Pearl / Single Green
- *   - zohal-dark   Executive Graphite / Premium Gold
+ *   - zohal-light  Editorial Authority
+ *   - zohal-dark   Monochrome + Mint Accent
  *
  * Spec: zohal-platform/Documentation/Design/Mihad Design.md
  */
@@ -29,94 +29,104 @@
   --rPill: 999px;
 }
 
-/* Mihad Light — Quiet Pearl / Single Green */
+/* Mihad Light — Editorial Authority */
 :root,
 [data-theme='zohal-light'] {
-  --bg: #f7f8f5;
+  color-scheme: light;
+  --bg: #eef2f6;
   --surface: #ffffff;
-  --surface-alt: #f1f3ef;
-  --surface-active: #ffffff;
-  --surface-nested: #eef6f2;
-  --text: #1f2528;
-  --text-soft: #4d5653;
-  --text-muted: #7a7f79;
-  --text-faint: #9b9f98;
-  --border: #dde1d8;
-  --border-strong: #c6cbbf;
-  --accent: #073d32;
-  --accent-rgb: 7, 61, 50;
-  --accent-alt: #b8893d;
-  --highlight: #3f4846;
-  --highlight-rgb: 63, 72, 70;
-  --success: #218c5a;
-  --error: #c94a3a;
-  --error-rgb: 201, 74, 58;
-  --warning: #b8893d;
-  --warning-soft: rgba(184, 137, 61, 0.12);
-  --accent-soft: rgba(7, 61, 50, 0.1);
-  --accent-dim: rgba(7, 61, 50, 0.05);
+  --surface-alt: #f8fafc;
+  --surface-active: #eef2f6;
+  --surface-nested: #eef2f6;
+  --sidebar: #111827;
+  --hover: #f2f5f9;
+  --text: #101827;
+  --text-soft: #334155;
+  --text-muted: #667085;
+  --text-faint: #98a2b3;
+  --border: #d8dee8;
+  --border-strong: #c8d2e0;
+  --primary: #23395d;
+  --primary-text: #ffffff;
+  --accent: #1d4e89;
+  --accent-rgb: 29, 78, 137;
+  --accent-alt: #23395d;
+  --highlight: #1d4e89;
+  --highlight-rgb: 29, 78, 137;
+  --success: #2d6a4f;
+  --error: #9f2f2f;
+  --error-rgb: 159, 47, 47;
+  --warning: #a16207;
+  --warning-soft: rgba(161, 98, 7, 0.12);
+  --accent-soft: rgba(29, 78, 137, 0.09);
+  --accent-dim: rgba(35, 57, 93, 0.08);
   --accent-text: #ffffff;
-  --button-primary-bg: #073d32;
-  --button-primary-bg-hover: #0b5143;
+  --button-primary-bg: #23395d;
+  --button-primary-bg-hover: #1d4e89;
   --button-primary-text: #ffffff;
-  --grid-color: rgba(31, 37, 40, 0.04);
-  --grid-opacity: 0.42;
-  --grid-size: 28px;
-  --shadowSm: 0 1px 2px rgba(31, 37, 40, 0.04), 0 8px 24px rgba(31, 37, 40, 0.055);
-  --shadowMd: 0 4px 12px rgba(31, 37, 40, 0.06), 0 18px 48px rgba(31, 37, 40, 0.08);
-  --nav-bg-top: rgba(247, 248, 245, 0.78);
-  --nav-bg-scrolled: rgba(247, 248, 245, 0.94);
-  --nav-border: rgba(31, 37, 40, 0.1);
+  --grid-color: rgba(16, 24, 39, 0.045);
+  --grid-opacity: 0.34;
+  --grid-size: 32px;
+  --shadowSm: 0 1px 2px rgba(16, 24, 39, 0.04), 0 8px 24px rgba(16, 24, 39, 0.055);
+  --shadowMd: 0 4px 12px rgba(16, 24, 39, 0.06), 0 18px 48px rgba(16, 24, 39, 0.08);
+  --nav-bg-top: rgba(255, 255, 255, 0.82);
+  --nav-bg-scrolled: rgba(255, 255, 255, 0.94);
+  --nav-border: rgba(216, 222, 232, 0.88);
   --console-bg:
-    radial-gradient(circle at 78% 16%, rgba(7, 61, 50, 0.045) 0%, transparent 38%),
-    radial-gradient(circle at 18% 72%, rgba(63, 72, 70, 0.035) 0%, transparent 42%),
-    linear-gradient(180deg, #f7f8f5 0%, #eeede7 100%);
-  --panel-bg: linear-gradient(180deg, #ffffff 0%, #f1f3ef 100%);
+    radial-gradient(circle at 78% 16%, rgba(29, 78, 137, 0.045) 0%, transparent 38%),
+    radial-gradient(circle at 18% 72%, rgba(35, 57, 93, 0.035) 0%, transparent 42%),
+    linear-gradient(180deg, #eef2f6 0%, #f8fafc 100%);
+  --panel-bg: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
-/* Mihad Dark — Executive Graphite / Premium Gold */
+/* Mihad Dark — Monochrome + Mint Accent */
 [data-theme='dark'],
 [data-theme='zohal-dark'] {
-  --bg: #0d0e0c;
-  --surface: #151713;
-  --surface-alt: #1b1d19;
-  --surface-active: #20221e;
-  --surface-nested: #20221e;
-  --text: #f4f0e7;
-  --text-soft: #cbc4b8;
-  --text-muted: #918b82;
-  --text-faint: #6f6a62;
-  --border: #2d302a;
-  --border-strong: #3a3f35;
-  --accent: #d8b45c;
-  --accent-rgb: 216, 180, 92;
-  --accent-alt: #f0cf79;
-  --highlight: #073d32;
-  --highlight-rgb: 7, 61, 50;
-  --success: #16a34a;
-  --error: #f06455;
-  --error-rgb: 240, 100, 85;
-  --warning: #d8b45c;
-  --warning-soft: rgba(216, 180, 92, 0.12);
-  --accent-soft: rgba(216, 180, 92, 0.12);
-  --accent-dim: rgba(216, 180, 92, 0.055);
-  --accent-text: #0d0e0c;
-  --button-primary-bg: #d8b45c;
-  --button-primary-bg-hover: #f0cf79;
-  --button-primary-text: #0d0e0c;
-  --grid-color: rgba(216, 180, 92, 0.025);
-  --grid-opacity: 0.14;
+  color-scheme: dark;
+  --bg: #070708;
+  --surface: #101112;
+  --surface-alt: #151618;
+  --surface-active: #1a1b1e;
+  --surface-nested: #1a1b1e;
+  --sidebar: #0a0a0b;
+  --hover: #191a1d;
+  --text: #f3f4f6;
+  --text-soft: #c9ccd1;
+  --text-muted: #8b9099;
+  --text-faint: #5f646d;
+  --border: #24262b;
+  --border-strong: #30333a;
+  --primary: #f3f4f6;
+  --primary-text: #080809;
+  --accent: #a6e3b8;
+  --accent-rgb: 166, 227, 184;
+  --accent-alt: #6fa77f;
+  --highlight: #a6e3b8;
+  --highlight-rgb: 166, 227, 184;
+  --success: #8fd6a3;
+  --error: #e08a8a;
+  --error-rgb: 224, 138, 138;
+  --warning: #d6c58f;
+  --warning-soft: rgba(214, 197, 143, 0.12);
+  --accent-soft: rgba(166, 227, 184, 0.09);
+  --accent-dim: rgba(111, 167, 127, 0.1);
+  --accent-text: #061009;
+  --button-primary-bg: #f3f4f6;
+  --button-primary-bg-hover: #c9ccd1;
+  --button-primary-text: #080809;
+  --grid-color: rgba(166, 227, 184, 0.022);
+  --grid-opacity: 0.12;
   --grid-size: 48px;
   --shadowSm: 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 36px rgba(0, 0, 0, 0.42);
   --shadowMd: 0 18px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --nav-bg-top: rgba(13, 14, 12, 0.82);
-  --nav-bg-scrolled: rgba(13, 14, 12, 0.94);
-  --nav-border: #2d302a;
+  --nav-bg-top: rgba(7, 7, 8, 0.88);
+  --nav-bg-scrolled: rgba(7, 7, 8, 0.96);
+  --nav-border: #24262b;
   --console-bg:
-    radial-gradient(circle at 72% 18%, rgba(216, 180, 92, 0.07) 0%, transparent 36%),
-    radial-gradient(circle at 22% 70%, rgba(7, 61, 50, 0.045) 0%, transparent 40%),
-    linear-gradient(180deg, #0d0e0c 0%, #080907 100%);
-  --panel-bg: linear-gradient(180deg, #1b1d19 0%, #151713 100%);
+    radial-gradient(circle at 72% 18%, rgba(166, 227, 184, 0.045) 0%, transparent 36%),
+    radial-gradient(circle at 22% 70%, rgba(95, 100, 109, 0.04) 0%, transparent 40%),
+    linear-gradient(180deg, #070708 0%, #0a0a0b 100%);
+  --panel-bg: linear-gradient(180deg, #151618 0%, #101112 100%);
 }
 
 /* Base Styles */

@@ -904,7 +904,7 @@ function PrimaryLinkButton({
         'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--rSm)]',
         'bg-accent text-[color:var(--accent-text)] font-semibold px-5 py-2.5',
         'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
-        'shadow-[0_10px_28px_rgba(226,200,126,0.14)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0',
+        'shadow-[0_10px_28px_rgba(29,78,137,0.14)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-highlight focus-visible:outline-offset-2',
         className
       )}
@@ -1379,9 +1379,9 @@ function DecisionPackMock() {
 
   return (
     <div className="relative overflow-hidden rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98))] shadow-[0_28px_90px_rgba(0,0,0,0.34)]">
-      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(226,200,126,0),rgba(226,200,126,0.35),rgba(226,200,126,0))]" />
-      <div className="absolute -right-20 top-10 h-40 w-40 rounded-full bg-[rgba(226,200,126,0.12)] blur-3xl" />
-      <div className="absolute -left-12 bottom-12 h-32 w-32 rounded-full bg-[rgba(226,200,126,0.14)] blur-3xl" />
+      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(166,227,184,0),rgba(166,227,184,0.35),rgba(166,227,184,0))]" />
+      <div className="absolute -right-20 top-10 h-40 w-40 rounded-full bg-[rgba(166,227,184,0.12)] blur-3xl" />
+      <div className="absolute -left-12 bottom-12 h-32 w-32 rounded-full bg-[rgba(166,227,184,0.14)] blur-3xl" />
 
       <div className="relative flex items-start justify-between gap-4 border-b border-[rgba(255,255,255,0.06)] px-6 py-5">
         <div>
@@ -1396,7 +1396,7 @@ function DecisionPackMock() {
           <span className="rounded-[var(--rPill)] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold text-text-soft">
             {content.ui.mock.reviewStatus}
           </span>
-          <span className="rounded-[var(--rPill)] border border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.16)] px-3 py-1 text-[11px] font-semibold text-success">
+          <span className="rounded-[var(--rPill)] border border-[rgba(143,214,163,0.34)] bg-[rgba(143,214,163,0.16)] px-3 py-1 text-[11px] font-semibold text-success">
             {content.ui.mock.verifiedStatus}
           </span>
         </div>
@@ -1420,7 +1420,7 @@ function DecisionPackMock() {
                 <div className="h-2.5 w-10/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
                 <div className="h-2.5 w-7/12 rounded-full bg-[rgba(255,255,255,0.08)]" />
               </div>
-              <div className="mt-5 rounded-[20px] border border-[rgba(226,200,126,0.3)] bg-[rgba(226,200,126,0.08)] p-4 text-sm leading-7 text-accent">
+              <div className="mt-5 rounded-[20px] border border-[rgba(166,227,184,0.3)] bg-[rgba(166,227,184,0.08)] p-4 text-sm leading-7 text-[#A6E3B8]">
                 {content.ui.mock.highlightSnippet}
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3">
@@ -1431,7 +1431,7 @@ function DecisionPackMock() {
                   >
                     <div className="text-xs text-text-soft">{pageLabel(page)}</div>
                     <div className="mt-2 h-12 rounded-[14px] bg-[rgba(255,255,255,0.06)]" />
-                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(226,200,126,0.24)]" />
+                    <div className="mt-2 h-2 w-8/12 rounded-full bg-[rgba(166,227,184,0.24)]" />
                   </div>
                 ))}
               </div>
@@ -1455,8 +1455,8 @@ function DecisionPackMock() {
                         className={cn(
                           'rounded-[var(--rPill)] px-2.5 py-1 text-[11px] font-semibold',
                           row.accent === 'success'
-                            ? 'border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.16)] text-success'
-                            : 'border border-[color:var(--accent-alt)] bg-[rgba(226,200,126,0.06)] text-accent'
+                            ? 'border border-[rgba(143,214,163,0.32)] bg-[rgba(143,214,163,0.16)] text-success'
+                            : 'border border-[rgba(166,227,184,0.28)] bg-[rgba(166,227,184,0.06)] text-[#A6E3B8]'
                         )}
                       >
                         {row.status}
@@ -1468,8 +1468,8 @@ function DecisionPackMock() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-[color:var(--accent-alt)] bg-[linear-gradient(180deg,rgba(226,200,126,0.12),rgba(226,200,126,0.05))] p-5">
-              <div className="text-[11px] tracking-[0.18em] uppercase text-accent">
+            <div className="rounded-[24px] border border-[rgba(166,227,184,0.28)] bg-[linear-gradient(180deg,rgba(166,227,184,0.12),rgba(166,227,184,0.05))] p-5">
+              <div className="text-[11px] tracking-[0.18em] uppercase text-[#A6E3B8]">
                 {content.ui.mock.exceptionsQueueTitle}
               </div>
               <div className="mt-3 text-lg leading-relaxed text-text sm:text-xl">
@@ -1543,9 +1543,9 @@ function HeroVisualScene({
   return (
     <div className={cn("relative mx-auto w-full", isRtl ? "max-w-[780px]" : "max-w-[760px]")}>
       {/* Ambient glow behind the card */}
-      <div className="pointer-events-none absolute -inset-6 rounded-[50px] bg-[radial-gradient(ellipse_at_60%_30%,rgba(226,200,126,0.12),transparent_55%)]" aria-hidden="true" />
+      <div className="pointer-events-none absolute -inset-6 rounded-[50px] bg-[radial-gradient(ellipse_at_60%_30%,rgba(166,227,184,0.12),transparent_55%)]" aria-hidden="true" />
 
-      <div className="relative overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.09)] bg-[#0f0f11] shadow-[0_32px_100px_rgba(0,0,0,0.5)]">
+      <div className="relative overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.09)] bg-[#101112] shadow-[0_32px_100px_rgba(0,0,0,0.5)]">
 
         {/* Window chrome bar */}
         <div className={cn(
@@ -1560,7 +1560,7 @@ function HeroVisualScene({
           <div className="text-[11px] tracking-[0.18em] uppercase text-[rgba(255,255,255,0.35)]">
             {content.ui.mock.samplePackTitle}
           </div>
-          <span className="rounded-full border border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.14)] px-2.5 py-1 text-[10px] font-semibold text-success">
+          <span className="rounded-full border border-[rgba(143,214,163,0.34)] bg-[rgba(143,214,163,0.14)] px-2.5 py-1 text-success">
             {content.ui.mock.verifiedStatus}
           </span>
         </div>
@@ -1588,14 +1588,14 @@ function HeroVisualScene({
             </div>
 
             {/* Highlighted / extracted clause */}
-            <div className="rounded-[14px] border border-[rgba(226,200,126,0.28)] bg-[rgba(226,200,126,0.07)] px-4 py-3.5 mb-5">
+            <div className="rounded-[14px] border border-[rgba(166,227,184,0.28)] bg-[rgba(166,227,184,0.07)] px-4 py-3.5 mb-5">
               <div className={cn("mb-2 flex items-center gap-1.5", isRtl && "flex-row-reverse")}>
-                <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
-                <span className="text-[9px] font-semibold tracking-[0.15em] uppercase text-accent">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#A6E3B8] shrink-0" />
+                <span className="text-[9px] font-semibold tracking-[0.15em] uppercase text-[#A6E3B8]">
                   {content.ui.mock.fieldEvidenceLabel}
                 </span>
               </div>
-              <p className={cn("text-sm leading-6 text-accent/80", isRtl && "text-right")}>
+              <p className={cn("text-sm leading-6 text-[#A6E3B8]/80", isRtl && "text-right")}>
                 {content.ui.mock.highlightSnippet}
               </p>
             </div>
@@ -1633,8 +1633,8 @@ function HeroVisualScene({
                     className={cn(
                       "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold",
                       row.tone === "success"
-                        ? "border border-[rgba(74,222,128,0.3)] bg-[rgba(74,222,128,0.12)] text-success"
-                        : "border border-[rgba(226,200,126,0.28)] bg-[rgba(226,200,126,0.08)] text-accent"
+                        ? "border border-[rgba(143,214,163,0.3)] bg-[rgba(143,214,163,0.12)] text-success"
+                        : "border border-[rgba(166,227,184,0.28)] bg-[rgba(166,227,184,0.08)] text-[#A6E3B8]"
                     )}
                   >
                     {row.status}
@@ -1644,10 +1644,10 @@ function HeroVisualScene({
             </div>
 
             {/* Exception / alert card */}
-            <div className="mt-3 rounded-[12px] border border-[rgba(226,200,126,0.22)] bg-[rgba(226,200,126,0.06)] px-3.5 py-3">
+            <div className="mt-3 rounded-[12px] border border-[rgba(166,227,184,0.22)] bg-[rgba(166,227,184,0.06)] px-3.5 py-3">
               <div className={cn("flex items-center gap-2 mb-1", isRtl && "flex-row-reverse")}>
-                <span className={cn("h-2 w-2 rounded-full bg-accent shrink-0", pulseClass)} />
-                <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-accent">
+                <span className={cn("h-2 w-2 rounded-full bg-[#A6E3B8] shrink-0", pulseClass)} />
+                <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[#A6E3B8]">
                   {content.ui.mock.exceptionsQueueTitle}
                 </span>
               </div>

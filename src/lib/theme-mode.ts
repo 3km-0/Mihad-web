@@ -2,8 +2,8 @@
 
 /**
  * Mihad Design — two themes share the same token surface:
- *   - 'light'  Quiet Pearl / Single Green (`zohal-light`)
- *   - 'dark'   Executive Graphite / Premium Gold (`zohal-dark`)
+ *   - 'light'  Editorial Authority (`zohal-light`)
+ *   - 'dark'   Monochrome + Mint Accent (`zohal-dark`)
  *
  * Legacy stored value `cockpit` normalizes to `dark`.
  *
