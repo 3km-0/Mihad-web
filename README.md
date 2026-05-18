@@ -1,9 +1,9 @@
 # Mihad Web
 
 Status: Active
-Last reviewed: 2026-05-17
+Last reviewed: 2026-05-18
 
-Web companion for the Mihad document and buyer workflow platform. Built
+Web companion for the Mihad document and activation workflow platform. Built
 with Next.js 15, React 19, TypeScript, Tailwind, next-intl, and Supabase SSR
 auth.
 
@@ -31,6 +31,22 @@ The active buyer workflow lane is:
 
 `Buyer Mandate -> RFQ -> Source Run -> Sourced Option -> Match -> Buyer Packet -> Partner Intro -> Deal Event`
 
+The public prefab posture is:
+
+`Editorial/Gallery Front Door -> Demand Activation Request -> Deterministic Scoring -> Broker/Manager -> Selective Operator`
+
+The homepage should not be a chat-first or SaaS-first surface. It should help
+people browse prefab homes, modular buildings, retail pods, project offices,
+and land activation ideas. The demand engine remains visible through header and
+homepage CTAs for:
+
+- `ابدأ طلبك` / `Start a request`
+- `أحتاج موقع تجاري` / `I need a commercial site`
+- `عندي أرض` / `I own land`
+- `أنا مورد مباني جاهزة` / `I provide modular units`
+
+AI is an optional concierge entry point, not the default landing experience.
+
 Web uses the same product language as iOS and core docs:
 - `Living Interface` for public/product language
 - `Surface` for internal runtime/delivery language
@@ -43,12 +59,16 @@ acquisition report lane in the active buyer desk.
 
 ## Main Areas
 
+- public editorial/gallery prefab and modular inspiration pages
+- three-path activation request flow for tenants, landowners, and modular suppliers
+- deterministic activation scoring and broker/operator routing state
 - authenticated workspace and buyer/RFQ flows
 - Sources / document management
 - operator and Ask flows
 - settings, billing, and subscription UI
 - derived buyer packet and consent-scoped partner sharing
 - approval-gated supplier/broker intro actions
+- operator RFQ queue, match board, and approval gates
 - web-side GCP backend service code under `services/zohal-backend/`
 
 ## Localization

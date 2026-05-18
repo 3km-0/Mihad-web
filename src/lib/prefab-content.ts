@@ -24,9 +24,12 @@ export type PrefabGuide = {
 };
 
 export const PREFAB_WHATSAPP_URL =
-  'https://wa.me/966500000000?text=I%20want%20to%20request%20a%20prefab%20quote%20through%20Mihad';
+  'https://wa.me/966500000000?text=I%20want%20to%20start%20a%20Mihad%20activation%20request';
 
 export const PREFAB_PROJECT_TYPES = [
+  { value: 'commercial_site', label: 'Commercial site activation', labelAr: 'تفعيل موقع تجاري' },
+  { value: 'land_activation', label: 'Land activation', labelAr: 'تفعيل أرض' },
+  { value: 'supplier_application', label: 'Modular supplier application', labelAr: 'تسجيل مورد مباني جاهزة' },
   { value: 'villa', label: 'Home / Villa', labelAr: 'منزل / فيلا' },
   { value: 'chalet', label: 'Chalet / Cabin', labelAr: 'شاليه / كابن' },
   { value: 'majlis', label: 'Majlis', labelAr: 'مجلس' },
