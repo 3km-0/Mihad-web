@@ -13,6 +13,8 @@ export default function PublicLayout({
 
   const prefabChromeRoutes = [
     '/home',
+    '/calculator',
+    '/fieldbook',
     '/request-quote',
     '/models',
     '/suppliers',

@@ -24,7 +24,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Public front-door lane:
 
-`Editorial/Gallery Front Door -> Site Mandate Draft -> Signup -> Activation Deal Workspace`
+`Prefab Fieldbook -> Prefab AI Calculator -> Planning Result -> Optional Activation Workspace`
 
 Authenticated activation lane:
 
@@ -35,25 +35,26 @@ Persistence backing lane:
 `Buyer Mandate -> RFQ -> Activation Opportunity -> Source Run -> Sourced Option -> Match -> Approval Gate -> Deal Event`
 
 The homepage should not be a chat-first or SaaS-first surface. It should help
-people browse prefab homes, modular buildings, retail pods, project offices, and
-land activation ideas. The main CTA is:
+people read prefab concepts, browse modular models, and estimate cost, timeline,
+site readiness, and supplier fit before any partner outreach. The main CTA is:
 
-- `ابدأ تفويض موقع` / `Start a site mandate`
+- `احسب مشروعك الجاهز` / `Estimate your prefab project`
 
 Supporting paths:
 
-- `أحتاج موقع تجاري` / `I need a commercial site`
-- `عندي أرض` / `I own land`
-- `أنا مورد مباني جاهزة` / `I provide modular units`
+- `دليل مهاد` / `Prefab Fieldbook`
+- `قارن الموردين` / `Compare suppliers`
+- `أحتاج أرض مناسبة` / `Find land for this concept`
 
-Anonymous users may draft a mandate. Signup is required before durable workspace
+Anonymous users may calculate a project and draft a project brief. Signup is required before durable workspace
 creation, browser sourcing, saved options, uploads, supplier/broker/landowner
 contact, and approval-gated execution.
 
 ## Main Areas
 
-- editorial/gallery prefab and modular inspiration pages
-- guided mandate journey for tenants/investors, landowners, and modular suppliers
+- Prefab Fieldbook article pages
+- public Prefab AI Calculator
+- calculator-to-project-brief journey for tenants/investors, landowners, and modular suppliers
 - authenticated Activation Deal Workspace
 - land options board and ranked option cards
 - activation land sourcing through operator-controlled browser workers
@@ -75,7 +76,7 @@ Implementation rules:
 
 - `NEXT_LOCALE=ar` is the default when the user has not explicitly selected a
   language.
-- The language switcher must remain visible on public prefab/mandate pages.
+- The language switcher must remain visible on public prefab calculator and Fieldbook pages.
 - Do not add user-facing English-only strings. Add Arabic and English together,
   with Arabic treated as the source copy for Saudi-facing flows.
 - Keep legal/scope disclaimers precise in both languages, especially around

@@ -6,7 +6,7 @@ import { absoluteUrl } from '@/lib/seo';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Prefab suppliers — Mihad',
-  description: 'Explore reviewed prefab manufacturers serving Saudi buyers and submit structured quote requests.',
+  description: 'Explore reviewed prefab manufacturers serving Saudi buyers and compare them through calculator-backed project briefs.',
   alternates: { canonical: absoluteUrl('/suppliers') },
 };
 

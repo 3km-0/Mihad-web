@@ -83,10 +83,10 @@ export function Header({
               WhatsApp
             </Link>
             <Link
-              href="/request-quote"
+              href="/calculator"
               className="inline-flex min-h-[42px] items-center justify-center rounded-[var(--rSm)] bg-text px-4 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:opacity-95"
             >
-              Get matched
+              Calculator
             </Link>
           </div>
         )}

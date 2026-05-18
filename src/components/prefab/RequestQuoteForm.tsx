@@ -39,11 +39,23 @@ export function RequestQuoteForm({
   initialProjectType,
   initialModel,
   initialSupplier,
+  initialCity,
+  initialSize,
+  initialLandStatus,
+  initialUseCase,
+  initialBudgetMax,
+  initialNotes,
 }: {
   initialAudience?: string;
   initialProjectType?: string;
   initialModel?: string;
   initialSupplier?: string;
+  initialCity?: string;
+  initialSize?: string;
+  initialLandStatus?: string;
+  initialUseCase?: string;
+  initialBudgetMax?: string;
+  initialNotes?: string;
 }) {
   const locale = useLocale();
   const ar = isArabic(locale);
@@ -55,8 +67,13 @@ export function RequestQuoteForm({
     ...initialActivationIntakeState,
     audienceType: startingAudience,
     projectType: projectTypeForAudience(startingAudience, initialProjectType),
+    city: initialCity || '',
+    size_sqm: initialSize || '',
+    land_status: initialLandStatus || initialActivationIntakeState.land_status,
+    use_case: initialUseCase || '',
+    budgetMax: initialBudgetMax || '',
     model_reference: initialModel || '',
-    notes: initialSupplier ? `Interested supplier id: ${initialSupplier}` : '',
+    notes: [initialSupplier ? `Interested supplier id: ${initialSupplier}` : '', initialNotes || ''].filter(Boolean).join('\n'),
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -111,11 +128,11 @@ export function RequestQuoteForm({
     return (
       <div className="rounded-[8px] border border-[#d8cfba] bg-white p-6 shadow-[0_18px_60px_rgba(36,53,47,0.12)] md:p-8">
         <CheckCircle2 className="h-10 w-10 text-[#1f6b4f]" />
-        <h2 className="mt-4 text-3xl font-semibold text-[#24352f]">{ar ? 'حفظنا مسودة التفويض' : 'Mandate draft saved'}</h2>
+        <h2 className="mt-4 text-3xl font-semibold text-[#24352f]">{ar ? 'حفظنا موجز المشروع' : 'Project brief saved'}</h2>
         <p className="mt-2 text-lg text-[#59645e]">
           {ar
-            ? 'الخطوة الجاية إنشاء حساب حتى نفتح مساحة الصفقة ونشغّل البحث عن الأراضي ونحفظ الخيارات والتقديرات.'
-            : 'Create an account next so Mihad can open the deal workspace, run land sourcing, save options, and keep estimates.'}
+            ? 'الخطوة الجاية إنشاء حساب إذا كنت تريد حفظ النتائج، مقارنة الموردين، أو طلب مساعدة في الموقع.'
+            : 'Create an account next if you want to save results, compare suppliers, or ask for site help.'}
         </p>
         <div className="mt-6 grid gap-3 rounded-[8px] bg-[#f5f1e7] p-4 text-sm text-[#59645e]">
           <p>{ar ? 'رقم المسودة' : 'Draft'}: <span className="font-mono text-[#24352f]">{result.draft_id}</span></p>
@@ -124,7 +141,7 @@ export function RequestQuoteForm({
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href={result.next_url || '/auth/signup?redirect=/onboarding'} className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">
             <CheckCircle2 className="h-4 w-4" />
-            {ar ? 'أنشئ حساب وافتح مساحة الصفقة' : 'Create account and open workspace'}
+            {ar ? 'أنشئ حساب واحفظ المشروع' : 'Create account and save project'}
           </Link>
           <Link href={result.whatsapp_url || PREFAB_WHATSAPP_URL} className="inline-flex min-h-11 items-center gap-2 rounded-[8px] border border-[#cfc5ad] px-4 text-sm font-semibold text-[#24352f]">
             <MessageCircle className="h-4 w-4" />

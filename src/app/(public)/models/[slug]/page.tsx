@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!model) return { title: 'Prefab model — Mihad' };
   return {
     title: `${model.name} — Mihad`,
-    description: model.materialSummary || 'Prefab model details, scope, delivery regions, and quote request.',
+    description: model.materialSummary || 'Prefab model details, scope, delivery regions, and calculator planning.',
     alternates: { canonical: absoluteUrl(`/models/${model.slug}`) },
   };
 }
@@ -36,7 +36,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ sl
           <section>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a7650]">{model.modelType?.replaceAll('_', ' ') || 'Prefab model'}</p>
             <h1 className="mt-3 text-5xl font-semibold leading-tight tracking-normal text-[#24352f]">{model.name}</h1>
-            <p className="mt-4 text-lg leading-8 text-[#59645e]">{model.materialSummary || 'Request a quote to confirm supplier scope and delivery assumptions.'}</p>
+            <p className="mt-4 text-lg leading-8 text-[#59645e]">{model.materialSummary || 'Use the calculator to test scope, site readiness, and delivery assumptions.'}</p>
             <div className="mt-6 grid gap-3 rounded-[8px] border border-[#d8cfba] bg-white p-5 text-sm text-[#59645e]">
               <span>Size: {model.sizeSqm ? `${model.sizeSqm} sqm` : 'Depends on configuration'}</span>
               <span>Rooms: {model.bedrooms ?? '-'} bedrooms · {model.bathrooms ?? '-'} bathrooms</span>
@@ -45,7 +45,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ sl
               <span>Supplier: {model.supplier?.name || 'Mihad supplier network'} {model.supplier ? `· ${verificationLabel(model.supplier.verificationState)}` : ''}</span>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href={`/request-quote?model=${model.id}`} className="inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Request quote for this model</Link>
+              <Link href={`/calculator?model=${model.id}`} className="inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Estimate this model</Link>
               {model.supplier ? <Link href={`/suppliers/${model.supplier.slug}`} className="inline-flex min-h-11 items-center rounded-[8px] border border-[#cfc5ad] px-4 text-sm font-semibold">View supplier</Link> : null}
             </div>
           </section>

@@ -37,7 +37,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           <p className="mt-3 text-right text-2xl font-semibold text-[#1f6b4f]" dir="rtl">{category.titleAr}</p>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-[#59645e]">{category.description}</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={`/request-quote?project_type=${category.tags[0] || ''}`} className="inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Request quote</Link>
+            <Link href={`/calculator?category=${category.slug}`} className="inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Estimate this category</Link>
             <Link href="/models" className="inline-flex min-h-11 items-center rounded-[8px] border border-[#cfc5ad] px-4 text-sm font-semibold">Browse models</Link>
           </div>
         </section>

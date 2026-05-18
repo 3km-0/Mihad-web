@@ -43,7 +43,7 @@ export default async function GuideDetailPage({ params }: { params: Promise<{ co
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {guide.checklist.map((item) => <div key={item} className="rounded-[8px] bg-white p-3 text-sm text-[#59645e]">{item}</div>)}
           </div>
-          <Link href="/request-quote" className="mt-6 inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Request quotes with this checklist</Link>
+          <Link href="/calculator" className="mt-6 inline-flex min-h-11 items-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Estimate with this checklist</Link>
         </section>
       </main>
     </PublicPageShell>

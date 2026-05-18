@@ -3,8 +3,8 @@ import { GuideCard, PREFAB_GUIDES, PublicPageShell, SectionHeading } from '@/com
 import { absoluteUrl } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'Prefab buying guides — Mihad',
-  description: 'Saudi prefab buying guides for cost, land readiness, supplier trust, foundations, utilities, and quote comparison.',
+  title: 'Prefab guides — Mihad Fieldbook',
+  description: 'Saudi prefab guides for cost, land readiness, supplier trust, foundations, utilities, and calculator-based planning.',
   alternates: { canonical: absoluteUrl('/guides') },
 };
 
@@ -13,7 +13,7 @@ export default function GuidesIndexPage() {
   return (
     <PublicPageShell>
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Guides" title="Learn before you buy" titleAr="افهم الخيارات قبل أن تشتري" body="Plain-language guides for Saudi buyers comparing prefab suppliers, scope, and project readiness." />
+        <SectionHeading eyebrow="Guides" title="Learn before you estimate" titleAr="افهم الخيارات قبل أن تحسب مشروعك" body="Plain-language guides for comparing prefab suppliers, scope, site readiness, and planning ranges." />
         <div className="mt-10 grid gap-8">
           {groups.map((group) => (
             <section key={group}>

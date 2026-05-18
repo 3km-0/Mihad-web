@@ -8,11 +8,11 @@ Mihad.
 
 Current product lane:
 
-`Mandate -> Activation Land Sourcing -> Land Option -> Prefab Estimate -> Spread Underwriting -> Deal Pipeline`
+`Project Brief -> Activation Land Sourcing -> Land Option -> Prefab Estimate -> Spread Underwriting -> Deal Pipeline`
 
 The old generic acquisition search runtime has been narrowed. Browser sourcing
 is now only for activation land sourcing around a qualified tenant/investor
-mandate.
+project brief.
 
 ## Runtime Components
 
@@ -21,7 +21,7 @@ mandate.
   - Owns source adapters for public marketplace and broker pages.
   - Captures limited evidence artifacts for each activation land sourcing run.
 - `services/zohal-backend`
-  - Creates activation mandates and source runs.
+  - Creates activation project briefs/mandates and source runs.
   - Invokes the browser worker.
   - Stores sourced land options with attribution.
   - Keeps outreach and promotion behind approval gates.
@@ -41,12 +41,12 @@ Represented inventory and supplier catalog data are direct database fetches.
 
 ## Auth Boundary
 
-Public users may draft a mandate, but cannot run sourcing.
+Public users may draft a project brief, but cannot run sourcing.
 
 Activation land sourcing requires:
 
 - authenticated user/session;
-- durable mandate/workspace context;
+- durable project brief/workspace context;
 - sufficient location, activity, size, budget, and timeline fields;
 - a passing land-sourcing qualification gate.
 

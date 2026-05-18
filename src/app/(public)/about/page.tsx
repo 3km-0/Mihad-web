@@ -3,8 +3,8 @@ import { PublicPageShell, SectionHeading } from '@/components/prefab/PrefabMarke
 import { absoluteUrl } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'About Mihad activation — Mihad',
-  description: 'How Mihad connects tenant demand, idle commercial land, and modular supply while keeping operator risk gated.',
+  title: 'About Mihad — Mihad',
+  description: 'How Mihad helps people understand prefab projects through articles, calculators, supplier profiles, and optional site support.',
   alternates: { canonical: absoluteUrl('/about') },
 };
 
@@ -15,11 +15,11 @@ export default function AboutPage() {
         <SectionHeading eyebrow="Trust" title="What Mihad is, and what it is not" titleAr="ما هو مهاد وما حدوده" />
         <div className="mt-10 grid gap-5">
           {[
-            ['What Mihad is', 'A Saudi-first modular inspiration and activation platform connecting tenant demand, idle commercial land, and modular supply.'],
+            ['What Mihad is', 'A Saudi-first prefab Fieldbook and calculator that helps people understand modular projects before supplier or site outreach.'],
             ['What Mihad is not', 'Mihad is not a contractor, not a government permit issuer, and not a guarantee of approval, pricing, delivery, or tenant performance.'],
-            ['How activation works', 'Most opportunities stay in a broker or manager lane. Operator routing is only considered with confirmed demand, clear sublease and removal rights, a permit path, and adequate reserves.'],
+            ['How site help works', 'If a calculator brief needs land, supplier matching, or saved workspace support, Mihad opens that path after the user asks for it.'],
             ['How supplier review works', 'Profiles can show identity, unit types, factory capacity, lease/sale terms, service regions, warranty information, and response expectations submitted for review.'],
-            ['Sponsored content', 'Showcase and sponsored content should be clearly labeled so education and commercial routing remain trustworthy.'],
+            ['Sponsored content', 'Fieldbook and sponsored content should be clearly labeled so education and commercial routing remain trustworthy.'],
           ].map(([title, body]) => (
             <section key={title} className="rounded-[8px] border border-[#d8cfba] bg-white p-6">
               <h2 className="text-2xl font-semibold">{title}</h2>

@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!supplier) return { title: 'Prefab supplier — Mihad' };
   return {
     title: `${supplier.name} — Mihad`,
-    description: `Supplier profile for ${supplier.name}: regions, categories, warranty, response SLA, and quote request.`,
+    description: `Supplier profile for ${supplier.name}: regions, categories, warranty, response SLA, and calculator planning.`,
     alternates: { canonical: absoluteUrl(`/suppliers/${supplier.slug}`) },
   };
 }
@@ -50,7 +50,7 @@ export default async function SupplierProfilePage({ params }: { params: Promise<
                 <span>{supplier.responseSlaMinutes ? `${Math.round(supplier.responseSlaMinutes / 60)}h response SLA` : 'Response SLA pending'}</span>
                 <span>{Object.keys(supplier.warranty).length ? 'Warranty information provided' : 'Warranty information pending'}</span>
               </div>
-              <Link href={`/request-quote?supplier=${supplier.id}`} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Request quote from this supplier</Link>
+              <Link href={`/calculator?supplier=${supplier.id}`} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">Estimate with this supplier</Link>
             </div>
           </div>
         </section>

@@ -27,7 +27,8 @@ import { cn } from '@/lib/utils';
 export async function PrefabNav() {
   const locale = await getLocale();
   const links = [
-    [pickLocalized(locale, 'المعرض', 'Gallery'), '/showcase'],
+    [pickLocalized(locale, 'دليل مهاد', 'Fieldbook'), '/fieldbook'],
+    [pickLocalized(locale, 'الحاسبة', 'Calculator'), '/calculator'],
     [pickLocalized(locale, prefabCopy.nav.suppliers.ar, prefabCopy.nav.suppliers.en), '/suppliers'],
     [pickLocalized(locale, prefabCopy.nav.models.ar, prefabCopy.nav.models.en), '/models'],
     [pickLocalized(locale, prefabCopy.nav.guides.ar, prefabCopy.nav.guides.en), '/guides'],
@@ -56,7 +57,7 @@ export async function PrefabNav() {
             {pickLocalized(locale, prefabCopy.nav.signIn.ar, prefabCopy.nav.signIn.en)}
           </Link>
           <Link
-            href="/request-quote?audience=tenant&project_type=commercial_site"
+            href="/calculator"
             className="inline-flex min-h-10 items-center gap-2 rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]"
           >
             {pickLocalized(locale, prefabCopy.nav.getMatched.ar, prefabCopy.nav.getMatched.en)}
@@ -87,8 +88,8 @@ export async function PrefabFooter() {
           <p className="mt-3 max-w-xl leading-6">
             {pickLocalized(
               locale,
-              'مهاد يعرض أفكار المباني الجاهزة ويحوّل الطلب الحقيقي إلى فرص تفعيل أرض قابلة للفحص بين الشركات، ملاك الأراضي، وموردي الوحدات.',
-              'Mihad showcases modular building ideas and turns real demand into screenable land activation opportunities between businesses, landowners, and suppliers.'
+              'مهاد يحوّل أفكار المباني الجاهزة إلى تقدير عملي، ثم يفتح مسار المورد أو الموقع فقط عندما يحتاجه المشروع.',
+              'Mihad turns prefab ideas into practical planning ranges, then opens supplier or site help only when the project needs it.'
             )}
           </p>
         </div>
@@ -97,9 +98,9 @@ export async function PrefabFooter() {
           <div className="mt-3 grid gap-2">
             <Link href="/models">{pickLocalized(locale, 'النماذج', 'Models')}</Link>
             <Link href="/suppliers">{pickLocalized(locale, 'الموردون', 'Suppliers')}</Link>
-            <Link href="/showcase">{pickLocalized(locale, 'المعرض', 'Showcase')}</Link>
+            <Link href="/fieldbook">{pickLocalized(locale, 'دليل مهاد', 'Fieldbook')}</Link>
             <Link href="/guides">{pickLocalized(locale, 'الأدلة', 'Guides')}</Link>
-            <Link href="/request-quote">{pickLocalized(locale, 'ابدأ تفويض موقع', 'Start a site mandate')}</Link>
+            <Link href="/calculator">{pickLocalized(locale, 'احسب مشروعك الجاهز', 'Estimate your prefab project')}</Link>
           </div>
         </div>
         <div>
@@ -125,9 +126,9 @@ export async function PublicPageShell({ children, nav = true }: { children: Reac
       {children}
       <PrefabFooter />
       <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#D8DEE8] bg-[#EEF2F6] text-[11px] font-semibold text-[#334155] shadow-[0_-10px_30px_rgba(16,24,39,0.08)] sm:hidden">
-        <Link href="/showcase" className="grid min-h-14 place-items-center">{pickLocalized(locale, 'المعرض', 'Gallery')}</Link>
+        <Link href="/fieldbook" className="grid min-h-14 place-items-center">{pickLocalized(locale, 'الدليل', 'Fieldbook')}</Link>
         <Link href="/suppliers" className="grid min-h-14 place-items-center">{pickLocalized(locale, prefabCopy.nav.suppliers.ar, prefabCopy.nav.suppliers.en)}</Link>
-        <Link href="/request-quote" className="grid min-h-14 place-items-center text-[#1D4E89]">{pickLocalized(locale, prefabCopy.nav.request.ar, prefabCopy.nav.request.en)}</Link>
+        <Link href="/calculator" className="grid min-h-14 place-items-center text-[#1D4E89]">{pickLocalized(locale, prefabCopy.nav.request.ar, prefabCopy.nav.request.en)}</Link>
         <Link href="/auth/login" className="grid min-h-14 place-items-center">{pickLocalized(locale, prefabCopy.nav.signIn.ar, prefabCopy.nav.signIn.en)}</Link>
       </div>
     </div>
@@ -137,14 +138,14 @@ export async function PublicPageShell({ children, nav = true }: { children: Reac
 export function HeroRfqCard({ compact = false }: { compact?: boolean }) {
   return (
     <div className="rounded-[8px] border border-[#D8DEE8] bg-white p-4 shadow-[0_18px_60px_rgba(16,24,39,0.12)]">
-      <p className="text-sm font-semibold text-[#1D4E89]">وش مسارك؟</p>
-      <p className="mt-1 text-sm text-[#667085]">Choose the activation path when you are ready.</p>
+      <p className="text-sm font-semibold text-[#1D4E89]">احسب الفكرة أولًا</p>
+      <p className="mt-1 text-sm text-[#667085]">Start with cost, site readiness, and supplier fit before any deal workflow.</p>
       <div className={cn('mt-4 grid gap-3', compact ? 'grid-cols-1' : 'sm:grid-cols-2')}>
         {[
-          ['أحتاج موقع تجاري', '/request-quote?audience=tenant&project_type=commercial_site'],
-          ['عندي أرض', '/request-quote?audience=landowner&project_type=land_activation'],
-          ['أنا مورد مباني جاهزة', '/request-quote?audience=supplier&project_type=supplier_application'],
-          ['ساعدني أختار', '/request-quote?audience=tenant'],
+          ['كشك أو مقهى جاهز', '/calculator?category=retail-kiosks'],
+          ['مكتب موقع جاهز', '/calculator?category=modular-offices'],
+          ['مجلس أو ملحق', '/calculator?category=majlis'],
+          ['ساعدني أختار', '/calculator'],
         ].map(([item, href]) => (
           <Link
             key={item}
@@ -160,10 +161,10 @@ export function HeroRfqCard({ compact = false }: { compact?: boolean }) {
         <div className="rounded-[8px] border border-[#D8DEE8] bg-[#EEF2F6] px-3 py-3 text-sm text-[#334155]">الإيجار / التكاليف</div>
       </div>
       <Link
-        href="/request-quote?audience=tenant&project_type=commercial_site"
+        href="/calculator"
         className="mt-4 inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]"
       >
-        ابدأ تفويض موقع
+        احسب مشروعك الجاهز
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
@@ -213,7 +214,7 @@ export function SupplierCard({ supplier }: { supplier: PublicSupplier }) {
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         <Link href={`/suppliers/${supplier.slug}`} className="inline-flex min-h-10 items-center rounded-[8px] border border-[#C8D2E0] px-4 text-sm font-semibold transition hover:border-[#1D4E89]">عرض الملف</Link>
-        <Link href={`/request-quote?supplier=${supplier.id}&audience=tenant`} className="inline-flex min-h-10 items-center rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">ابدأ طلب</Link>
+        <Link href={`/calculator?supplier=${supplier.id}`} className="inline-flex min-h-10 items-center rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">احسب مشروعك</Link>
       </div>
     </article>
   );
@@ -238,7 +239,7 @@ export function ModelCard({ model }: { model: PublicModel }) {
           <span>المورد: {model.supplier?.name || 'شبكة موردي مهاد'}</span>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link href={`/request-quote?model=${model.id}&audience=tenant`} className="inline-flex min-h-10 items-center rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">ابدأ طلب</Link>
+          <Link href={`/calculator?model=${model.id}`} className="inline-flex min-h-10 items-center rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">احسب هذا النموذج</Link>
           <Link href={`/models/${model.slug}`} className="inline-flex min-h-10 items-center rounded-[8px] border border-[#C8D2E0] px-4 text-sm font-semibold transition hover:border-[#1D4E89]">عرض التفاصيل</Link>
         </div>
       </div>
@@ -289,19 +290,19 @@ export function TrustGrid() {
 }
 
 export function ReadinessChecklist() {
-  const items = ['هل يوجد مستأجر أو طلب مؤكد؟', 'هل الموقع والحي واضحان؟', 'هل الإيجار يغطي الأرض والوحدة والاحتياطي؟', 'هل حقوق التأجير من الباطن والإزالة واضحة؟', 'هل مسار التصريح والخدمات قابل للفحص؟', 'هل لدى المورد مدة تسليم وصيانة واضحة؟'];
+  const items = ['ما الاستخدام والمساحة التقريبية؟', 'هل الأرض موجودة أم تحتاج بحث لاحق؟', 'هل الخدمات والوصول واضحان؟', 'هل الميزانية قريبة من نطاق التخطيط؟', 'هل تفضل الإيجار أم الشراء؟', 'ما النواقص قبل طلب عرض سعر؟'];
   return (
     <div className="rounded-[8px] border border-[#30333A] bg-[#111827] p-6 text-white md:p-8">
       <div className="grid gap-8 md:grid-cols-[0.8fr_1.2fr] md:items-center">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A6E3B8]">جاهزية التفعيل</p>
-          <h2 className="mt-2 text-3xl font-semibold">هل الفرصة جاهزة للوساطة أم التشغيل؟</h2>
-          <p className="mt-2 text-lg text-[#C9CCD1]">نراجع الطلب والحقوق والانتشار المالي قبل أي التزام تشغيلي.</p>
-          <Link href="/request-quote?audience=tenant&project_type=commercial_site" className="mt-5 inline-flex min-h-11 items-center rounded-[8px] bg-white px-4 text-sm font-semibold text-[#111827]">افحص جاهزية الفرصة</Link>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A6E3B8]">جاهزية المشروع</p>
+          <h2 className="mt-2 text-3xl font-semibold">هل الفكرة جاهزة لعرض سعر؟</h2>
+          <p className="mt-2 text-lg text-[#C9CCD1]">ابدأ بالحاسبة لتعرف التكلفة التقريبية والنواقص قبل مقارنة الموردين أو البحث عن موقع.</p>
+          <Link href="/calculator" className="mt-5 inline-flex min-h-11 items-center rounded-[8px] bg-white px-4 text-sm font-semibold text-[#111827]">احسب مشروعك</Link>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {items.map((item) => (
-            <div key={item} className="flex gap-2 rounded-[8px] border border-white/12 bg-white/6 p-3 text-sm text-[#F3F4F6]">
+            <div key={item} className="flex gap-2 rounded-[8px] border border-white/[0.12] bg-white/[0.06] p-3 text-sm text-[#F3F4F6]">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#A6E3B8]" />
               <span>{item}</span>
             </div>
