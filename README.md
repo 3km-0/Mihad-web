@@ -3,9 +3,8 @@
 Status: Active
 Last reviewed: 2026-05-18
 
-Web companion for the Mihad document and activation workflow platform. Built
-with Next.js 15, React 19, TypeScript, Tailwind, next-intl, and Supabase SSR
-auth.
+Web client for the Mihad activation deal platform. Built with Next.js 15, React
+19, TypeScript, Tailwind, next-intl, and Supabase SSR auth.
 
 ## Repo Layout
 
@@ -23,54 +22,47 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Product Model
 
-The shared product model is:
+Public front-door lane:
 
-`Document -> Template -> Run -> Snapshot -> Living Interface -> Automation`
+`Editorial/Gallery Front Door -> Site Mandate Draft -> Signup -> Activation Deal Workspace`
 
-The active buyer workflow lane is:
+Authenticated activation lane:
 
-`Buyer Mandate -> RFQ -> Source Run -> Sourced Option -> Match -> Buyer Packet -> Partner Intro -> Deal Event`
+`Mandate -> Land Sourcing -> Land Option -> Prefab Estimate -> Spread Underwriting -> Deal Pipeline -> Approval-Gated Execution`
 
-The public prefab posture is:
+Persistence backing lane:
 
-`Editorial/Gallery Front Door -> Demand Activation Request -> Deterministic Scoring -> Broker/Manager -> Selective Operator`
+`Buyer Mandate -> RFQ -> Activation Opportunity -> Source Run -> Sourced Option -> Match -> Approval Gate -> Deal Event`
 
 The homepage should not be a chat-first or SaaS-first surface. It should help
-people browse prefab homes, modular buildings, retail pods, project offices,
-and land activation ideas. The demand engine remains visible through header and
-homepage CTAs for:
+people browse prefab homes, modular buildings, retail pods, project offices, and
+land activation ideas. The main CTA is:
 
-- `ابدأ طلبك` / `Start a request`
+- `ابدأ تفويض موقع` / `Start a site mandate`
+
+Supporting paths:
+
 - `أحتاج موقع تجاري` / `I need a commercial site`
 - `عندي أرض` / `I own land`
 - `أنا مورد مباني جاهزة` / `I provide modular units`
 
-The removed property-scout chat is not part of the public homepage. Activation
-intake runs through the structured request flow and operator surfaces.
-
-Web uses the same product language as iOS and core docs:
-- `Living Interface` for public/product language
-- `Surface` for internal runtime/delivery language
-- `Template` publicly
-- `playbook` only for persistence/API details
-- `Corpus` for curated source sets
-
-The web app does not expose an end-user Pipeline Builder, deal desk, or legacy
-acquisition report lane in the active buyer desk.
+Anonymous users may draft a mandate. Signup is required before durable workspace
+creation, browser sourcing, saved options, uploads, supplier/broker/landowner
+contact, and approval-gated execution.
 
 ## Main Areas
 
-- public editorial/gallery prefab and modular inspiration pages
-- three-path activation request flow for tenants, landowners, and modular suppliers
-- deterministic activation scoring and broker/operator routing state
-- authenticated workspace and buyer/RFQ flows
-- Sources / document management
-- operator and Ask flows
+- editorial/gallery prefab and modular inspiration pages
+- guided mandate journey for tenants/investors, landowners, and modular suppliers
+- authenticated Activation Deal Workspace
+- land options board and ranked option cards
+- activation land sourcing through operator-controlled browser workers
+- direct represented inventory and supplier catalog fetches
+- prefab estimate and spread underwriting
+- activation pipeline actions and approval gates
+- files, notes, and agent-assisted workspace support
 - settings, billing, and subscription UI
-- derived buyer packet and consent-scoped partner sharing
-- approval-gated supplier/broker intro actions
-- operator RFQ queue, match board, and approval gates
-- web-side GCP backend service code under `services/zohal-backend/`
+- web-side backend service code under `services/zohal-backend/`
 
 ## Localization
 
@@ -83,31 +75,33 @@ Implementation rules:
 
 - `NEXT_LOCALE=ar` is the default when the user has not explicitly selected a
   language.
-- The language switcher must remain visible on public prefab/RFQ pages.
+- The language switcher must remain visible on public prefab/mandate pages.
 - Do not add user-facing English-only strings. Add Arabic and English together,
-  with Arabic treated as the source copy for Saudi buyer flows.
+  with Arabic treated as the source copy for Saudi-facing flows.
 - Keep legal/scope disclaimers precise in both languages, especially around
   supplier verification, permits, pricing, delivery, and Mihad not being a
   contractor or permit issuer.
 
-## Buyer Workflow Backend Lane
+## Activation Backend Lane
 
-`services/zohal-backend` owns the Mihad buyer workflow API:
+Product-facing Mihad APIs:
 
-- `POST /api/mihad/v1/mandates`
-- `POST /api/mihad/v1/rfqs`
-- `POST /api/mihad/v1/source-runs`
-- `POST /api/mihad/v1/source-runs/:runId/execute`
-- `POST /api/mihad/v1/sourced-options`
-- `POST /api/mihad/v1/buyer-packets`
-- `POST /api/mihad/v1/buyer-packets/:packetId/grants`
-- `POST /api/mihad/v1/approval-gates`
+- `POST /api/mihad/v1/activation-mandates`
+- `POST /api/mihad/v1/activation-mandates/:id/land-sourcing`
+- `GET /api/mihad/v1/activation-mandates/:id/represented-inventory`
+- `GET /api/mihad/v1/activation-mandates/:id/supplier-matches`
+- `POST /api/mihad/v1/activation-deals/:id/prefab-estimate`
+- `POST /api/mihad/v1/activation-deals/:id/spread-underwriting`
+- `POST /api/mihad/v1/activation-deals/:id/actions`
 - `POST /api/mihad/v1/agent/turn`
 
-The API writes to `buyer_mandates`, `rfqs`, `source_runs`, `sourced_options`,
-`option_sources`, `matches`, `buyer_packets`, `sharing_grants`, and
-`approval_gates`. Raw financial/private documents stay in `documents`; buyer
-packets contain derived fields only.
+The backing API writes to `buyer_mandates`, `rfqs`,
+`activation_opportunities`, `source_runs`, `sourced_options`,
+`option_sources`, `matches`, `approval_gates`, `agent_threads`,
+`agent_events`, and `agent_outbox_messages`.
+
+`source_runs` is product-valid only for activation land sourcing. Represented
+inventory and supplier catalog lookup are direct fetches, not source runs.
 
 ## Commands
 
@@ -138,10 +132,12 @@ Start with:
 
 - `../mihad-platform/Documentation/README.md`
 - `../mihad-platform/Documentation/Architecture/architecture.md`
-- `../mihad-platform/Documentation/Templates/Document-Templates.md`
-- `../mihad-platform/Documentation/Quality/Agent_E2E_Smoke_Playbook.md`
-- `../mihad-platform/Documentation/Surface/README.md`
-- `docs/acquisition-playwright-runtime.md`
+- `../mihad-platform/Documentation/Product/Mihad_Product_Summary.md`
+- `../mihad-platform/Documentation/Product/Mihad_Buyer_Workflow.md`
+- `../mihad-platform/Documentation/Features/Activation_Land_Sourcing_And_Inventory.md`
+- `../mihad-platform/Documentation/Product/Prefab_Estimator_And_Spread_Underwriting.md`
+- `../mihad-platform/Documentation/Product/Activation_Deal_Actions_And_Files.md`
+- `docs/activation-land-sourcing-runtime.md`
 - `docs/mihad-brand-domain-migration-audit.md`
 
 For repo-local workflow rules, read `AGENTS.md`.

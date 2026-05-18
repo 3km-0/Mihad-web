@@ -99,7 +99,7 @@ export async function PrefabFooter() {
             <Link href="/suppliers">{pickLocalized(locale, 'الموردون', 'Suppliers')}</Link>
             <Link href="/showcase">{pickLocalized(locale, 'المعرض', 'Showcase')}</Link>
             <Link href="/guides">{pickLocalized(locale, 'الأدلة', 'Guides')}</Link>
-            <Link href="/request-quote">{pickLocalized(locale, 'ابدأ طلبك', 'Start request')}</Link>
+            <Link href="/request-quote">{pickLocalized(locale, 'ابدأ تفويض موقع', 'Start a site mandate')}</Link>
           </div>
         </div>
         <div>
