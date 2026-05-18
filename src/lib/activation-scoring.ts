@@ -1,5 +1,15 @@
 export type ActivationPartyType = 'tenant' | 'landowner' | 'supplier';
 
+export type ActivationEconomics = {
+  tenant_monthly_rent: number | null;
+  land_rent: number | null;
+  modular_unit_lease: number | null;
+  install_removal_amortization: number | null;
+  maintenance_reserve: number | null;
+  target_coverage: number;
+  reserve_months: number | null;
+};
+
 export type ActivationScoringInput = {
   partyType: ActivationPartyType;
   businessActivity?: string;
@@ -55,6 +65,38 @@ export type ActivationScoringResult = {
   missing_fields: string[];
   summary: string;
 };
+
+export type OperatorRouteDecision = {
+  allowed: boolean;
+  hard_stops: string[];
+};
+
+const OPERATOR_HARD_STOPS = new Set([
+  'no_tenant_commitment',
+  'no_explicit_sublease_right',
+  'no_removal_right',
+  'no_clear_permit_path',
+  'weak_fixed_cost_coverage',
+  'operator_reserve_missing',
+  'no_modular_install_permission',
+]);
+
+function hardStopsFrom(value: unknown) {
+  if (Array.isArray(value)) return value.map(asText).filter(Boolean);
+  if (!value || typeof value !== 'object') return [];
+  const record = value as { hard_stops?: unknown; hardStops?: unknown; operator_hard_stops?: unknown };
+  const stops = record.hard_stops || record.hardStops || record.operator_hard_stops || [];
+  return Array.isArray(stops) ? stops.map(asText).filter(Boolean) : [];
+}
+
+export function canRouteOperator(scoring: unknown, checklist: unknown = {}): OperatorRouteDecision {
+  const hard_stops = [...new Set([...hardStopsFrom(scoring), ...hardStopsFrom(checklist)])]
+    .filter((stop) => OPERATOR_HARD_STOPS.has(stop));
+  return {
+    allowed: hard_stops.length === 0,
+    hard_stops,
+  };
+}
 
 function asText(value: unknown) {
   return String(value ?? '').trim();

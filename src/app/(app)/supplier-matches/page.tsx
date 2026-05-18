@@ -19,7 +19,7 @@ function valueText(value: unknown, fallback = 'Not provided') {
 
 export default async function SupplierMatchesPage() {
   const supabase = await createClient();
-  const [{ data: matchRows, error: matchError }, { data: supplierRows, error: supplierError }] = await Promise.all([
+  const [{ data: matchRows, error: matchError }, { data: supplierRows, error: supplierError }, { data: landRows, error: landError }] = await Promise.all([
     supabase
       .from('rfq_supplier_matches')
       .select('id,status,quote_status,response_sla_at,buyer_recommendation_json,supplier_response_json,created_at,rfq_id,partner_id,prefab_model_id,rfqs(id,title,city,use_case,workspace_id,metadata_json),partners(id,display_name,city,partner_kind,response_sla_minutes,commercial_terms_json),prefab_models(id,model_name,model_type,size_sqm,price_range_json)')
@@ -31,10 +31,17 @@ export default async function SupplierMatchesPage() {
       .eq('partner_kind', 'prefab_supplier')
       .order('updated_at', { ascending: false })
       .limit(40),
+    supabase
+      .from('sourced_options')
+      .select('id,title,summary,source_name,source_url,city,district,area_sqm,price_amount,price_currency,status,workspace_id,rfq_id,evidence_snapshot_json,score_json,updated_at')
+      .eq('source_kind', 'portal')
+      .order('updated_at', { ascending: false })
+      .limit(40),
   ]);
 
   const matches = (matchRows || []) as Array<Record<string, unknown>>;
   const suppliers = (supplierRows || []) as Array<Record<string, unknown>>;
+  const landCandidates = (landRows || []) as Array<Record<string, unknown>>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,9 +51,9 @@ export default async function SupplierMatchesPage() {
         actions={<Link href="/approvals" className="rounded-zohal-sm border border-border px-3 py-2 text-sm font-semibold text-text-soft hover:bg-surface-alt">Approval gates</Link>}
       />
       <main className="mx-auto grid max-w-7xl gap-6 p-4 md:p-6">
-        {matchError || supplierError ? (
+        {matchError || supplierError || landError ? (
           <div className="rounded-zohal border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-            Match board loaded with warnings: {[matchError?.message, supplierError?.message].filter(Boolean).join(' ')}
+            Match board loaded with warnings: {[matchError?.message, supplierError?.message, landError?.message].filter(Boolean).join(' ')}
           </div>
         ) : null}
 
@@ -94,6 +101,53 @@ export default async function SupplierMatchesPage() {
             {!matches.length ? (
               <div className="p-6 text-sm text-text-soft">
                 No RFQ supplier match rows yet. Partner supply below can still be reviewed before a shortlist is created.
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-zohal border border-border bg-surface">
+          <div className="border-b border-border p-4">
+            <h2 className="text-lg font-semibold text-text">Operator land candidates</h2>
+            <p className="text-sm text-text-soft">Commercial land leads from source runs stay here for review; they are never anonymous public homepage results.</p>
+          </div>
+          <div className="divide-y divide-border">
+            {landCandidates.map((candidate) => {
+              const evidence = asRecord(candidate.evidence_snapshot_json);
+              const score = asRecord(candidate.score_json);
+              return (
+                <article key={String(candidate.id)} className="grid gap-4 p-4 lg:grid-cols-[1fr_0.8fr_0.8fr_auto] lg:items-center">
+                  <div>
+                    <p className="text-sm font-semibold text-text">{valueText(candidate.title, 'Commercial land candidate')}</p>
+                    <p className="mt-1 text-xs text-text-soft">{[candidate.district, candidate.city].map((item) => valueText(item, '')).filter(Boolean).join(', ') || 'Location pending'}</p>
+                  </div>
+                  <div className="grid gap-1 text-xs text-text-soft">
+                    <span>Source: {valueText(candidate.source_name)}</span>
+                    <span>Area: {candidate.area_sqm ? `${candidate.area_sqm} sqm` : 'Not provided'}</span>
+                    <span>Price/rent signal: {candidate.price_amount ? `${candidate.price_amount} ${valueText(candidate.price_currency, 'SAR')}` : 'Not provided'}</span>
+                  </div>
+                  <div className="grid gap-1 text-xs text-text-soft">
+                    <span>Status: {valueText(candidate.status)}</span>
+                    <span>Confidence: {valueText(score.confidence ?? evidence.confidence)}</span>
+                    <span>Evidence: limited snapshot only</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {candidate.workspace_id ? (
+                      <Link href={`/workspaces/${candidate.workspace_id}`} className="inline-flex min-h-10 items-center gap-2 rounded-zohal-sm bg-accent px-3 text-sm font-semibold text-white">
+                        Open
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    ) : null}
+                    <Link href="/approvals" className="inline-flex min-h-10 items-center rounded-zohal-sm border border-border px-3 text-sm font-semibold text-text-soft">
+                      Gate outreach
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+            {!landCandidates.length ? (
+              <div className="p-6 text-sm text-text-soft">
+                No operator-reviewed land candidates yet. Run land sourcing from a qualified tenant request to populate this board.
               </div>
             ) : null}
           </div>

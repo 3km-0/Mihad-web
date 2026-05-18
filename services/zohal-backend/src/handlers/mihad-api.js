@@ -3,6 +3,7 @@ import { sendJson } from "../runtime/http.js";
 import { createServiceClient } from "../runtime/supabase.js";
 import { isInternalCaller, verifySupabaseJwt } from "../runtime/internal-auth.js";
 import { assertWorkspaceWriteAccess } from "../renovation/catalog.js";
+import { buildActivationLandSourcingPayload } from "../mihad/land-sourcing.js";
 
 const BROWSER_WORKER_URL = String(process.env.ACQUISITION_BROWSER_WORKER_URL || "").trim().replace(/\/+$/, "");
 const INTERNAL_TOKEN = String(
@@ -14,6 +15,16 @@ const INTERNAL_TOKEN = String(
 
 const DEFAULT_PACKET_TTL_DAYS = 90;
 const DEFAULT_SOURCES = ["aqar", "bayut", "property_finder"];
+const DEFAULT_ACTIVATION_LAND_SOURCES = ["aqar", "bayut", "partner_land"];
+const OPERATOR_HARD_STOPS = new Set([
+  "no_tenant_commitment",
+  "no_explicit_sublease_right",
+  "no_removal_right",
+  "no_clear_permit_path",
+  "weak_fixed_cost_coverage",
+  "operator_reserve_missing",
+  "no_modular_install_permission",
+]);
 
 function text(value) {
   return String(value || "").trim();
@@ -53,6 +64,52 @@ function normalizeSources(value) {
   const list = Array.isArray(value) ? value : DEFAULT_SOURCES;
   const unique = [...new Set(list.map((item) => text(item).toLowerCase()).filter(Boolean))];
   return unique.length ? unique : DEFAULT_SOURCES;
+}
+
+function hardStopsFrom(value = {}) {
+  if (Array.isArray(value)) return value.map(text).filter(Boolean);
+  const stops = value.hard_stops || value.hardStops || value.operator_hard_stops || [];
+  return Array.isArray(stops) ? stops.map(text).filter(Boolean) : [];
+}
+
+export function canRouteOperator(scoring = {}, checklist = {}) {
+  const hardStops = [...new Set([
+    ...hardStopsFrom(scoring),
+    ...hardStopsFrom(checklist),
+  ])].filter((stop) => OPERATOR_HARD_STOPS.has(stop));
+  return {
+    allowed: hardStops.length === 0,
+    hard_stops: hardStops,
+  };
+}
+
+function assertOperatorGateAllowed(body = {}, userId) {
+  const payload = body.draft_payload_json || body.draft_payload || {};
+  const scoring = body.activation_score_json || payload.activation_score_json || payload.activation_scoring || payload.scoring || {};
+  const checklist = body.operator_checklist_json || payload.operator_checklist_json || payload.checklist || {};
+  const route = text(body.activation_route || payload.activation_route || scoring.route_recommendation || payload.route_recommendation);
+  const actionType = text(body.action_type);
+  const wantsOperator = /operator/i.test(`${actionType} ${route}`);
+  if (!wantsOperator) return null;
+  const gate = canRouteOperator(scoring, checklist);
+  if (gate.allowed) return null;
+  const override = payload.admin_override || body.admin_override || null;
+  const reason = text(override?.reason || body.admin_override_reason);
+  const reviewer = text(override?.reviewer || body.admin_override_reviewer || userId);
+  if (reason && reviewer) {
+    return {
+      admin_override: {
+        reviewer,
+        reason,
+        reviewed_at: new Date().toISOString(),
+        hard_stop_snapshot: gate.hard_stops,
+      },
+    };
+  }
+  const error = new Error("operator_hard_stops_not_cleared");
+  error.statusCode = 409;
+  error.details = { hard_stops: gate.hard_stops };
+  throw error;
 }
 
 async function requireUser(req) {
@@ -186,6 +243,9 @@ async function createRfq(supabase, body, userId) {
       contact_preference: text(body.contact_preference) || "whatsapp",
       document_refs_json: body.document_refs || body.document_refs_json || [],
       qualification_json: body.qualification || body.qualification_json || {},
+      activation_party_type: text(body.activation_party_type) || null,
+      activation_route: text(body.activation_route) || null,
+      activation_score_json: body.activation_score_json || body.activation_scoring || {},
       metadata_json: body.metadata_json || {},
       created_by: userId || uuid(body.user_id),
     })
@@ -254,6 +314,77 @@ async function createSourceRun(supabase, body, userId) {
     .single();
   if (error) throw error;
   return { source_run: data };
+}
+
+function activationRequestFromRfq(rfq = {}) {
+  return rfq.metadata_json?.activation_request
+    || rfq.qualification_json?.activation_request
+    || rfq.activation_request
+    || {};
+}
+
+function activationScoreFromRfq(rfq = {}) {
+  return rfq.activation_score_json
+    || rfq.metadata_json?.activation_scoring
+    || rfq.qualification_json?.activation_scoring
+    || {};
+}
+
+async function createActivationLandSourcingRun(supabase, rfqId, body, userId) {
+  const rfq = await selectOne(supabase.from("rfqs").select("*").eq("id", rfqId), "rfq");
+  await assertWorkspaceWriteAccess(supabase, rfq.workspace_id, userId || uuid(body.user_id));
+  const activationRequest = activationRequestFromRfq(rfq);
+  const scoring = activationScoreFromRfq(rfq);
+  const partyType = text(rfq.activation_party_type || activationRequest.party_type || activationRequest.partyType);
+  if (partyType !== "tenant") {
+    const error = new Error("tenant_demand_required_for_land_sourcing");
+    error.statusCode = 422;
+    throw error;
+  }
+  if (Number(scoring.tenant_demand_score || 0) < 8 && body.override_qualification !== true) {
+    const error = new Error("tenant_demand_not_qualified_for_land_sourcing");
+    error.statusCode = 422;
+    error.details = { tenant_demand_score: scoring.tenant_demand_score || 0 };
+    throw error;
+  }
+
+  const mandate = rfq.mandate_id
+    ? await selectOne(supabase.from("buyer_mandates").select("*").eq("id", rfq.mandate_id), "mandate").catch(() => null)
+    : null;
+  const payload = buildActivationLandSourcingPayload({
+    rfq,
+    mandate,
+    activationRequest,
+    sources: Array.isArray(body.sources) && body.sources.length ? body.sources : DEFAULT_ACTIVATION_LAND_SOURCES,
+  });
+  const queryParts = [
+    "activation_land_sourcing",
+    payload.search_run.query_json.city,
+    payload.search_run.query_json.district,
+    payload.search_run.query_json.business_activity,
+    payload.search_run.query_json.required_land_area_sqm ? `${payload.search_run.query_json.required_land_area_sqm}sqm` : null,
+  ].filter(Boolean);
+  const run = await createSourceRun(supabase, {
+    workspace_id: rfq.workspace_id,
+    mandate_id: rfq.mandate_id,
+    rfq_id: rfq.id,
+    user_id: userId || uuid(body.user_id),
+    trigger_kind: "activation_land_sourcing",
+    sources: payload.search_run.sources_json,
+    query_text: queryParts.join(" | "),
+    limits: {
+      ...payload.search_run.limits_json,
+      activation_land_sourcing: true,
+      operator_only: true,
+      tenant_demand_score: scoring.tenant_demand_score || null,
+      query: payload.search_run.query_json,
+    },
+  }, userId);
+  return {
+    ...run,
+    operator_only: true,
+    land_sourcing_payload: payload,
+  };
 }
 
 function mapWorkerCandidate(candidate, sourceRun) {
@@ -534,6 +665,8 @@ async function revokeGrant(supabase, grantId, body, userId) {
 async function createApprovalGate(supabase, body, userId) {
   const workspaceId = uuid(body.workspace_id);
   await assertWorkspaceWriteAccess(supabase, workspaceId, userId || uuid(body.user_id));
+  const operatorOverride = assertOperatorGateAllowed(body, userId || uuid(body.user_id));
+  const draftPayload = body.draft_payload_json || body.draft_payload || {};
   const { data, error } = await supabase
     .from("approval_gates")
     .insert({
@@ -544,7 +677,7 @@ async function createApprovalGate(supabase, body, userId) {
       buyer_profile_id: uuid(body.buyer_profile_id),
       partner_id: uuid(body.partner_id),
       action_type: text(body.action_type) || "supplier_intro",
-      draft_payload_json: body.draft_payload_json || body.draft_payload || {},
+      draft_payload_json: operatorOverride ? { ...draftPayload, ...operatorOverride } : draftPayload,
       approval_status: text(body.approval_status) || "pending",
       requested_by: userId || uuid(body.user_id),
     })
@@ -646,6 +779,7 @@ function matchMihadRoute(method, pathname) {
   if (method === "POST" && parts[3] === "mandates" && parts.length === 4) return { name: "createMandate" };
   if (method === "GET" && parts[3] === "workspaces" && parts[5] === "mandate" && parts.length === 6) return { name: "getWorkspaceMandate", workspaceId: parts[4] };
   if (method === "POST" && parts[3] === "rfqs" && parts.length === 4) return { name: "createRfq" };
+  if (method === "POST" && parts[3] === "rfqs" && parts[5] === "land-sourcing" && parts.length === 6) return { name: "createActivationLandSourcingRun", rfqId: parts[4] };
   if (method === "POST" && parts[3] === "source-runs" && parts.length === 4) return { name: "createSourceRun" };
   if (method === "POST" && parts[3] === "source-runs" && parts[5] === "execute" && parts.length === 6) return { name: "executeSourceRun", sourceRunId: parts[4] };
   if (method === "POST" && parts[3] === "sourced-options" && parts.length === 4) return { name: "createSourcedOption" };
@@ -673,6 +807,7 @@ export async function handleMihadApi(req, res, { requestId, readJsonBody, supaba
     if (route.name === "createMandate") return sendJson(res, 201, envelope(requestId, await createMandate(supabase, body, userId)));
     if (route.name === "getWorkspaceMandate") return sendJson(res, 200, envelope(requestId, await loadWorkspaceMandate(supabase, uuid(route.workspaceId), userId || uuid(url.searchParams.get("user_id")))));
     if (route.name === "createRfq") return sendJson(res, 201, envelope(requestId, { rfq: await createRfq(supabase, body, userId) }));
+    if (route.name === "createActivationLandSourcingRun") return sendJson(res, 202, envelope(requestId, await createActivationLandSourcingRun(supabase, uuid(route.rfqId), body, userId)));
     if (route.name === "createSourceRun") return sendJson(res, 202, envelope(requestId, await createSourceRun(supabase, body, userId)));
     if (route.name === "executeSourceRun") return sendJson(res, 200, envelope(requestId, await executeSourceRun(supabase, uuid(route.sourceRunId), body, requestId)));
     if (route.name === "createSourcedOption") return sendJson(res, 201, envelope(requestId, await createSourcedOption(supabase, body, userId)));
@@ -689,6 +824,7 @@ export async function handleMihadApi(req, res, { requestId, readJsonBody, supaba
     return sendJson(res, status, envelope(requestId, {
       error: error.message || "mihad_api_error",
       message: error.message || "Mihad API error",
+      ...(error.details ? { details: error.details } : {}),
     }));
   }
 }

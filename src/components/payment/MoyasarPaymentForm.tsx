@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { Spinner } from '@/components/ui';
+import { safeLogger } from '@/lib/safe-logger';
 import { cn } from '@/lib/utils';
 
 // Moyasar types
@@ -92,7 +93,7 @@ export function MoyasarPaymentForm({
     const timeout = setTimeout(() => {
       try {
         if (!window.Moyasar) {
-          console.error('Moyasar SDK not loaded');
+          safeLogger.error('Moyasar SDK not loaded');
           setError('Payment form failed to load. Please refresh the page.');
           return;
         }
@@ -106,24 +107,24 @@ export function MoyasarPaymentForm({
           callback_url: callbackUrl,
           methods: ['creditcard', 'stcpay'],
           on_initiating: () => {
-            console.log('[MoyasarForm] Payment initiating...');
+            safeLogger.debug('[MoyasarForm] Payment initiating');
             onPaymentInitiating?.();
           },
           on_completed: (payment) => {
-            console.log('[MoyasarForm] Payment completed:', payment);
+            safeLogger.debug('[MoyasarForm] Payment completed', { id: payment.id, status: payment.status });
             onPaymentComplete?.(payment);
           },
           on_failure: (err) => {
-            console.error('[MoyasarForm] Payment failed:', err);
+            safeLogger.error('[MoyasarForm] Payment failed', err);
             setError(err.message || 'Payment failed. Please try again.');
             onPaymentError?.(err);
           },
         });
 
         setFormInitialized(true);
-        console.log('[MoyasarForm] Form initialized successfully');
+        safeLogger.debug('[MoyasarForm] Form initialized successfully');
       } catch (err) {
-        console.error('[MoyasarForm] Error initializing form:', err);
+        safeLogger.error('[MoyasarForm] Error initializing form', err);
         setError('Failed to initialize payment form. Please refresh the page.');
       }
     }, 100);
@@ -145,11 +146,11 @@ export function MoyasarPaymentForm({
       <Script
         src="https://cdn.moyasar.com/mpf/1.14.0/moyasar.min.js"
         onLoad={() => {
-          console.log('[MoyasarForm] SDK loaded');
+          safeLogger.debug('[MoyasarForm] SDK loaded');
           setSdkLoaded(true);
         }}
         onError={() => {
-          console.error('[MoyasarForm] Failed to load SDK');
+          safeLogger.error('[MoyasarForm] Failed to load SDK');
           setError('Failed to load payment form. Please refresh the page.');
         }}
       />

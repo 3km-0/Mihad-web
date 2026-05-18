@@ -45,7 +45,8 @@ homepage CTAs for:
 - `عندي أرض` / `I own land`
 - `أنا مورد مباني جاهزة` / `I provide modular units`
 
-AI is an optional concierge entry point, not the default landing experience.
+The removed property-scout chat is not part of the public homepage. Activation
+intake runs through the structured request flow and operator surfaces.
 
 Web uses the same product language as iOS and core docs:
 - `Living Interface` for public/product language

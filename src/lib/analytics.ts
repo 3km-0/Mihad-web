@@ -1,3 +1,5 @@
+import { safeLogger } from './safe-logger';
+
 export type MarketingEventName =
   | 'cta_start_free_click'
   | 'cta_watch_demo_click'
@@ -6,9 +8,7 @@ export type MarketingEventName =
   | 'tab_change'
   | 'application_card_click'
   | 'faq_open'
-  | 'contact_click'
-  | 'mihad_scout_intent_parsed'
-  | 'mihad_scout_continue_verified_search';
+  | 'contact_click';
 
 type EventProps = Record<string, string | number | boolean | null | undefined>;
 
@@ -46,8 +46,7 @@ export function trackMarketingEvent(name: MarketingEventName, props?: EventProps
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.debug('[marketing event]', name, props ?? {});
+      safeLogger.debug('[marketing event]', { name, props: props ?? {} });
     }
   } catch {
     // Never break UI due to analytics.

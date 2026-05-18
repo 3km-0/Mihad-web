@@ -2134,14 +2134,14 @@
   },
   "marketingHome": {
     "metadata": {
-      "title": "Mihad — AI property scout for serious buyers",
-      "description": "Describe what you want in Saudi Arabia, the UAE, or Turkey. Mihad turns your request into a buyer mandate, searches verified options after signup, and helps you coordinate with the right broker when you are ready."
+      "title": "Mihad — Modular land activation in Saudi Arabia",
+      "description": "Explore modular buildings, prefab commercial ideas, and land activation paths. When you are ready, submit tenant demand, land supply, or modular unit availability through a structured request."
     },
     "content": {
       "brand": {
         "name": "Mihad",
-        "tagline": "AI property scout for serious buyers.",
-        "theme": "acquisition-operator"
+        "tagline": "Modular buildings and land activation.",
+        "theme": "activation-operator"
       },
       "nav": {
         "links": [
@@ -2209,7 +2209,7 @@
         }
       },
       "credibilityStrip": {
-        "label": "Built for serious buyers in Saudi Arabia, the UAE, and Turkey",
+        "label": "Built for tenant demand, landowners, and modular suppliers in Saudi Arabia",
         "items": [
           "Start with a simple request: country, budget, property type, and purpose",
           "Receive selected property options instead of random listings",
@@ -2467,13 +2467,13 @@
         "professional": [
           {
             "id": "pro",
-            "name": "First buyer request",
+            "name": "First activation request",
             "price": "Free",
             "bullets": [
               "Create your first active request for free",
               "Receive a limited number of selected options that match your request",
               "When you are ready to move forward, we may ask for a simple confirmation of buying ability before partner introductions",
-              "Additional active requests or concierge search can be paid or approved by the team"
+              "Additional active requests can be paid or approved by the team"
             ],
             "cta": {
               "label": "Start for free",

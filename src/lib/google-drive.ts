@@ -1,3 +1,5 @@
+import { safeLogger } from './safe-logger';
+
 /**
  * Google Drive OAuth and API Client for Web
  *
@@ -182,7 +184,10 @@ export async function listDriveFiles(
   }
 
   const data = await response.json();
-  console.log('[Google Drive] Files in folder:', folderId, data.files?.map((f: GoogleDriveFile) => ({ name: f.name, mimeType: f.mimeType })));
+  safeLogger.debug('[Google Drive] Files in folder', {
+    folderId,
+    files: data.files?.map((f: GoogleDriveFile) => ({ name: f.name, mimeType: f.mimeType })),
+  });
   return {
     files: data.files || [],
     nextPageToken: data.nextPageToken,
@@ -223,7 +228,7 @@ export async function searchDriveFiles(
   }
 
   const data = await response.json();
-  console.log('[Google Drive] Search results:', data.files?.length, 'files');
+  safeLogger.debug('[Google Drive] Search results', { count: data.files?.length || 0 });
   return data.files || [];
 }
 

@@ -146,7 +146,7 @@ export async function planMihadBrokerAgentTurn({ message, context = {}, requestI
         {
           role: "system",
           content: [
-            "You are Mihad, an authenticated buyer-side AI property scout and broker agent.",
+            "You are Mihad, an authenticated activation and document-workflow agent.",
             "Return only JSON. Do not write directly to databases. You may only request the listed deterministic tools.",
             "Anonymous actions are not available here; this is an authenticated workspace.",
             "Never request broker outreach unless buyer qualification, consent, and approval gates are represented by tools.",

@@ -22,6 +22,16 @@ type RfqRow = {
   workspace_id: string;
 };
 
+type ActivationOpportunityRow = {
+  id: string;
+  party_type: string;
+  route_recommendation: string | null;
+  score_json: JsonRecord;
+  hard_stops_json: unknown;
+  missing_fields_json: unknown;
+  rfqs?: RfqRow | RfqRow[] | null;
+};
+
 const groups = [
   { key: 'tenant', title: 'Tenant demand', subtitle: 'Businesses looking for sites', icon: Building2 },
   { key: 'landowner', title: 'Land supply', subtitle: 'Owners offering activation rights', icon: MapPinned },
@@ -52,15 +62,56 @@ function activationPayload(row: RfqRow) {
   };
 }
 
+function activationRfq(row: ActivationOpportunityRow): RfqRow | null {
+  if (Array.isArray(row.rfqs)) return row.rfqs[0] ?? null;
+  return row.rfqs ?? null;
+}
+
 export default async function RfqsPage() {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data: activationData, error: activationError } = await supabase
+    .from('activation_opportunities')
+    .select('id,party_type,route_recommendation,score_json,hard_stops_json,missing_fields_json,rfqs(id,title,status,city,use_case,prefab_category,delivery_timeline,qualification_json,metadata_json,created_at,updated_at,workspace_id)')
+    .order('updated_at', { ascending: false })
+    .limit(120);
+
+  const { data, error } = activationData?.length
+    ? { data: null, error: null }
+    : await supabase
     .from('rfqs')
     .select('id,title,status,city,use_case,prefab_category,delivery_timeline,qualification_json,metadata_json,created_at,updated_at,workspace_id')
     .order('updated_at', { ascending: false })
     .limit(120);
 
-  const rows = (data || []) as RfqRow[];
+  const activationRows = ((activationData || []) as unknown as ActivationOpportunityRow[])
+    .map((item) => {
+      const rfq = activationRfq(item);
+      return rfq
+      ? {
+          ...rfq,
+          metadata_json: {
+            ...asRecord(rfq.metadata_json),
+            activation_scoring: item.score_json,
+          },
+          qualification_json: {
+            ...asRecord(rfq.qualification_json),
+            activation_request: {
+              ...asRecord(asRecord(rfq.qualification_json).activation_request),
+              party_type: item.party_type,
+            },
+            activation_scoring: {
+              ...item.score_json,
+              route_recommendation: item.route_recommendation || item.score_json?.route_recommendation,
+              hard_stops: Array.isArray(item.hard_stops_json) ? item.hard_stops_json : item.score_json?.hard_stops,
+              missing_fields: Array.isArray(item.missing_fields_json) ? item.missing_fields_json : item.score_json?.missing_fields,
+            },
+          },
+        }
+      : null;
+    })
+    .filter(Boolean) as RfqRow[];
+  const rows = activationRows.length ? activationRows : (data || []) as RfqRow[];
+  const loadError = activationError && !rows.length ? activationError : error;
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,9 +121,9 @@ export default async function RfqsPage() {
         actions={<Link href="/request-quote" className="rounded-zohal-sm border border-border px-3 py-2 text-sm font-semibold text-text-soft hover:bg-surface-alt">New request</Link>}
       />
       <main className="mx-auto grid max-w-7xl gap-6 p-4 md:p-6">
-        {error ? (
+        {loadError ? (
           <div className="rounded-zohal border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-            Could not load RFQs: {error.message}
+            Could not load RFQs: {loadError.message}
           </div>
         ) : null}
         <div className="grid gap-4 md:grid-cols-4">
@@ -133,7 +184,7 @@ export default async function RfqsPage() {
           );
         })}
 
-        {!rows.length && !error ? (
+        {!rows.length && !loadError ? (
           <div className="rounded-zohal border border-dashed border-border bg-surface p-8 text-center text-text-soft">
             No activation requests yet. Public submissions will appear here grouped by party type.
           </div>

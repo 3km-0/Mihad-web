@@ -414,6 +414,9 @@ export async function POST(request: Request) {
       },
       delivery_timeline: timeline,
       document_refs_json: [],
+      activation_party_type: partyType,
+      activation_route: scoring.route_recommendation,
+      activation_score_json: scoring,
       scope_needs_json: {
         scope_needs: scopeNeeds,
         style_reference: styleReference || null,
@@ -451,6 +454,29 @@ export async function POST(request: Request) {
     return jsonError(rfqError?.message || 'Could not create RFQ.', 500, 'rfq_create_failed');
   }
 
+  const { data: activationOpportunity, error: activationOpportunityError } = await service
+    .from('activation_opportunities')
+    .insert({
+      workspace_id: workspace.id,
+      mandate_id: mandate.id,
+      rfq_id: rfq.id,
+      party_type: partyType,
+      status: 'intake',
+      route_recommendation: scoring.route_recommendation,
+      score_json: scoring,
+      hard_stops_json: scoring.hard_stops,
+      missing_fields_json: scoring.missing_fields,
+      economics_json: economics,
+      notes,
+      created_by: ownerId,
+    })
+    .select('id')
+    .single();
+
+  if (activationOpportunityError || !activationOpportunity?.id) {
+    return jsonError(activationOpportunityError?.message || 'Could not create activation opportunity.', 500, 'activation_opportunity_create_failed');
+  }
+
   const { data: thread } = await service
     .from('agent_threads')
     .insert({
@@ -477,6 +503,7 @@ export async function POST(request: Request) {
     workspace_id: workspace.id,
     mandate_id: mandate.id,
     rfq_id: rfq.id,
+    activation_opportunity_id: activationOpportunity.id,
     thread_id: thread?.id ?? null,
     created_by: ownerId,
     channel: 'web',

@@ -17,6 +17,7 @@ import { PrivacySettingsPanel } from './PrivacySettingsPanel';
 import { isGoogleDriveConfigured } from '@/lib/google-drive';
 import { isOneDriveConfigured } from '@/lib/onedrive';
 import { mapHttpError } from '@/lib/errors';
+import { safeLogger } from '@/lib/safe-logger';
 import { getEffectiveSubscriptionTier } from '@/lib/subscription';
 import {
   SensitiveDataSanitizer,
@@ -272,15 +273,15 @@ export function DocumentUploadModal({
     if (!user) throw new Error('Not authenticated');
 
     // 1. Extract text client-side using pdf.js
-    console.log('[Ephemeral] Extracting text from PDF...');
+    safeLogger.debug('[Ephemeral] Extracting text from PDF');
     const pages = await extractTextFromPdf(pdfFile);
-    console.log('[Ephemeral] Extracted', pages.length, 'pages');
+    safeLogger.debug('[Ephemeral] Extracted PDF pages', { pageCount: pages.length });
 
     // 2. Sanitize text client-side
-    console.log('[Ephemeral] Sanitizing text...');
+    safeLogger.debug('[Ephemeral] Sanitizing text');
     const sanitizer = new SensitiveDataSanitizer(privacyConfig);
     const { pages: sanitizedPages, report } = sanitizer.sanitizePages(pages);
-    console.log('[Ephemeral] Sanitization report:', report);
+    safeLogger.debug('[Ephemeral] Sanitization report', report);
 
     // 3. Create document record with privacy_mode = true, storage_path = 'local'
     const documentId = crypto.randomUUID();
@@ -307,7 +308,7 @@ export function DocumentUploadModal({
 
     if (insertError) throw insertError;
     await onDocumentCreated?.(documentId);
-    console.log('[Ephemeral] Document record created:', documentId);
+    safeLogger.debug('[Ephemeral] Document record created', { documentId });
 
     // 4. Send sanitized chunks to cloud
     const sanitizedPagesForChunking = sanitizedPages.map((p) => ({
@@ -333,7 +334,7 @@ export function DocumentUploadModal({
         workspace_id: workspaceId,
         user_id: user.id,
       })
-      .catch((err) => console.warn('[Ephemeral] embed-and-store failed:', err));
+      .catch((err) => safeLogger.warn('[Ephemeral] embed-and-store failed', err));
 
     // 6. Classify document
     invokeZohalBackendJson(supabase, '/ingestion/classify', {
@@ -341,7 +342,7 @@ export function DocumentUploadModal({
         workspace_id: workspaceId,
         user_id: user.id,
       })
-      .catch((err) => console.warn('[Ephemeral] classify-document failed:', err));
+      .catch((err) => safeLogger.warn('[Ephemeral] classify-document failed', err));
 
     setFiles((prev) =>
       prev.map((f) =>
@@ -545,7 +546,7 @@ export function DocumentUploadModal({
           source_storage_path: sourceStoragePath,
         });
       } catch (error) {
-        console.warn('[Upload] convert-to-pdf failed:', error);
+        safeLogger.warn('[Upload] convert-to-pdf failed', error);
         setFiles((prev) =>
           prev.map((f) =>
             idsToMark.includes(f.id)

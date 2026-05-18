@@ -29,6 +29,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { mapHttpError } from '@/lib/errors';
+import { safeLogger } from '@/lib/safe-logger';
 import { invokeZohalBackendJson } from '@/lib/zohal-backend';
 
 interface OneDrivePickerProps {
@@ -76,22 +77,22 @@ export function OneDrivePicker({
 
   // Start authentication (popup flow)
   const authenticate = useCallback(async () => {
-    console.log('[OneDrivePicker] Starting auth...');
+    safeLogger.debug('[OneDrivePicker] Starting auth');
     setAuthenticating(true);
     setError(null);
     try {
       const token = await authenticateWithMicrosoft();
-      console.log('[OneDrivePicker] Got token, length:', token?.length);
+      safeLogger.debug('[OneDrivePicker] Got token', { tokenLength: token?.length });
       if (token) {
         setAccessToken(token);
       } else {
         setError('No token received');
       }
     } catch (err) {
-      console.error('[OneDrivePicker] Auth error:', err);
+      safeLogger.error('[OneDrivePicker] Auth error', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
-      console.log('[OneDrivePicker] Auth finished');
+      safeLogger.debug('[OneDrivePicker] Auth finished');
       setAuthenticating(false);
     }
   }, []);

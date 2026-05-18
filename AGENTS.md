@@ -86,6 +86,13 @@ This file is the repo-local workflow guide for `Mihad-web`.
 - Public prefab/RFQ pages must expose the language switcher and respect the
   `NEXT_LOCALE` cookie. Do not rely on browser `Accept-Language` to override
   the Arabic default.
+- Do not introduce new public copies of legacy product-era vocabulary such as
+  `property scout`, `deal desk`, `acquisition report`, `experience`, `portal`,
+  `pack`, or `docset`. Use activation vocabulary for land/modular workflows
+  and document-template-run vocabulary for document workflows.
+- Do not rebuild the removed public scout path. Activation intake belongs in
+  the request flow and operator surfaces unless a fresh activation-first
+  concierge is explicitly approved.
 - Before changing canonical domains, auth redirects, payment callbacks, email
   senders, or backend hostnames, use `docs/mihad-brand-domain-migration-audit.md`.
 - Prefer existing theme tokens and design-system primitives over ad-hoc styling.

@@ -1,3 +1,5 @@
+import { safeLogger } from './safe-logger';
+
 /**
  * Microsoft OneDrive OAuth and API Client for Web
  *
@@ -90,7 +92,7 @@ export async function initMsal(): Promise<void> {
     const { PublicClientApplication } = await import('@azure/msal-browser');
 
     const popupRedirectUri = getMicrosoftPopupRedirectUri();
-    console.log('[OneDrive] Creating MSAL instance with redirectUri:', popupRedirectUri);
+    safeLogger.debug('[OneDrive] Creating MSAL instance', { redirectUri: popupRedirectUri });
     const msalConfig = {
       auth: {
         clientId: MICROSOFT_CLIENT_ID,
@@ -112,21 +114,21 @@ export async function initMsal(): Promise<void> {
                            window.location.hash.includes('access_token=') ||
                            window.location.hash.includes('error=');
     
-    console.log('[OneDrive] Is popup:', isPopup, 'Has auth response:', hasAuthResponse);
+    safeLogger.debug('[OneDrive] Auth window state', { isPopup: Boolean(isPopup), hasAuthResponse });
     
     // Handle popup/redirect response
     try {
       const response = await msalInstance.handleRedirectPromise();
       if (response) {
-        console.log('[OneDrive] Handled redirect response, got token');
+        safeLogger.debug('[OneDrive] Handled redirect response');
         cachedAccessToken = response.accessToken;
         tokenExpiresAt = response.expiresOn?.getTime() || Date.now() + 3600000;
       }
     } catch (err) {
-      console.error('[OneDrive] Error handling redirect:', err);
+      safeLogger.error('[OneDrive] Error handling redirect', err);
     }
     
-    console.log('[OneDrive] MSAL initialized');
+    safeLogger.debug('[OneDrive] MSAL initialized');
   })();
 
   return msalInitPromise;
@@ -173,18 +175,18 @@ export async function authenticateWithMicrosoft(): Promise<string> {
 
   // Acquire token via popup
   try {
-    console.log('[OneDrive] Starting acquireTokenPopup...');
+    safeLogger.debug('[OneDrive] Starting acquireTokenPopup');
     const popupResult = await msalInstance.acquireTokenPopup({
       scopes: MICROSOFT_SCOPES,
       redirectUri: getMicrosoftPopupRedirectUri(),
     });
-    console.log('[OneDrive] Popup completed successfully');
+    safeLogger.debug('[OneDrive] Popup completed successfully');
 
     cachedAccessToken = popupResult.accessToken;
     tokenExpiresAt = popupResult.expiresOn?.getTime() || Date.now() + 3600000;
     return popupResult.accessToken;
   } catch (err: unknown) {
-    console.error('[OneDrive] Popup error:', err);
+    safeLogger.error('[OneDrive] Popup error', err);
     // Reset instance on error so next attempt starts fresh
     msalInstance = null;
     msalInitPromise = null;

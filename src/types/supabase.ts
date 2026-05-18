@@ -105,6 +105,82 @@ export type Database = {
           },
         ]
       }
+      activation_opportunities: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          economics_json: Json
+          hard_stops_json: Json
+          id: string
+          mandate_id: string | null
+          missing_fields_json: Json
+          notes: string | null
+          party_type: string
+          rfq_id: string | null
+          route_recommendation: string
+          score_json: Json
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          economics_json?: Json
+          hard_stops_json?: Json
+          id?: string
+          mandate_id?: string | null
+          missing_fields_json?: Json
+          notes?: string | null
+          party_type: string
+          rfq_id?: string | null
+          route_recommendation?: string
+          score_json?: Json
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          economics_json?: Json
+          hard_stops_json?: Json
+          id?: string
+          mandate_id?: string | null
+          missing_fields_json?: Json
+          notes?: string | null
+          party_type?: string
+          rfq_id?: string | null
+          route_recommendation?: string
+          score_json?: Json
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activation_opportunities_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_opportunities_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_opportunities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_events: {
         Row: {
           body_text: string | null
@@ -4720,6 +4796,9 @@ export type Database = {
       }
       rfqs: {
         Row: {
+          activation_party_type: string | null
+          activation_route: string | null
+          activation_score_json: Json
           budget_range_json: Json
           buyer_entity_id: string | null
           city: string | null
@@ -4745,6 +4824,9 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          activation_party_type?: string | null
+          activation_route?: string | null
+          activation_score_json?: Json
           budget_range_json?: Json
           buyer_entity_id?: string | null
           city?: string | null
@@ -4770,6 +4852,9 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          activation_party_type?: string | null
+          activation_route?: string | null
+          activation_score_json?: Json
           budget_range_json?: Json
           buyer_entity_id?: string | null
           city?: string | null

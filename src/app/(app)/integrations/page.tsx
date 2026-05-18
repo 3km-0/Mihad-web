@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   CheckCircle,
@@ -1187,7 +1187,7 @@ export default function IntegrationsPage() {
     fetchIntegrations();
   }, [supabase, user]);
 
-  async function loadApiSources() {
+  const loadApiSources = useCallback(async () => {
     setLoadingApiSources(true);
     try {
       const data = await invokeZohalBackendJson<any>(supabase, 'integrations/api-connections', {
@@ -1197,12 +1197,12 @@ export default function IntegrationsPage() {
     } finally {
       setLoadingApiSources(false);
     }
-  }
+  }, [supabase]);
 
   useEffect(() => {
     if (!user) return;
     void loadApiSources();
-  }, [user]);
+  }, [loadApiSources, user]);
 
   const isConnected = (provider: string) =>
     integrations.some((integration) => integration.provider === provider);

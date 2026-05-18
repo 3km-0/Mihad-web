@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
-import { handleMihadApi, isMihadApiRoute } from "../src/handlers/mihad-api.js";
+import { canRouteOperator, handleMihadApi, isMihadApiRoute } from "../src/handlers/mihad-api.js";
 
 const USER_ID = "00000000-0000-4000-8000-00000000a001";
 const WORKSPACE_ID = "00000000-0000-4000-8000-00000000b001";
@@ -191,7 +193,20 @@ function baseSupabase() {
 test("Mihad API route matcher exposes the reset buyer workflow and not acquisition routes", () => {
   assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/mandates"), true);
   assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/source-runs/run_1/execute"), true);
+  assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/rfqs/rfq_1/land-sourcing"), true);
   assert.equal(isMihadApiRoute("POST", "/api/acquisition/v1/workspaces/ws/search-runs"), false);
+});
+
+test("legacy public scout and acquisition intent routes are removed", () => {
+  const repoRoot = join(import.meta.dirname, "..");
+  const serverSource = readFileSync(join(repoRoot, "src/server.js"), "utf8");
+
+  assert.equal(serverSource.includes("/internal/acquisition/intent/parse"), false);
+  assert.equal(serverSource.includes("/internal/acquisition/intent/preview"), false);
+  assert.equal(serverSource.includes("/internal/activation/concierge/parse"), false);
+  assert.equal(serverSource.includes("handleWhatsappOrchestrate"), false);
+  assert.equal(existsSync(join(repoRoot, "src/mihad/intent.js")), false);
+  assert.equal(existsSync(join(repoRoot, "src/mihad/preview.js")), false);
 });
 
 test("mandate creation writes buyer entity, mandate, and prefab RFQ", async () => {
@@ -318,4 +333,90 @@ test("packet, sharing grant, revoke, and approval gate stay on derived/consent c
   assert.equal(approval.status, 201);
   assert.equal(approval.body.approval_gate.approval_status, "pending");
   assert.equal(supabase.db.approval_gates.length, 1);
+});
+
+test("operator hard stops block operator approval gates without explicit override", async () => {
+  const supabase = baseSupabase();
+  const blocked = canRouteOperator({
+    hard_stops: ["no_tenant_commitment", "weak_fixed_cost_coverage"],
+  });
+  assert.equal(blocked.allowed, false);
+
+  const approval = await invoke(supabase, "POST", "/api/mihad/v1/approval-gates", {
+    user_id: USER_ID,
+    workspace_id: WORKSPACE_ID,
+    action_type: "operator_contact",
+    draft_payload: {
+      route_recommendation: "operator_candidate",
+      activation_scoring: {
+        hard_stops: ["no_tenant_commitment"],
+      },
+    },
+  });
+  assert.equal(approval.status, 409);
+  assert.equal(approval.body.error, "operator_hard_stops_not_cleared");
+
+  const override = await invoke(supabase, "POST", "/api/mihad/v1/approval-gates", {
+    user_id: USER_ID,
+    workspace_id: WORKSPACE_ID,
+    action_type: "operator_contact",
+    draft_payload: {
+      route_recommendation: "operator_candidate",
+      activation_scoring: {
+        hard_stops: ["no_tenant_commitment"],
+      },
+      admin_override: {
+        reviewer: USER_ID,
+        reason: "Founder-reviewed trial exception",
+      },
+    },
+  });
+  assert.equal(override.status, 201);
+  assert.equal(override.body.approval_gate.draft_payload_json.admin_override.reviewer, USER_ID);
+  assert.deepEqual(override.body.approval_gate.draft_payload_json.admin_override.hard_stop_snapshot, ["no_tenant_commitment"]);
+});
+
+test("activation land sourcing creates operator source runs only from qualified tenant demand", async () => {
+  const supabase = baseSupabase();
+  supabase.db.buyer_mandates = [{ id: "mandate_1", workspace_id: WORKSPACE_ID, user_id: USER_ID, target_country_codes: ["SA"] }];
+  supabase.db.rfqs = [{
+    id: "rfq_qualified",
+    workspace_id: WORKSPACE_ID,
+    mandate_id: "mandate_1",
+    activation_party_type: "tenant",
+    activation_score_json: { tenant_demand_score: 10 },
+    metadata_json: {
+      activation_request: {
+        party_type: "tenant",
+        city: "Riyadh",
+        district: "Al Arid",
+        business_activity: "vehicle_showroom",
+        required_land_area_sqm: 1500,
+      },
+    },
+    qualification_json: {},
+  }];
+
+  const created = await invoke(supabase, "POST", "/api/mihad/v1/rfqs/rfq_qualified/land-sourcing", {
+    user_id: USER_ID,
+  });
+  assert.equal(created.status, 202);
+  assert.equal(created.body.operator_only, true);
+  assert.equal(created.body.source_run.trigger_kind, "activation_land_sourcing");
+  assert.equal(created.body.source_run.rfq_id, "rfq_qualified");
+
+  supabase.db.rfqs.push({
+    id: "rfq_unqualified",
+    workspace_id: WORKSPACE_ID,
+    mandate_id: "mandate_1",
+    activation_party_type: "tenant",
+    activation_score_json: { tenant_demand_score: 3 },
+    metadata_json: { activation_request: { party_type: "tenant", city: "Riyadh" } },
+    qualification_json: {},
+  });
+  const rejected = await invoke(supabase, "POST", "/api/mihad/v1/rfqs/rfq_unqualified/land-sourcing", {
+    user_id: USER_ID,
+  });
+  assert.equal(rejected.status, 422);
+  assert.equal(rejected.body.error, "tenant_demand_not_qualified_for_land_sourcing");
 });
