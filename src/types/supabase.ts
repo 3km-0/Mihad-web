@@ -159,6 +159,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "activation_opportunities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "activation_opportunities_mandate_id_fkey"
             columns: ["mandate_id"]
             isOneToOne: false
@@ -3162,6 +3169,103 @@ export type Database = {
           },
         ]
       }
+      land_rights_checklists: {
+        Row: {
+          activation_opportunity_id: string | null
+          checklist_json: Json
+          created_at: string
+          id: string
+          installation_right_status: string
+          permit_path_status: string
+          removal_right_status: string
+          revenue_share_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rfq_id: string | null
+          sublease_right_status: string
+          updated_at: string
+          utilities_access_status: string
+          workspace_id: string
+        }
+        Insert: {
+          activation_opportunity_id?: string | null
+          checklist_json?: Json
+          created_at?: string
+          id?: string
+          installation_right_status?: string
+          permit_path_status?: string
+          removal_right_status?: string
+          revenue_share_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rfq_id?: string | null
+          sublease_right_status?: string
+          updated_at?: string
+          utilities_access_status?: string
+          workspace_id: string
+        }
+        Update: {
+          activation_opportunity_id?: string | null
+          checklist_json?: Json
+          created_at?: string
+          id?: string
+          installation_right_status?: string
+          permit_path_status?: string
+          removal_right_status?: string
+          revenue_share_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rfq_id?: string | null
+          sublease_right_status?: string
+          updated_at?: string
+          utilities_access_status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "land_rights_checklists_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_conversion_state"
+            referencedColumns: ["activation_opportunity_id"]
+          },
+          {
+            foreignKeyName: "land_rights_checklists_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "land_rights_checklists_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_request_queue"
+            referencedColumns: ["activation_opportunity_id"]
+          },
+          {
+            foreignKeyName: "land_rights_checklists_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "land_rights_checklists_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "land_rights_checklists_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           created_at: string
@@ -3379,6 +3483,126 @@ export type Database = {
           },
           {
             foreignKeyName: "meetings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modular_quote_terms: {
+        Row: {
+          activation_opportunity_id: string | null
+          created_at: string
+          created_by: string | null
+          delivery_timeline: string | null
+          drawings_refs_json: Json
+          id: string
+          install_cost: number | null
+          maintenance_sla_json: Json
+          monthly_lease_amount: number | null
+          partner_id: string | null
+          prefab_model_id: string | null
+          removal_cost: number | null
+          rfq_id: string | null
+          sale_amount: number | null
+          status: string
+          terms_json: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          activation_opportunity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivery_timeline?: string | null
+          drawings_refs_json?: Json
+          id?: string
+          install_cost?: number | null
+          maintenance_sla_json?: Json
+          monthly_lease_amount?: number | null
+          partner_id?: string | null
+          prefab_model_id?: string | null
+          removal_cost?: number | null
+          rfq_id?: string | null
+          sale_amount?: number | null
+          status?: string
+          terms_json?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          activation_opportunity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivery_timeline?: string | null
+          drawings_refs_json?: Json
+          id?: string
+          install_cost?: number | null
+          maintenance_sla_json?: Json
+          monthly_lease_amount?: number | null
+          partner_id?: string | null
+          prefab_model_id?: string | null
+          removal_cost?: number | null
+          rfq_id?: string | null
+          sale_amount?: number | null
+          status?: string
+          terms_json?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modular_quote_terms_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_conversion_state"
+            referencedColumns: ["activation_opportunity_id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_request_queue"
+            referencedColumns: ["activation_opportunity_id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_prefab_model_id_fkey"
+            columns: ["prefab_model_id"]
+            isOneToOne: false
+            referencedRelation: "prefab_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modular_quote_terms_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -3612,6 +3836,103 @@ export type Database = {
           },
           {
             foreignKeyName: "notes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operator_underwriting_checklists: {
+        Row: {
+          activation_opportunity_id: string | null
+          approval_status: string
+          checklist_json: Json
+          coverage_ratio: number | null
+          created_at: string
+          hard_stops_json: Json
+          id: string
+          reserve_months: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rfq_id: string | null
+          route_decision: string
+          tenant_commitment_status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          activation_opportunity_id?: string | null
+          approval_status?: string
+          checklist_json?: Json
+          coverage_ratio?: number | null
+          created_at?: string
+          hard_stops_json?: Json
+          id?: string
+          reserve_months?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rfq_id?: string | null
+          route_decision?: string
+          tenant_commitment_status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          activation_opportunity_id?: string | null
+          approval_status?: string
+          checklist_json?: Json
+          coverage_ratio?: number | null
+          created_at?: string
+          hard_stops_json?: Json
+          id?: string
+          reserve_months?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rfq_id?: string | null
+          route_decision?: string
+          tenant_commitment_status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_underwriting_checklists_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_conversion_state"
+            referencedColumns: ["activation_opportunity_id"]
+          },
+          {
+            foreignKeyName: "operator_underwriting_checklists_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_underwriting_checklists_activation_opportunity_id_fkey"
+            columns: ["activation_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "activation_request_queue"
+            referencedColumns: ["activation_opportunity_id"]
+          },
+          {
+            foreignKeyName: "operator_underwriting_checklists_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_underwriting_checklists_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_underwriting_checklists_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -7053,7 +7374,106 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      activation_conversion_state: {
+        Row: {
+          activation_opportunity_id: string | null
+          approval_gates: number | null
+          land_sourcing_runs: number | null
+          last_approval_gate_at: string | null
+          last_land_sourcing_at: string | null
+          matches: number | null
+          party_type: string | null
+          rfq_id: string | null
+          route_recommendation: string | null
+          sourced_options: number | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activation_opportunities_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_opportunities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activation_hard_stop_summary: {
+        Row: {
+          hard_stop: string | null
+          party_type: string | null
+          rfq_id: string | null
+          route_recommendation: string | null
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activation_opportunities_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_opportunities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activation_request_queue: {
+        Row: {
+          activation_opportunity_id: string | null
+          city: string | null
+          delivery_timeline: string | null
+          hard_stops_json: Json | null
+          mandate_id: string | null
+          missing_fields_json: Json | null
+          party_type: string | null
+          rfq_created_at: string | null
+          rfq_id: string | null
+          route_recommendation: string | null
+          score_json: Json | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+          use_case: string | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activation_opportunities_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_mandates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_opportunities_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_opportunities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _temp_publish_system_playbook_version_prompt_only: {

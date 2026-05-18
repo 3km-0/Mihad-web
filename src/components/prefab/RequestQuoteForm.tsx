@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, CheckCircle2, MessageCircle } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { PREFAB_WHATSAPP_URL } from '@/lib/prefab-content';
+import { ACTIVATION_MANDATE_DRAFT_STORAGE_KEY, type ActivationMandateDraft } from '@/lib/activation-draft';
 import { isArabic, prefabCopy } from '@/lib/prefab-copy';
 import type { ActivationPartyType } from '@/lib/activation-scoring';
 import {
@@ -26,7 +27,9 @@ import {
 } from './activation-intake-schema';
 
 type RequestQuoteResult = {
-  rfq_id: string;
+  draft_id: string;
+  next_url?: string;
+  auth_required?: boolean;
   whatsapp_url?: string;
   route_recommendation?: string;
 };
@@ -81,13 +84,21 @@ export function RequestQuoteForm({
     setSubmitting(true);
     setError('');
     try {
+      const draftPayload = buildActivationRequestPayload(form);
       const response = await fetch('/api/request-quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildActivationRequestPayload(form)),
+        body: JSON.stringify(draftPayload),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || t(prefabCopy.rfq.fallbackError));
+      const draft: ActivationMandateDraft = {
+        draft_id: payload.draft_id || `draft_${Date.now()}`,
+        payload: draftPayload,
+        scoring: payload.activation_scoring,
+        saved_at: new Date().toISOString(),
+      };
+      window.localStorage.setItem(ACTIVATION_MANDATE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
       setResult(payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : t(prefabCopy.rfq.fallbackError));
@@ -100,14 +111,22 @@ export function RequestQuoteForm({
     return (
       <div className="rounded-[8px] border border-[#d8cfba] bg-white p-6 shadow-[0_18px_60px_rgba(36,53,47,0.12)] md:p-8">
         <CheckCircle2 className="h-10 w-10 text-[#1f6b4f]" />
-        <h2 className="mt-4 text-3xl font-semibold text-[#24352f]">{t(prefabCopy.rfq.successTitle)}</h2>
-        <p className="mt-2 text-lg text-[#59645e]">{t(prefabCopy.rfq.successBody)}</p>
+        <h2 className="mt-4 text-3xl font-semibold text-[#24352f]">{ar ? 'حفظنا مسودة التفويض' : 'Mandate draft saved'}</h2>
+        <p className="mt-2 text-lg text-[#59645e]">
+          {ar
+            ? 'الخطوة الجاية إنشاء حساب حتى نفتح مساحة الصفقة ونشغّل البحث عن الأراضي ونحفظ الخيارات والتقديرات.'
+            : 'Create an account next so Mihad can open the deal workspace, run land sourcing, save options, and keep estimates.'}
+        </p>
         <div className="mt-6 grid gap-3 rounded-[8px] bg-[#f5f1e7] p-4 text-sm text-[#59645e]">
-          <p>{t(prefabCopy.rfq.reference)}: <span className="font-mono text-[#24352f]">{result.rfq_id}</span></p>
+          <p>{ar ? 'رقم المسودة' : 'Draft'}: <span className="font-mono text-[#24352f]">{result.draft_id}</span></p>
           {result.route_recommendation ? <p>{ar ? 'المسار المبدئي' : 'Initial route'}: <span className="font-semibold text-[#24352f]">{result.route_recommendation}</span></p> : null}
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={result.whatsapp_url || PREFAB_WHATSAPP_URL} className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">
+          <Link href={result.next_url || '/auth/signup?redirect=/onboarding'} className="inline-flex min-h-11 items-center gap-2 rounded-[8px] bg-[#1f6b4f] px-4 text-sm font-semibold text-white">
+            <CheckCircle2 className="h-4 w-4" />
+            {ar ? 'أنشئ حساب وافتح مساحة الصفقة' : 'Create account and open workspace'}
+          </Link>
+          <Link href={result.whatsapp_url || PREFAB_WHATSAPP_URL} className="inline-flex min-h-11 items-center gap-2 rounded-[8px] border border-[#cfc5ad] px-4 text-sm font-semibold text-[#24352f]">
             <MessageCircle className="h-4 w-4" />
             {t(prefabCopy.rfq.continueWhatsapp)}
           </Link>

@@ -163,7 +163,7 @@ export function HeroRfqCard({ compact = false }: { compact?: boolean }) {
         href="/request-quote?audience=tenant&project_type=commercial_site"
         className="mt-4 inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-[8px] bg-[#23395D] px-4 text-sm font-semibold text-white transition hover:bg-[#1D4E89]"
       >
-        ابدأ طلبك
+        ابدأ تفويض موقع
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>

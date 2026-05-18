@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PENDING_TRIAL_SETUP_STORAGE_KEY } from '@/components/payment/MoyasarTrialSetupForm';
 import type { BuyBoxInput } from '@/lib/acquisition-workspace';
+import { ACTIVATION_MANDATE_DRAFT_STORAGE_KEY, type ActivationMandateDraft } from '@/lib/activation-draft';
 import { StepShell } from './_steps/StepShell';
 import { PersonaStep } from './_steps/PersonaStep';
 import { IdentityStep } from './_steps/IdentityStep';
@@ -131,6 +132,7 @@ export default function OnboardingPage() {
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [activationDraft, setActivationDraft] = useState<ActivationMandateDraft | null>(null);
 
   const setData = useCallback((patch: Partial<OnboardingData>) => {
     setDataState((current) => ({ ...current, ...patch }));
@@ -154,6 +156,34 @@ export default function OnboardingPage() {
     } catch {
       sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
     } finally {
+      const activationRaw = window.localStorage.getItem(ACTIVATION_MANDATE_DRAFT_STORAGE_KEY);
+      if (activationRaw) {
+        try {
+          const draft = JSON.parse(activationRaw) as ActivationMandateDraft;
+          const payload = draft.payload;
+          setActivationDraft(draft);
+          setDataState((current) => ({
+            ...current,
+            displayName: payload.contact?.name || current.displayName,
+            city: payload.city || current.city,
+            districts: payload.district || current.districts,
+            assetType: payload.project_type === 'land_activation' ? 'land' : 'mixed_use',
+            strategy: 'income_hold',
+            budgetMin: payload.budget_range?.min || current.budgetMin,
+            budgetMax: payload.monthly_budget || payload.budget_range?.max || current.budgetMax,
+            timeline: ['now', '30_days', '90_days', 'six_months'].includes(payload.timeline)
+              ? payload.timeline as OnboardingData['timeline']
+              : current.timeline,
+            mustHaves: [payload.business_activity, payload.use_case, payload.style_reference].filter(Boolean).join('; ') || current.mustHaves,
+            workspaceName: payload.city ? `Mihad activation - ${payload.city}` : current.workspaceName,
+            phone: payload.contact?.phone || current.phone,
+            targetCountries: ['SA'],
+            purpose: 'investment',
+          }));
+        } catch {
+          window.localStorage.removeItem(ACTIVATION_MANDATE_DRAFT_STORAGE_KEY);
+        }
+      }
       setHydrated(true);
     }
   }, []);
@@ -268,6 +298,8 @@ export default function OnboardingPage() {
             must_haves: data.mustHaves,
             avoid: data.avoid,
             preferred_areas: data.districts,
+            activation_request: activationDraft?.payload ?? null,
+            activation_scoring: activationDraft?.scoring ?? null,
           },
         }),
       });
@@ -276,6 +308,7 @@ export default function OnboardingPage() {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
         sessionStorage.removeItem(PENDING_TRIAL_SETUP_STORAGE_KEY);
+        window.localStorage.removeItem(ACTIVATION_MANDATE_DRAFT_STORAGE_KEY);
       }
       router.replace(`/workspaces/${payload.workspace_id}`);
     } catch (error) {

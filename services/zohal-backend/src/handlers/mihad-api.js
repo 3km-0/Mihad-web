@@ -4,6 +4,9 @@ import { createServiceClient } from "../runtime/supabase.js";
 import { isInternalCaller, verifySupabaseJwt } from "../runtime/internal-auth.js";
 import { assertWorkspaceWriteAccess } from "../renovation/catalog.js";
 import { buildActivationLandSourcingPayload } from "../mihad/land-sourcing.js";
+import { resolveActivationAction } from "../mihad/activation-actions.js";
+import { buildPrefabEstimate } from "../mihad/prefab-estimator.js";
+import { buildSpreadUnderwriting } from "../mihad/spread-underwriting.js";
 
 const BROWSER_WORKER_URL = String(process.env.ACQUISITION_BROWSER_WORKER_URL || "").trim().replace(/\/+$/, "");
 const INTERNAL_TOKEN = String(
@@ -14,7 +17,6 @@ const INTERNAL_TOKEN = String(
 ).trim();
 
 const DEFAULT_PACKET_TTL_DAYS = 90;
-const DEFAULT_SOURCES = ["aqar", "bayut", "property_finder"];
 const DEFAULT_ACTIVATION_LAND_SOURCES = ["aqar", "bayut", "partner_land"];
 const OPERATOR_HARD_STOPS = new Set([
   "no_tenant_commitment",
@@ -61,9 +63,9 @@ function hashOption(input = {}) {
 }
 
 function normalizeSources(value) {
-  const list = Array.isArray(value) ? value : DEFAULT_SOURCES;
+  const list = Array.isArray(value) ? value : DEFAULT_ACTIVATION_LAND_SOURCES;
   const unique = [...new Set(list.map((item) => text(item).toLowerCase()).filter(Boolean))];
-  return unique.length ? unique : DEFAULT_SOURCES;
+  return unique.length ? unique : DEFAULT_ACTIVATION_LAND_SOURCES;
 }
 
 function hardStopsFrom(value = {}) {
@@ -387,6 +389,21 @@ async function createActivationLandSourcingRun(supabase, rfqId, body, userId) {
   };
 }
 
+async function createActivationLandSourcingRunForMandate(supabase, mandateId, body, userId) {
+  const mandate = await selectOne(supabase.from("buyer_mandates").select("*").eq("id", mandateId), "mandate");
+  await assertWorkspaceWriteAccess(supabase, mandate.workspace_id, userId || uuid(body.user_id));
+  const rfq = await selectOne(
+    supabase
+      .from("rfqs")
+      .select("*")
+      .eq("mandate_id", mandate.id)
+      .order("updated_at", { ascending: false })
+      .limit(1),
+    "rfq",
+  );
+  return createActivationLandSourcingRun(supabase, rfq.id, body, userId);
+}
+
 function mapWorkerCandidate(candidate, sourceRun) {
   return {
     workspace_id: sourceRun.workspace_id,
@@ -424,6 +441,11 @@ async function executeSourceRun(supabase, sourceRunId, body, requestId) {
     supabase.from("source_runs").select("*").eq("id", sourceRunId),
     "source_run",
   );
+  if (sourceRun.trigger_kind !== "activation_land_sourcing") {
+    const error = new Error("source_run_execution_restricted_to_activation_land_sourcing");
+    error.statusCode = 410;
+    throw error;
+  }
   const mandate = sourceRun.mandate_id
     ? await selectOne(supabase.from("buyer_mandates").select("*").eq("id", sourceRun.mandate_id), "mandate").catch(() => null)
     : null;
@@ -695,24 +717,146 @@ async function listPartners(supabase, query) {
   return { partners: await selectRows(builder) };
 }
 
+async function listRepresentedInventory(supabase, mandateId, body, userId) {
+  const mandate = await selectOne(supabase.from("buyer_mandates").select("*").eq("id", mandateId), "mandate");
+  await assertWorkspaceWriteAccess(supabase, mandate.workspace_id, userId || uuid(body.user_id));
+  let builder = supabase
+    .from("sourced_options")
+    .select("*")
+    .eq("workspace_id", mandate.workspace_id)
+    .in("source_kind", ["represented_inventory", "partner_land", "manual", "landowner"]);
+  if (body.city) builder = builder.eq("city", text(body.city));
+  return { mode: "represented_inventory_fetch", options: await selectRows(builder.order("updated_at", { ascending: false }).limit(50)) };
+}
+
+async function listSupplierMatches(supabase, mandateId, body, userId) {
+  const mandate = await selectOne(supabase.from("buyer_mandates").select("*").eq("id", mandateId), "mandate");
+  await assertWorkspaceWriteAccess(supabase, mandate.workspace_id, userId || uuid(body.user_id));
+  let builder = supabase
+    .from("partners")
+    .select("*, prefab_supplier_profiles(*)")
+    .eq("partner_kind", "prefab_supplier")
+    .in("status", ["candidate", "onboarding", "active"]);
+  if (body.country_code) builder = builder.eq("country_code", text(body.country_code).toUpperCase());
+  return { mode: "supplier_catalog_fetch", suppliers: await selectRows(builder.order("updated_at", { ascending: false }).limit(50)) };
+}
+
+async function loadDealContext(supabase, dealId) {
+  const option = await selectOne(supabase.from("sourced_options").select("*").eq("id", dealId), "sourced_option").catch(() => null);
+  const activation = option ? null : await selectOne(supabase.from("activation_opportunities").select("*").eq("id", dealId), "activation_opportunity").catch(() => null);
+  const rfqId = option?.rfq_id || activation?.rfq_id || null;
+  const rfq = rfqId ? await selectOne(supabase.from("rfqs").select("*").eq("id", rfqId), "rfq").catch(() => null) : null;
+  const workspaceId = option?.workspace_id || activation?.workspace_id || rfq?.workspace_id || null;
+  return { option, activation, rfq, workspaceId };
+}
+
+async function createPrefabEstimate(supabase, dealId, body, userId) {
+  const context = await loadDealContext(supabase, dealId);
+  if (!context.workspaceId) {
+    const error = new Error("activation_deal_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  await assertWorkspaceWriteAccess(supabase, context.workspaceId, userId || uuid(body.user_id));
+  const estimate = buildPrefabEstimate({ rfq: context.rfq, option: context.option, body });
+  if (context.option?.id) {
+    const nextPayload = { ...(context.option.model_payload_json || {}), prefab_estimate_json: estimate };
+    await supabase.from("sourced_options").update({ model_payload_json: nextPayload }).eq("id", context.option.id);
+  }
+  if (context.activation?.id) {
+    await supabase.from("activation_opportunities").update({
+      economics_json: { ...(context.activation.economics_json || {}), prefab_estimate: estimate },
+    }).eq("id", context.activation.id);
+  }
+  return { mode: "prefab_estimate", prefab_estimate: estimate };
+}
+
+async function createSpreadUnderwriting(supabase, dealId, body, userId) {
+  const context = await loadDealContext(supabase, dealId);
+  if (!context.workspaceId) {
+    const error = new Error("activation_deal_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  await assertWorkspaceWriteAccess(supabase, context.workspaceId, userId || uuid(body.user_id));
+  const prefabEstimate = body.prefab_estimate
+    || context.option?.model_payload_json?.prefab_estimate_json
+    || context.activation?.economics_json?.prefab_estimate
+    || {};
+  const underwriting = buildSpreadUnderwriting({ rfq: context.rfq, option: context.option, prefabEstimate, body });
+  if (context.option?.id) {
+    const nextPayload = { ...(context.option.model_payload_json || {}), spread_underwriting_json: underwriting };
+    await supabase.from("sourced_options").update({ model_payload_json: nextPayload }).eq("id", context.option.id);
+  }
+  if (context.activation?.id) {
+    await supabase.from("activation_opportunities").update({
+      economics_json: { ...(context.activation.economics_json || {}), spread_underwriting: underwriting },
+    }).eq("id", context.activation.id);
+  }
+  return { mode: "spread_underwriting", underwriting };
+}
+
+async function createActivationDealAction(supabase, dealId, body, userId) {
+  const context = await loadDealContext(supabase, dealId);
+  if (!context.workspaceId) {
+    const error = new Error("activation_deal_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  await assertWorkspaceWriteAccess(supabase, context.workspaceId, userId || uuid(body.user_id));
+  const action = resolveActivationAction(body);
+  if (action.action_type === "mark_operator_candidate") {
+    const scoring = context.rfq?.activation_score_json || context.activation?.score_json || {};
+    const gate = canRouteOperator(scoring, body.operator_checklist_json || {});
+    if (!gate.allowed && !body.admin_override?.reason) {
+      const error = new Error("operator_hard_stops_not_cleared");
+      error.statusCode = 409;
+      error.details = { hard_stops: gate.hard_stops };
+      throw error;
+    }
+  }
+  if (context.option?.id && ["passed", "pursue", "operator_candidate", "closed"].includes(action.pipeline_state)) {
+    await supabase.from("sourced_options").update({ status: action.pipeline_state }).eq("id", context.option.id);
+  }
+  let approvalGate = null;
+  if (action.approval_required) {
+    approvalGate = (await createApprovalGate(supabase, {
+      workspace_id: context.workspaceId,
+      mandate_id: context.option?.mandate_id || context.activation?.mandate_id || context.rfq?.mandate_id,
+      rfq_id: context.option?.rfq_id || context.activation?.rfq_id || context.rfq?.id,
+      match_id: uuid(body.match_id),
+      partner_id: uuid(body.partner_id),
+      action_type: action.action_type,
+      draft_payload: action.draft_payload,
+      approval_status: "pending",
+      user_id: userId || uuid(body.user_id),
+    }, userId)).approval_gate;
+  }
+  return { activation_action: action, approval_gate: approvalGate };
+}
+
 async function runAgentTurn(supabase, body, userId) {
   const workspaceId = uuid(body.workspace_id);
   await assertWorkspaceWriteAccess(supabase, workspaceId, userId || uuid(body.user_id));
   const context = await loadWorkspaceMandate(supabase, workspaceId, userId || uuid(body.user_id));
   const message = text(body.message);
   const toolResults = [];
-  let assistantMessage = "I captured that. I can run sourcing, prepare a buyer packet, or set up an approval-gated partner intro.";
-  if (/search|source|find|shortlist|ابحث|خيارات/i.test(message)) {
-    const run = await createSourceRun(supabase, {
-      workspace_id: workspaceId,
-      mandate_id: context.mandate?.id,
-      rfq_id: context.active_rfq?.id,
-      query_text: message,
+  let assistantMessage = "I captured that. I can complete the mandate, run activation land sourcing, fetch represented inventory, match suppliers, run prefab estimates, model spread, or prepare approval-gated outreach.";
+  if (/supplier|prefab|modular|مورد|مصنع|جاهزة/i.test(message) && context.mandate?.id) {
+    const suppliers = await listSupplierMatches(supabase, context.mandate.id, {}, userId);
+    toolResults.push({ tool: "SupplierCatalog.fetch", status: "completed", result: suppliers });
+    assistantMessage = "I fetched supplier catalog matches directly. No source run is created for supplier catalog data.";
+  } else if (/represented|inventory|owned|landowner|ممثلة|مخزون|أرض مسجلة/i.test(message) && context.mandate?.id) {
+    const inventory = await listRepresentedInventory(supabase, context.mandate.id, {}, userId);
+    toolResults.push({ tool: "RepresentedInventory.fetch", status: "completed", result: inventory });
+    assistantMessage = "I fetched represented inventory directly from Mihad records. No browser sourcing run is needed for represented supply.";
+  } else if (/search|source|find|shortlist|land|plot|yard|ابحث|خيارات|أرض|موقع|ساحة/i.test(message) && context.active_rfq?.id) {
+    const run = await createActivationLandSourcingRun(supabase, context.active_rfq.id, {
+      ...body,
       sources: body.sources,
-      trigger_kind: "agent",
     }, userId);
-    toolResults.push({ tool: "SourceRun.create", status: "completed", result: run });
-    assistantMessage = "I started a verified source run for this mandate. Results will stay scoped to this buyer workflow.";
+    toolResults.push({ tool: "ActivationLandSourcing.create", status: "completed", result: run });
+    assistantMessage = "I started activation land sourcing for this qualified mandate. Browser results stay in the operator workspace for review.";
   } else if (/packet|qualif|readiness|جاهزية|تأهيل/i.test(message) && context.readiness_profile?.id) {
     const packet = await createBuyerPacket(supabase, {
       buyer_profile_id: context.readiness_profile.id,
@@ -777,10 +921,17 @@ function matchMihadRoute(method, pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "api" || parts[1] !== "mihad" || parts[2] !== "v1") return null;
   if (method === "POST" && parts[3] === "mandates" && parts.length === 4) return { name: "createMandate" };
+  if (method === "POST" && parts[3] === "activation-mandates" && parts.length === 4) return { name: "createMandate" };
+  if (method === "POST" && parts[3] === "activation-mandates" && parts[5] === "land-sourcing" && parts.length === 6) return { name: "createActivationLandSourcingRunForMandate", mandateId: parts[4] };
+  if (method === "GET" && parts[3] === "activation-mandates" && parts[5] === "represented-inventory" && parts.length === 6) return { name: "listRepresentedInventory", mandateId: parts[4] };
+  if (method === "GET" && parts[3] === "activation-mandates" && parts[5] === "supplier-matches" && parts.length === 6) return { name: "listSupplierMatches", mandateId: parts[4] };
+  if (method === "POST" && parts[3] === "activation-deals" && parts[5] === "prefab-estimate" && parts.length === 6) return { name: "createPrefabEstimate", dealId: parts[4] };
+  if (method === "POST" && parts[3] === "activation-deals" && parts[5] === "spread-underwriting" && parts.length === 6) return { name: "createSpreadUnderwriting", dealId: parts[4] };
+  if (method === "POST" && parts[3] === "activation-deals" && parts[5] === "actions" && parts.length === 6) return { name: "createActivationDealAction", dealId: parts[4] };
   if (method === "GET" && parts[3] === "workspaces" && parts[5] === "mandate" && parts.length === 6) return { name: "getWorkspaceMandate", workspaceId: parts[4] };
   if (method === "POST" && parts[3] === "rfqs" && parts.length === 4) return { name: "createRfq" };
   if (method === "POST" && parts[3] === "rfqs" && parts[5] === "land-sourcing" && parts.length === 6) return { name: "createActivationLandSourcingRun", rfqId: parts[4] };
-  if (method === "POST" && parts[3] === "source-runs" && parts.length === 4) return { name: "createSourceRun" };
+  if (method === "POST" && parts[3] === "source-runs" && parts.length === 4) return { name: "createSourceRunCompat" };
   if (method === "POST" && parts[3] === "source-runs" && parts[5] === "execute" && parts.length === 6) return { name: "executeSourceRun", sourceRunId: parts[4] };
   if (method === "POST" && parts[3] === "sourced-options" && parts.length === 4) return { name: "createSourcedOption" };
   if (method === "POST" && parts[3] === "sourced-options" && parts[5] === "promote" && parts.length === 6) return { name: "promoteOption", optionId: parts[4] };
@@ -803,12 +954,25 @@ export async function handleMihadApi(req, res, { requestId, readJsonBody, supaba
   if (!route) return false;
   try {
     const { userId } = await requireUser(req);
-    const body = req.method === "GET" ? {} : await readJsonBody(req);
+    const body = req.method === "GET" ? Object.fromEntries(url.searchParams.entries()) : await readJsonBody(req);
     if (route.name === "createMandate") return sendJson(res, 201, envelope(requestId, await createMandate(supabase, body, userId)));
+    if (route.name === "createActivationLandSourcingRunForMandate") return sendJson(res, 202, envelope(requestId, await createActivationLandSourcingRunForMandate(supabase, uuid(route.mandateId), body, userId)));
+    if (route.name === "listRepresentedInventory") return sendJson(res, 200, envelope(requestId, await listRepresentedInventory(supabase, uuid(route.mandateId), body, userId)));
+    if (route.name === "listSupplierMatches") return sendJson(res, 200, envelope(requestId, await listSupplierMatches(supabase, uuid(route.mandateId), body, userId)));
+    if (route.name === "createPrefabEstimate") return sendJson(res, 201, envelope(requestId, await createPrefabEstimate(supabase, uuid(route.dealId), body, userId)));
+    if (route.name === "createSpreadUnderwriting") return sendJson(res, 201, envelope(requestId, await createSpreadUnderwriting(supabase, uuid(route.dealId), body, userId)));
+    if (route.name === "createActivationDealAction") return sendJson(res, 201, envelope(requestId, await createActivationDealAction(supabase, uuid(route.dealId), body, userId)));
     if (route.name === "getWorkspaceMandate") return sendJson(res, 200, envelope(requestId, await loadWorkspaceMandate(supabase, uuid(route.workspaceId), userId || uuid(url.searchParams.get("user_id")))));
     if (route.name === "createRfq") return sendJson(res, 201, envelope(requestId, { rfq: await createRfq(supabase, body, userId) }));
     if (route.name === "createActivationLandSourcingRun") return sendJson(res, 202, envelope(requestId, await createActivationLandSourcingRun(supabase, uuid(route.rfqId), body, userId)));
-    if (route.name === "createSourceRun") return sendJson(res, 202, envelope(requestId, await createSourceRun(supabase, body, userId)));
+    if (route.name === "createSourceRunCompat") {
+      if (text(body.trigger_kind) !== "activation_land_sourcing") {
+        const error = new Error("generic_source_runs_disabled_use_activation_land_sourcing");
+        error.statusCode = 410;
+        throw error;
+      }
+      return sendJson(res, 202, envelope(requestId, await createSourceRun(supabase, body, userId)));
+    }
     if (route.name === "executeSourceRun") return sendJson(res, 200, envelope(requestId, await executeSourceRun(supabase, uuid(route.sourceRunId), body, requestId)));
     if (route.name === "createSourcedOption") return sendJson(res, 201, envelope(requestId, await createSourcedOption(supabase, body, userId)));
     if (route.name === "promoteOption") return sendJson(res, 201, envelope(requestId, await promoteOption(supabase, uuid(route.optionId), body, userId)));

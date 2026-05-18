@@ -316,6 +316,21 @@ export async function createAcquisitionWorkspace(
 
   const preferences = input.mihad?.preferences ?? {};
   const scoutIntent = (preferences as { scout_intent?: Record<string, unknown> | null })?.scout_intent ?? null;
+  const activationRequest = (preferences as { activation_request?: Record<string, unknown> | null })?.activation_request ?? null;
+  const activationScoring = (preferences as { activation_scoring?: Record<string, unknown> | null })?.activation_scoring ?? null;
+  const activationEconomics = activationRequest
+    ? {
+        tenant_monthly_rent: activationRequest.tenant_monthly_rent ?? activationRequest.monthly_budget ?? null,
+        land_rent: activationRequest.land_rent ?? activationRequest.rent_expectation ?? null,
+        modular_unit_lease: activationRequest.modular_unit_lease ?? null,
+        install_removal_amortization: activationRequest.install_removal_amortization ?? null,
+        maintenance_reserve: activationRequest.maintenance_reserve ?? null,
+        target_coverage: activationRequest.target_coverage ?? 1.5,
+        reserve_months: activationRequest.reserve_months ?? null,
+      }
+    : null;
+  const activationPartyType = String(activationRequest?.audience_type || activationRequest?.party_type || 'tenant');
+  const activationRoute = String(activationScoring?.route_recommendation || 'needs_review');
   const { data: rfq, error: rfqError } = await db
     .from('rfqs')
     .insert({
@@ -327,16 +342,17 @@ export async function createAcquisitionWorkspace(
       title: name,
       city: String((scoutIntent?.city as string | undefined) || buyBox.city || '').trim() || null,
       country_code: targetCountryCodes[0] || 'SA',
-      land_status: typeof preferences.land_status === 'string' ? preferences.land_status : 'unknown',
-      use_case: String(input.mihad?.purpose || scoutIntent?.purpose || buyBox.strategy || 'prefab_buyer'),
-      prefab_category: String(preferences.prefab_category || buyBox.asset_type || 'villa'),
+      land_status: typeof preferences.land_status === 'string' ? preferences.land_status : String(activationRequest?.land_status || 'unknown'),
+      use_case: String(activationRequest?.business_activity || input.mihad?.purpose || scoutIntent?.purpose || buyBox.strategy || 'prefab_buyer'),
+      prefab_category: String(activationRequest?.project_type || preferences.prefab_category || buyBox.asset_type || 'villa'),
       budget_range_json: {
         min: buyBox.budget_min_sar,
         max: buyBox.budget_max_sar,
         currency: budgetCurrency,
       },
       target_size_json: {
-        area_sqm: preferences.target_size_sqm ?? null,
+        area_sqm: activationRequest?.required_land_area_sqm ?? preferences.target_size_sqm ?? null,
+        structure_size_sqm: activationRequest?.size_sqm ?? null,
       },
       delivery_timeline: input.mihad?.mandateTimeline ?? buyBox.timeline,
       scope_needs_json: {
@@ -349,11 +365,20 @@ export async function createAcquisitionWorkspace(
         liquidity_class: input.mihad?.liquidityClass ?? null,
         readiness: scoutIntent?.readiness ?? null,
         financing_posture: scoutIntent?.financing_posture ?? buyBox.financing,
+        activation_request: activationRequest,
+        activation_economics: activationEconomics,
+        activation_scoring: activationScoring,
       },
+      activation_party_type: ['tenant', 'landowner', 'supplier'].includes(activationPartyType) ? activationPartyType : 'tenant',
+      activation_route: ['tenant_demand', 'land_supply', 'supplier_panel', 'broker_manager', 'operator_candidate', 'needs_review'].includes(activationRoute) ? activationRoute : 'needs_review',
+      activation_score_json: activationScoring || {},
       metadata_json: {
         intake_source: input.seedSource || 'workspace_creation_form',
         buy_box: buyBox,
         scout_intent: scoutIntent,
+        activation_request: activationRequest,
+        activation_economics: activationEconomics,
+        activation_scoring: activationScoring,
       },
       created_by: input.userId,
     })

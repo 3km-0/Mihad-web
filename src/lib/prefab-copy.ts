@@ -19,7 +19,7 @@ export const prefabCopy = {
     businesses: { ar: 'للشركات', en: 'For Businesses' },
     manufacturers: { ar: 'للمصنعين', en: 'For Manufacturers' },
     signIn: { ar: 'تسجيل الدخول', en: 'Sign in' },
-    getMatched: { ar: 'ابدأ طلبك', en: 'Start a request' },
+    getMatched: { ar: 'ابدأ تفويض موقع', en: 'Start a site mandate' },
     whatsapp: { ar: 'واتساب', en: 'WhatsApp' },
     request: { ar: 'طلب', en: 'Request' },
   },

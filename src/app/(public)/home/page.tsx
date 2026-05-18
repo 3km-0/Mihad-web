@@ -67,7 +67,7 @@ export default async function HomePage() {
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/request-quote?audience=tenant&project_type=commercial_site" className="inline-flex min-h-12 items-center gap-2 rounded-[8px] bg-[#23395D] px-5 text-sm font-semibold text-white transition hover:bg-[#1D4E89]">
-                  {pickLocalized(locale, 'ابدأ طلبك', 'Start a request')}
+                  {pickLocalized(locale, 'ابدأ تفويض موقع', 'Start a site mandate')}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link href="/request-quote?audience=landowner&project_type=land_activation" className="inline-flex min-h-12 items-center rounded-[8px] border border-[#C8D2E0] bg-white/75 px-5 text-sm font-semibold text-[#101827] transition hover:border-[#1D4E89]">

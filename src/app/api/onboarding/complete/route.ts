@@ -243,7 +243,10 @@ export async function POST(request: Request) {
       throw new Error('Internal backend token is not configured.');
     }
 
-    const searchResponse = await fetch(zohalBackendUrl('/api/mihad/v1/source-runs'), {
+    const landSourcingPath = rfqId
+      ? `/api/mihad/v1/rfqs/${rfqId}/land-sourcing`
+      : `/api/mihad/v1/activation-mandates/${mandateId}/land-sourcing`;
+    const searchResponse = await fetch(zohalBackendUrl(landSourcingPath), {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -251,6 +254,7 @@ export async function POST(request: Request) {
         workspace_id: workspaceId,
         mandate_id: mandateId,
         rfq_id: rfqId ?? null,
+        trigger_kind: 'activation_land_sourcing',
         query_text: queryDescription,
         sources: ['aqar', 'bayut'],
         limits: searchLimits,
@@ -268,25 +272,11 @@ export async function POST(request: Request) {
     searchRunError = error instanceof Error ? error.message : 'Source run request failed';
   }
 
-  if (searchRunError) {
-    try {
-      const fallbackSearchRun = await createSearchRunFallback(service, {
-        workspaceId,
-        mandateId,
-        userId: session.user.id,
-        queryDescription,
-        limits: searchLimits,
-      });
-      searchPayload = { search_run: fallbackSearchRun, fallback: true };
-      searchRunError = null;
-    } catch (error) {
-      searchRunError = error instanceof Error ? error.message : 'Fallback source run creation failed';
-    }
-  }
-
   const searchRun =
     (searchPayload?.data as { search_run?: Record<string, unknown>; queue?: { enqueued?: boolean } } | undefined)?.search_run ||
+    (searchPayload?.data as { source_run?: Record<string, unknown>; queue?: { enqueued?: boolean } } | undefined)?.source_run ||
     (searchPayload?.search_run as Record<string, unknown> | undefined) ||
+    (searchPayload?.source_run as Record<string, unknown> | undefined) ||
     null;
   const queue =
     (searchPayload?.data as { queue?: { enqueued?: boolean } } | undefined)?.queue ||

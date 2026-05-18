@@ -192,6 +192,10 @@ function baseSupabase() {
 
 test("Mihad API route matcher exposes the reset buyer workflow and not acquisition routes", () => {
   assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/mandates"), true);
+  assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/activation-mandates"), true);
+  assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/activation-mandates/mandate_1/land-sourcing"), true);
+  assert.equal(isMihadApiRoute("GET", "/api/mihad/v1/activation-mandates/mandate_1/represented-inventory"), true);
+  assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/activation-deals/option_1/prefab-estimate"), true);
   assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/source-runs/run_1/execute"), true);
   assert.equal(isMihadApiRoute("POST", "/api/mihad/v1/rfqs/rfq_1/land-sourcing"), true);
   assert.equal(isMihadApiRoute("POST", "/api/acquisition/v1/workspaces/ws/search-runs"), false);
@@ -234,7 +238,7 @@ test("mandate creation writes buyer entity, mandate, and prefab RFQ", async () =
   assert.equal(res.body.rfq.vertical, "prefab");
 });
 
-test("source run execution completes and manual sourced options require source attribution", async () => {
+test("activation land source run execution completes and manual sourced options require source attribution", async () => {
   const supabase = baseSupabase();
   supabase.db.buyer_mandates = [{ id: "mandate_1", workspace_id: WORKSPACE_ID, user_id: USER_ID, target_country_codes: ["SA"] }];
   supabase.db.rfqs = [{ id: "rfq_1", workspace_id: WORKSPACE_ID, mandate_id: "mandate_1" }];
@@ -246,6 +250,7 @@ test("source run execution completes and manual sourced options require source a
     rfq_id: "rfq_1",
     query_text: "Riyadh prefab villa options",
     sources: ["manual"],
+    trigger_kind: "activation_land_sourcing",
   });
   assert.equal(created.status, 202);
 
@@ -274,6 +279,20 @@ test("source run execution completes and manual sourced options require source a
   assert.equal(supabase.db.sourced_options.length, 1);
   assert.equal(supabase.db.option_sources.length, 1);
   assert.equal(supabase.db.option_sources[0].source_name, "Najd Modular Homes");
+});
+
+test("generic source run creation is no longer a public product entrypoint", async () => {
+  const supabase = baseSupabase();
+  supabase.db.buyer_mandates = [{ id: "mandate_1", workspace_id: WORKSPACE_ID, user_id: USER_ID, target_country_codes: ["SA"] }];
+
+  const created = await invoke(supabase, "POST", "/api/mihad/v1/source-runs", {
+    user_id: USER_ID,
+    workspace_id: WORKSPACE_ID,
+    mandate_id: "mandate_1",
+    query_text: "generic search",
+  });
+  assert.equal(created.status, 410);
+  assert.equal(created.body.error, "generic_source_runs_disabled_use_activation_land_sourcing");
 });
 
 test("packet, sharing grant, revoke, and approval gate stay on derived/consent contracts", async () => {
@@ -419,4 +438,100 @@ test("activation land sourcing creates operator source runs only from qualified 
   });
   assert.equal(rejected.status, 422);
   assert.equal(rejected.body.error, "tenant_demand_not_qualified_for_land_sourcing");
+});
+
+test("represented inventory and supplier fetches do not create source runs", async () => {
+  const supabase = baseSupabase();
+  supabase.db.buyer_mandates = [{ id: "mandate_1", workspace_id: WORKSPACE_ID, user_id: USER_ID }];
+  supabase.db.sourced_options = [{
+    id: "option_1",
+    workspace_id: WORKSPACE_ID,
+    mandate_id: "mandate_1",
+    source_kind: "represented_inventory",
+    title: "Represented commercial frontage",
+    city: "Riyadh",
+  }];
+  supabase.db.partners = [{
+    id: "supplier_1",
+    partner_kind: "prefab_supplier",
+    display_name: "Najd Modular",
+    country_code: "SA",
+    status: "active",
+  }];
+
+  const inventory = await invoke(supabase, "GET", `/api/mihad/v1/activation-mandates/mandate_1/represented-inventory?city=Riyadh&user_id=${USER_ID}`);
+  assert.equal(inventory.status, 200);
+  assert.equal(inventory.body.mode, "represented_inventory_fetch");
+  assert.equal(inventory.body.options.length, 1);
+
+  const suppliers = await invoke(supabase, "GET", `/api/mihad/v1/activation-mandates/mandate_1/supplier-matches?country_code=SA&user_id=${USER_ID}`);
+  assert.equal(suppliers.status, 200);
+  assert.equal(suppliers.body.mode, "supplier_catalog_fetch");
+  assert.equal(suppliers.body.suppliers.length, 1);
+  assert.equal((supabase.db.source_runs || []).length, 0);
+});
+
+test("prefab estimate and spread underwriting write activation deal planning outputs", async () => {
+  const supabase = baseSupabase();
+  supabase.db.rfqs = [{
+    id: "rfq_1",
+    workspace_id: WORKSPACE_ID,
+    activation_party_type: "tenant",
+    prefab_category: "project_office",
+    metadata_json: {
+      activation_request: { party_type: "tenant", structure_size_sqm: 120, monthly_budget: 90000, permit_path: true, modular_install_permission: true },
+      activation_economics: { tenant_monthly_rent: 90000, land_rent: 22000, modular_unit_lease: 26000, target_coverage: 1.5 },
+    },
+    qualification_json: {},
+  }];
+  supabase.db.sourced_options = [{
+    id: "option_1",
+    workspace_id: WORKSPACE_ID,
+    mandate_id: "mandate_1",
+    rfq_id: "rfq_1",
+    source_kind: "portal",
+    title: "Land option",
+    area_sqm: 1500,
+    model_payload_json: {},
+  }];
+
+  const estimate = await invoke(supabase, "POST", "/api/mihad/v1/activation-deals/option_1/prefab-estimate", {
+    user_id: USER_ID,
+    structure_size_sqm: 120,
+  });
+  assert.equal(estimate.status, 201);
+  assert.equal(estimate.body.mode, "prefab_estimate");
+  assert.equal(estimate.body.prefab_estimate.estimate_kind, "prefab");
+
+  const underwriting = await invoke(supabase, "POST", "/api/mihad/v1/activation-deals/option_1/spread-underwriting", {
+    user_id: USER_ID,
+    tenant_monthly_rent: 90000,
+    land_rent: 22000,
+    target_coverage: 1.5,
+  });
+  assert.equal(underwriting.status, 201);
+  assert.equal(underwriting.body.mode, "spread_underwriting");
+  assert.equal(underwriting.body.underwriting.underwriting_engine_version, "activation_spread_v1");
+});
+
+test("activation deal actions preserve mapped pipeline actions through approvals", async () => {
+  const supabase = baseSupabase();
+  supabase.db.rfqs = [{ id: "rfq_1", workspace_id: WORKSPACE_ID, activation_score_json: { hard_stops: [] } }];
+  supabase.db.sourced_options = [{
+    id: "option_1",
+    workspace_id: WORKSPACE_ID,
+    mandate_id: "mandate_1",
+    rfq_id: "rfq_1",
+    source_kind: "portal",
+    title: "Land option",
+  }];
+
+  const action = await invoke(supabase, "POST", "/api/mihad/v1/activation-deals/option_1/actions", {
+    user_id: USER_ID,
+    action_type: "prepare_supplier_intro",
+    message: "Ask supplier for lease terms.",
+  });
+  assert.equal(action.status, 201);
+  assert.equal(action.body.activation_action.action_type, "prepare_supplier_intro");
+  assert.equal(action.body.approval_gate.approval_status, "pending");
 });

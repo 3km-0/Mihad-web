@@ -343,6 +343,7 @@ type MihadAgentTurnResponse = {
   context?: {
     mandate?: AcquisitionMandateRow | null;
     search_runs?: AcquisitionSearchRunRow[];
+    source_runs?: AcquisitionSearchRunRow[];
     opportunities?: OpportunityRow[];
     readiness_profile?: BuyerReadinessProfileRow | null;
     buyer_packets?: BuyerPacketRow[];
@@ -492,6 +493,7 @@ type PromoteCandidateResponse = {
 
 type WorkspaceSearchRunResponse = {
   search_run?: AcquisitionSearchRunRow | null;
+  source_run?: AcquisitionSearchRunRow | null;
   queue?: { enqueued?: boolean; reason?: string | null; task_name?: string | null };
 };
 
@@ -1671,20 +1673,22 @@ export default function WorkspaceCockpitPage() {
     try {
       const response = await invokeZohalBackendJson<WorkspaceSearchRunResponse>(
         supabase,
-        '/api/mihad/v1/source-runs',
+        mandate?.id ? `/api/mihad/v1/activation-mandates/${mandate.id}/land-sourcing` : '/api/mihad/v1/source-runs',
         {
           workspace_id: workspaceId,
           mandate_id: mandate?.id ?? null,
+          trigger_kind: 'activation_land_sourcing',
           query_text: sourcingInstruction.trim() || workspace?.analysis_brief || workspace?.description || workspace?.name || '',
           sources: sourcingSources.length ? sourcingSources : ['aqar', 'bayut'],
           limits: {},
         },
       );
-      if (response.search_run) {
-        setSearchRuns((current) => [response.search_run as AcquisitionSearchRunRow, ...current.filter((item) => item.id !== response.search_run?.id)].slice(0, 5));
+      const sourceRun = response.source_run ?? response.search_run ?? null;
+      if (sourceRun) {
+        setSearchRuns((current) => [sourceRun as AcquisitionSearchRunRow, ...current.filter((item) => item.id !== sourceRun.id)].slice(0, 5));
         await invokeZohalBackendJson(
           supabase,
-          `/api/mihad/v1/source-runs/${response.search_run.id}/execute`,
+          `/api/mihad/v1/source-runs/${sourceRun.id}/execute`,
           {},
         );
       }
@@ -1728,7 +1732,7 @@ export default function WorkspaceCockpitPage() {
       };
       setMihadAgentTurns((current) => [...current, assistantTurn].slice(-8));
       if (response.context?.mandate) setMandate(response.context.mandate);
-      if (response.context?.search_runs) setSearchRuns(response.context.search_runs);
+      if (response.context?.search_runs || response.context?.source_runs) setSearchRuns(response.context.search_runs || response.context.source_runs || []);
       if (response.context?.opportunities) setOpportunities(response.context.opportunities);
       if (response.context?.readiness_profile !== undefined) setReadinessProfile(response.context.readiness_profile ?? null);
       if (response.context?.buyer_packets) setBuyerPackets(response.context.buyer_packets);
@@ -1942,8 +1946,19 @@ export default function WorkspaceCockpitPage() {
         .update({ model_payload_json: metadata })
         .eq('id', selectedOpportunity.id);
       if (saveError) throw saveError;
+      const response = await invokeZohalBackendJson<{ underwriting?: unknown }>(
+        supabase,
+        `/api/mihad/v1/activation-deals/${selectedOpportunity.id}/spread-underwriting`,
+        {
+          scenario: nextScenario,
+          tenant_monthly_rent: nextScenario.rent,
+          land_rent: nextScenario.price,
+          modular_unit_lease: nextScenario.renovation,
+          target_coverage: 1.5,
+        },
+      );
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id ? { ...item, metadata_json: metadata } : item));
-      setUnderwriting(null);
+      setUnderwriting(response.underwriting as UnderwritingRun);
       setScenario(nextScenario);
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : t('underwritingRunError'));
@@ -1961,13 +1976,27 @@ export default function WorkspaceCockpitPage() {
     setCapexBusy(true);
     setCapexError(null);
     try {
+      const response = await invokeZohalBackendJson<{ prefab_estimate?: RenovationCapexEstimate & { missing_evidence?: unknown } }>(
+        supabase,
+        `/api/mihad/v1/activation-deals/${selectedOpportunity.id}/prefab-estimate`,
+        {
+          strategy: input.strategy,
+          finish_level: input.finish_level,
+          user_notes: input.user_notes,
+        },
+      );
+      const rawEstimate = response.prefab_estimate || {};
       const estimate: RenovationCapexEstimate = {
-        mode: 'operator_note',
+        ...rawEstimate,
+        mode: rawEstimate.mode || 'prefab_planning_range',
         strategy: input.strategy,
         finish_level: input.finish_level,
-        pricing_status: 'not_priced',
+        pricing_status: rawEstimate.pricing_status || 'planning_range',
         assumptions: input.user_notes ? [{ message: input.user_notes }] : [],
-        generated_at: new Date().toISOString(),
+        missing_evidence: Array.isArray(rawEstimate.missing_evidence)
+          ? rawEstimate.missing_evidence.map((item) => ({ message: String(item) }))
+          : [],
+        generated_at: rawEstimate.generated_at || new Date().toISOString(),
       };
       setOpportunities((current) => current.map((item) => item.id === selectedOpportunity.id
         ? {
@@ -1991,7 +2020,7 @@ export default function WorkspaceCockpitPage() {
     } finally {
       setCapexBusy(false);
     }
-  }, [selectedOpportunity, t]);
+  }, [selectedOpportunity, supabase, t]);
 
   const updateSelectedStage = useCallback(async (stage: string) => {
     if (!selectedOpportunity) return;

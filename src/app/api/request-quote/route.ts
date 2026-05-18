@@ -1,6 +1,5 @@
 import { PREFAB_PROJECT_TYPES, PREFAB_WHATSAPP_URL, projectTypeLabel } from '@/lib/prefab-content';
 import { scoreActivationRequest, type ActivationPartyType } from '@/lib/activation-scoring';
-import { createServiceClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 type RequestQuoteBody = {
@@ -100,22 +99,6 @@ function defaultProjectType(partyType: ActivationPartyType) {
   if (partyType === 'landowner') return 'land_activation';
   if (partyType === 'supplier') return 'supplier_application';
   return 'commercial_site';
-}
-
-async function resolvePublicRfqOwnerId(service: Awaited<ReturnType<typeof createServiceClient>>) {
-  const configured = text(process.env.MIHAD_PUBLIC_RFQ_OWNER_ID || process.env.PUBLIC_RFQ_OWNER_ID, 80);
-  if (configured) return configured;
-
-  const { data, error } = await service
-    .from('profiles')
-    .select('id')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw new Error(error.message || 'Could not resolve public RFQ owner.');
-  if (!data?.id) throw new Error('No profile is available to own public RFQ workspaces.');
-  return data.id as string;
 }
 
 function buildWhatsappUrl(input: { rfqId?: string; partyType: ActivationPartyType; projectType: string; city: string; phone: string }) {
@@ -252,288 +235,26 @@ export async function POST(request: Request) {
   if (!timeline && partyType !== 'landowner') return jsonError('Timeline is required.', 400, 'timeline_required');
   if (!contactName) return jsonError('Contact name is required.', 400, 'contact_name_required');
   if (!contactPhone) return jsonError('Phone number is required.', 400, 'phone_required');
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return jsonError('RFQ submission is not configured on this environment.', 503, 'rfq_service_not_configured');
-  }
 
-  const service = await createServiceClient();
-  const ownerId = await resolvePublicRfqOwnerId(service);
-  const createdAt = new Date().toISOString();
-  const label = projectTypeLabel(projectType);
-  const titlePrefix = partyType === 'landowner'
-    ? 'Land activation lead'
-    : partyType === 'supplier'
-      ? 'Modular supplier application'
-      : 'Commercial site request';
-  const locationLabel = city || activationRequest.service_areas || 'Saudi Arabia';
-  const title = `${titlePrefix} - ${locationLabel}`;
-  const budgetRange = { min: budgetMin, max: budgetMax, currency: budgetCurrency };
-  const contact = {
-    name: contactName,
-    phone: contactPhone,
-    email: contactEmail || null,
-    whatsapp_preferred: whatsappPreferred,
-  };
-  const activationMetadata = {
+  const draftId = `draft_${crypto.randomUUID()}`;
+  return NextResponse.json({
+    draft_id: draftId,
+    status: 'draft_auth_required',
+    auth_required: true,
+    route_recommendation: scoring.route_recommendation,
+    hard_stops: scoring.hard_stops,
+    missing_fields: scoring.missing_fields,
     activation_request: activationRequest,
     activation_economics: economics,
     activation_scoring: scoring,
-    contact,
-    project_type: projectType,
-    label,
-    no_raw_financial_documents: true,
-  };
-
-  const { data: workspace, error: workspaceError } = await service
-    .from('workspaces')
-    .insert({
-      name: title,
-      description: `Public Mihad activation request for ${label} in ${locationLabel}.`,
-      analysis_brief: [
-        `Activation request: ${partyType}`,
-        `Use: ${activationRequest.business_activity || useCase || label}`,
-        `Location: ${locationLabel}`,
-        `Route: ${scoring.route_recommendation}`,
-        scoring.hard_stops.length ? `Hard stops: ${scoring.hard_stops.join(', ')}` : null,
-      ].filter(Boolean).join('\n'),
-      workspace_type: 'project',
-      workspace_kind: 'mihad_buyer_desk',
-      workspace_domain: 'prefab',
-      icon: partyType === 'landowner' ? 'map' : partyType === 'supplier' ? 'factory' : 'building',
-      color: '#1f6b4f',
-      owner_id: ownerId,
-      status: 'active',
-      preparation_status: 'submitted',
-      preparation_metadata: {
-        seed_source: 'public_activation_request',
-        public_rfq: true,
-        submitted_at: createdAt,
-        product_lane: 'prefab_activation',
-        source_channel: 'public_web',
-        contact_preference: whatsappPreferred ? 'whatsapp' : 'phone',
-        ...activationMetadata,
-      },
-    })
-    .select('id')
-    .single();
-
-  if (workspaceError || !workspace?.id) {
-    return jsonError(workspaceError?.message || 'Could not create RFQ workspace.', 500, 'workspace_create_failed');
-  }
-
-  const { data: buyerEntity, error: buyerError } = await service
-    .from('buyer_entities')
-    .insert({
-      owner_user_id: ownerId,
-      display_name: contactName,
-      entity_type: partyType === 'landowner' ? 'individual' : 'company',
-      metadata_json: {
-        intake_source: 'public_activation_request',
-        public_rfq: true,
-        party_type: partyType,
-        contact,
-      },
-    })
-    .select('id')
-    .single();
-
-  if (buyerError || !buyerEntity?.id) {
-    return jsonError(buyerError?.message || 'Could not create buyer entity.', 500, 'buyer_create_failed');
-  }
-
-  const purpose = partyType === 'landowner'
-    ? 'land_activation_supply'
-    : partyType === 'supplier'
-      ? 'modular_supplier_panel'
-      : 'commercial_site_activation';
-
-  const { data: mandate, error: mandateError } = await service
-    .from('buyer_mandates')
-    .insert({
-      workspace_id: workspace.id,
-      buyer_entity_id: buyerEntity.id,
-      user_id: ownerId,
-      title,
-      status: 'active',
-      target_country_codes: ['SA'],
-      target_locations_json: [city, district].filter(Boolean),
-      budget_range_json: budgetRange,
-      budget_currency: budgetCurrency,
-      use_case: activationRequest.business_activity || useCase || label,
-      purpose,
-      timeline,
-      readiness_state: scoring.route_recommendation,
-      constraints_json: {
-        land_status: landStatus,
-        project_type: projectType,
-        target_size: sizeSqm || null,
-        rooms: rooms || null,
-        style_reference: styleReference || null,
-        model_reference: modelReference || null,
-        scope_needs: scopeNeeds,
-        ...activationRequest,
-      },
-      notes,
-      metadata_json: {
-        intake_source: 'public_activation_request',
-        public_rfq: true,
-        contact_preference: whatsappPreferred ? 'whatsapp' : 'phone',
-        activation_economics: economics,
-        activation_scoring: scoring,
-        no_raw_financial_documents: true,
-      },
-    })
-    .select('id')
-    .single();
-
-  if (mandateError || !mandate?.id) {
-    return jsonError(mandateError?.message || 'Could not create buyer mandate.', 500, 'mandate_create_failed');
-  }
-
-  const { data: rfq, error: rfqError } = await service
-    .from('rfqs')
-    .insert({
-      workspace_id: workspace.id,
-      mandate_id: mandate.id,
-      buyer_entity_id: buyerEntity.id,
-      created_by: ownerId,
-      status: 'submitted',
-      vertical: 'prefab',
-      title,
-      city: city || locationLabel,
-      country_code: 'SA',
-      land_status: landStatus,
-      use_case: activationRequest.business_activity || useCase || label,
-      prefab_category: projectType,
-      budget_range_json: budgetRange,
-      target_size_json: {
-        label: sizeSqm || activationRequest.required_land_area_sqm || null,
-        rooms: rooms || null,
-        land_area_sqm: activationRequest.required_land_area_sqm,
-        structure_size_sqm: activationRequest.structure_size_sqm,
-      },
-      delivery_timeline: timeline,
-      document_refs_json: [],
-      activation_party_type: partyType,
-      activation_route: scoring.route_recommendation,
-      activation_score_json: scoring,
-      scope_needs_json: {
-        scope_needs: scopeNeeds,
-        style_reference: styleReference || null,
-        model_reference: modelReference || null,
-      },
-      contact_preference: whatsappPreferred ? 'whatsapp' : 'phone',
-      qualification_json: {
-        contact,
-        public_submission: true,
-        activation_request: activationRequest,
-        activation_economics: economics,
-        activation_scoring: scoring,
-        missing_fields: scoring.missing_fields,
-        readiness: {
-          land_status: landStatus,
-          has_budget: Boolean(budgetMax || activationRequest.rent_expectation),
-          has_city: Boolean(city),
-          route_recommendation: scoring.route_recommendation,
-        },
-      },
-      metadata_json: {
-        intake_source: 'public_activation_request',
-        public_rfq: true,
-        activation_request: activationRequest,
-        activation_economics: economics,
-        activation_scoring: scoring,
-        no_raw_financial_documents: true,
-        notes,
-      },
-    })
-    .select('id, status')
-    .single();
-
-  if (rfqError || !rfq?.id) {
-    return jsonError(rfqError?.message || 'Could not create RFQ.', 500, 'rfq_create_failed');
-  }
-
-  const { data: activationOpportunity, error: activationOpportunityError } = await service
-    .from('activation_opportunities')
-    .insert({
-      workspace_id: workspace.id,
-      mandate_id: mandate.id,
-      rfq_id: rfq.id,
-      party_type: partyType,
-      status: 'intake',
-      route_recommendation: scoring.route_recommendation,
-      score_json: scoring,
-      hard_stops_json: scoring.hard_stops,
-      missing_fields_json: scoring.missing_fields,
-      economics_json: economics,
-      notes,
-      created_by: ownerId,
-    })
-    .select('id')
-    .single();
-
-  if (activationOpportunityError || !activationOpportunity?.id) {
-    return jsonError(activationOpportunityError?.message || 'Could not create activation opportunity.', 500, 'activation_opportunity_create_failed');
-  }
-
-  const { data: thread } = await service
-    .from('agent_threads')
-    .insert({
-      workspace_id: workspace.id,
-      mandate_id: mandate.id,
-      rfq_id: rfq.id,
-      buyer_entity_id: buyerEntity.id,
-      created_by: ownerId,
-      channel: 'web',
-      external_thread_id: `public-activation:${rfq.id}`,
-      status: 'open',
-      last_message_at: createdAt,
-      state_json: {
-        source: 'public_activation_request',
-        party_type: partyType,
-        route_recommendation: scoring.route_recommendation,
-        contact_preference: whatsappPreferred ? 'whatsapp' : 'phone',
-      },
-    })
-    .select('id')
-    .maybeSingle();
-
-  await service.from('agent_events').insert({
-    workspace_id: workspace.id,
-    mandate_id: mandate.id,
-    rfq_id: rfq.id,
-    activation_opportunity_id: activationOpportunity.id,
-    thread_id: thread?.id ?? null,
-    created_by: ownerId,
-    channel: 'web',
-    event_direction: 'inbound',
-    event_type: 'public_activation_request_submitted',
-    body_text: `${contactName} submitted a ${partyType} activation request for ${locationLabel}.`,
-    event_payload: {
-      project_type: projectType,
-      party_type: partyType,
-      city,
-      district,
-      land_status: landStatus,
-      budget_range: budgetRange,
-      timeline,
-      scope_needs: scopeNeeds,
-      activation_request: activationRequest,
-      activation_economics: economics,
-      activation_scoring: scoring,
-      contact,
-    },
+    next_url: '/auth/signup?redirect=/onboarding',
+    whatsapp_url: buildWhatsappUrl({
+      rfqId: draftId,
+      partyType,
+      projectType: projectTypeLabel(projectType),
+      city: city || activationRequest.service_areas || 'Saudi Arabia',
+      phone: contactPhone,
+    }),
   });
 
-  return NextResponse.json({
-    rfq_id: rfq.id,
-    mandate_id: mandate.id,
-    buyer_entity_id: buyerEntity.id,
-    workspace_id: workspace.id,
-    status: rfq.status || 'submitted',
-    route_recommendation: scoring.route_recommendation,
-    hard_stops: scoring.hard_stops,
-    whatsapp_url: buildWhatsappUrl({ rfqId: rfq.id, partyType, projectType: label, city: locationLabel, phone: contactPhone }),
-  });
 }
