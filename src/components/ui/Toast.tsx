@@ -55,12 +55,16 @@ export function Toast({ onAction }: ToastProps) {
   const tAuth = useTranslations('auth');
   const tSubscription = useTranslations('subscription');
 
-  // Auto-dismiss after 5 seconds (except for auth/limit errors)
+  // Auto-dismiss: success quickly; limits stay longer; auth stays until dismissed
   useEffect(() => {
     if (!error && !success) return;
-    if (error?.category === 'auth' || error?.category === 'limit') return;
+    if (error?.category === 'auth') return;
 
-    const timer = setTimeout(dismiss, success ? 3000 : 5000);
+    const durationMs =
+      error?.durationMs ??
+      (error?.category === 'limit' ? 18_000 : success ? 3000 : 5000);
+
+    const timer = setTimeout(dismiss, durationMs);
     return () => clearTimeout(timer);
   }, [error, success, dismiss]);
 
@@ -100,7 +104,12 @@ export function Toast({ onAction }: ToastProps) {
                 {isSuccess ? success!.title : error!.title}
               </h4>
               {(success?.message || error?.message) && (
-                <p className="text-sm mt-0.5 line-clamp-2 text-text-soft">
+                <p
+                  className={cn(
+                    'text-sm mt-0.5 text-text-soft leading-relaxed',
+                    !isSuccess && error?.category === 'limit' ? 'line-clamp-none' : 'line-clamp-3'
+                  )}
+                >
                   {isSuccess ? success!.message : error!.message}
                 </p>
               )}

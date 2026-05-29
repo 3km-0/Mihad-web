@@ -3,6 +3,8 @@
  * Maps backend errors to user-friendly messages
  */
 
+import { mapPlanLimitError } from '@/lib/plan-limit-errors';
+
 /** Backend error codes from Edge Functions */
 export type ErrorCode =
   | 'unauthenticated'
@@ -30,6 +32,8 @@ export interface UserFacingError {
   category: ErrorCategory;
   action?: 'retry' | 'sign-in' | 'upgrade' | 'dismiss';
   requestId?: string;
+  /** Override auto-dismiss duration in the toast UI (milliseconds). */
+  durationMs?: number;
 }
 
 /** Backend error response envelope */
@@ -70,6 +74,10 @@ function looksLikeUpgradeGate(response?: BackendErrorResponse, serverMessage?: s
     'upgrade your plan',
     'limit_exceeded',
     'limit reached',
+    'plan limit',
+    'study space',
+    'readiness space',
+    'max_study_spaces',
     'usage limit',
     'daily limit',
     'quota',
@@ -101,6 +109,11 @@ export function mapError(error: unknown, endpoint?: string): UserFacingError {
   // Already a UserFacingError
   if (isUserFacingError(error)) {
     return error;
+  }
+
+  const planLimit = mapPlanLimitError(error, getUiLocale());
+  if (planLimit) {
+    return planLimit;
   }
 
   // Supabase / fetch response error with data
@@ -177,6 +190,14 @@ export function mapHttpError(
       action: 'retry',
       requestId,
     };
+  }
+
+  const planLimitFromHttp = mapPlanLimitError(
+    { ...(backendResponse as object), message: serverMessage },
+    getUiLocale()
+  );
+  if (planLimitFromHttp) {
+    return { ...planLimitFromHttp, requestId };
   }
 
   if (looksLikeUpgradeGate(backendResponse, serverMessage)) {
