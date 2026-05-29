@@ -1,0 +1,5 @@
+# Minimal config for remote migration push (project ref from NEXT_PUBLIC_SUPABASE_URL).
+project_id = "vqsyxrgvyxcbejhhgomf"
+
+[db]
+major_version = 15
